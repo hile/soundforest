@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+"""
+Script to manage soundforest music tree registrations
+"""
+
+import os
+
+from systematic.shell import normalized,Script,ScriptError
+from soundforest.trees import AudioTree,AudioTreeDB
+
+DEFAULT_TREE_TYPE = 'Songs'
+
+script = Script()
+script.add_option('-l','--list',action='store_true',help='List trees')
+script.add_option('-r','--register',action='store_true',help='Register trees')
+script.add_option('-u','--unregister',action='store_true',help='Unregister trees')
+script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
+script.add_option('-t','--tree-type',help='Tree type')
+(opts,args) = script.parse_args()
+
+if opts.register and opts.unregister:
+    script.exit(1,'Flags --register and --unregister conflict.')
+if opts.register or opts.unregister:
+    if opts.tree_type is not None:
+        tree_type = opts.tree_type
+    else:
+        tree_type = DEFAULT_TREE_TYPE
+
+adb = AudioTreeDB()
+
+if opts.register:
+    for path in args:
+        tree = AudioTree(tree_type,path)
+        adb.register(tree)
+elif opts.unregister:
+    for path in args:
+        tree = AudioTree(tree_type,path)
+        adb.unregister(tree)
+
+all_trees = adb.trees
+if len(args)==0:
+    trees = all_trees
+else:
+    trees = []
+    for path in args:
+        path = normalized(os.path.realpath(path))
+        try:
+            trees.append(filter(lambda t: t.path==path, all_trees)[0])
+        except IndexError:
+            script.exit(1,'Unknown tree path: %s' % path)
+
+if opts.scan_updates:
+    for t in trees:
+        script.log.info('Scanning: %s' % t.path)
+        changes = t.update()
+
+if opts.list:
+    for tree in adb.trees:
+        if opts.tree_type and tree.tree_type!=opts.tree_type:
+            continue
+        print '%s%s' % (tree,not tree.is_available and ' (UNAVAILABLE)' or '')
+        if opts.verbose and tree.aliases:
+            print '\n'.join('\t%s' % alias for alias in tree.aliases)
+

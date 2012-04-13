@@ -106,6 +106,10 @@ CREATE TABLE IF NOT EXISTS encoder (
 PATH_CACHE = CommandPathCache()
 PATH_CACHE.update()
 
+class CodecError(Exception):
+    def __str__(self):
+        return self.args[0]
+
 class CodecDB(object):
     __instance = None
     def __init__(self,db_path=DB_PATH):
@@ -125,7 +129,7 @@ class CodecDB(object):
 
             for name,config in DEFAULT_CODECS.items():
                 try:
-                    codec = self.get_codec(name)
+                    self.get_codec(name)
                     # Already configured, skip
                 except ValueError:
                     codec = self.register_codec(name,config['description'])
@@ -141,7 +145,7 @@ class CodecDB(object):
             c.execute('SELECT name,description FROM codec where name=?',(name,))
             result = c.fetchone()
             if result is None:
-                raise ValueError('Codec not configured: %s' % name)
+                raise CodecError('Codec not configured: %s' % name)
             return Codec(result[0],result[1],self)
 
         def register_codec(self,name,description=''):
@@ -161,6 +165,15 @@ class CodecDB(object):
                     self.conn.execute('DELETE FROM codec WHERE name=?',(name,))
             except sqlite3.IntegrityError:
                 pass
+
+        def registered_codecs(self):
+            with self.conn:
+                try:
+                    return [Codec(r[0],r[1],self) for r in self.conn.execute(
+                        'SELECT name,description from codec'
+                    )]
+                except sqlite3.DataBaseError,emsg:
+                    raise CodecError('Error querying codec database: %s' % emsg)
 
 class Codec(object):
     """
@@ -187,12 +200,12 @@ class Codec(object):
             try:
                 return filter(lambda x: x.is_available(), self.encoders)[0]
             except IndexError:
-                raise ValueError('No encoders available')
+                raise CodecError('No encoders available')
         if attr == 'best_decoder':
             try:
                 return filter(lambda x: x.is_available(), self.decoders)[0]
             except IndexError:
-                raise ValueError('No decoders available')
+                raise CodecError('No decoders available')
 
         if attr == 'encoders':
             return [CodecCommand(r[0]) for r in self.cdb.conn.execute(
@@ -215,11 +228,9 @@ class Codec(object):
                     (self.cid,extension,)
                 )
         except sqlite3.IntegrityError,emsg:
-            pass
+            self.log.debug(emsg)
 
     def register_decoder(self,command,priority=0):
-
-        codec_id = self.codec_id
         try:
             cmd = CodecCommand(command)
             cmd.validate()
@@ -229,13 +240,12 @@ class Codec(object):
                     (self.cid,command,priority)
                 )
         except ValueError,emsg:
-            raise ValueError('Error registering decoder: %s: %s' % (
+            raise CodecError('Error registering decoder: %s: %s' % (
                 command,emsg
             ))
          
 
     def register_encoder(self,command,priority=0):
-        codec_id = self.codec_id
         try:
             cmd = CodecCommand(command)
             cmd.validate()
@@ -245,7 +255,7 @@ class Codec(object):
                     (self.cid,command,priority)
                 )
         except ValueError,emsg:
-            raise ValueError('Error registering encoder: %s: %s' % (
+            raise CodecError('Error registering encoder: %s: %s' % (
                 command,emsg
             ))
 
@@ -258,12 +268,12 @@ class CodecCommand(object):
     
     def validate(self):
         if self.command.count('FILE')!=1:
-            raise ValueError('Command requires exactly one FILE')
+            raise CodecError('Command requires exactly one FILE')
         if self.command.count('OUTFILE')!=1:
-            raise ValueError('Command requires exactly one OUTFILE')
+            raise CodecError('Command requires exactly one OUTFILE')
 
     def is_available(self):
-        return PATH_CACHE.which(self.command[0])!=None and True or False
+        return PATH_CACHE.which(self.command[0]) is None and True or False
 
     def __repr__(self):
         return ' '.join(self.command)

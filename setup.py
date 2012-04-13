@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os,glob
-from setuptools import setup,find_packages
+from setuptools import setup
 
 VERSION='1.0.1'
 README = open(os.path.join(os.path.dirname(__file__),'README.txt'),'r').read()

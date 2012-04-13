@@ -223,17 +223,21 @@ class AudioTree(object):
             c = self.adb.cursor
             c.execute('SELECT id FROM tree WHERE path=?',(self.path,))
             tid = c.fetchone()[0]
-            del(c)
+            del c
             return tid
+        if attr == 'is_available':
+            return os.access(self.path,os.X_OK) 
         raise AttributeError('No such AudioTree attribute: %s' % attr)
 
     def __repr__(self):
         return '%s %s' % (self.tree_type,self.path)
 
-    def scan(self):
+    def update(self):
         """
         Update files for this tree in DB
         """
+        if not self.is_available:
+            return
 
         def append_file(self,tree_id,mtime,path):
             """
@@ -263,6 +267,7 @@ class AudioTree(object):
             except sqlite3.IntegrityError:
                 raise ValueError('Error removing file %s' % path)
 
+        changes = {'added':[],'deleted':[],'modified':[]}
         tree_id = self.tree_id
         c = self.adb.cursor
         c.execute('SELECT path,mtime FROM files WHERE tree=?',(tree_id,))
@@ -274,13 +279,26 @@ class AudioTree(object):
                 try:
                     db_mtime = tree_songs[f]
                     if db_mtime != mtime:
-                        print 'MODIFIED: %s' % f
+                        with self.adb.conn:
+                            try:
+                                self.adb.conn.execute(
+                                  'UPDATE files SET mtime=? WHERE path=?',
+                                  (mtime,f,)
+                                )
+                            except sqlite3.IntegrityError:
+                                self.log.debug(
+                                    'Error updating mtime for %s' % f
+                                )
+                        changes['modified'].append(f)
                 except KeyError:
                     append_file(self,tree_id,mtime,f)
                     tree_songs[f] = mtime
+                    changes['added'].append(f)
         for f in tree_songs.keys():
             if not os.path.isfile(f):
                 remove_file(self,tree_id,f)
+                changes['deleted'].append(f)
+        return changes
 
 if __name__ == '__main__':
     import sys
