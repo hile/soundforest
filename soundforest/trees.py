@@ -613,32 +613,3 @@ class TreeFile(object):
         self.adb.commit()
         del c
         return shasum.hexdigest()
-
-if __name__ == '__main__':
-    import sys,logging
-    logging.basicConfig(level=logging.DEBUG)
-
-    adb = AudioTreeDB()
-    tree = adb.get_tree('/music/m4a')
-    for entry in tree:
-        if entry.filetype!='unknown':
-            continue
-        print entry.path.encode('utf-8'),entry.filetype,entry.format
-        #print entry.shasum is not None and entry.shasum or '',entry.path
-        #entry.update_checksum()
-
-    sys.exit(0)
-    print adb.trees
-    if len(sys.argv)==1: sys.exit(0)
-
-    tree_type = sys.argv[1]
-    for t in sys.argv[2:]:
-        try:
-            t = AudioTree(tree_type,t)
-            adb.register(t)
-        except ValueError,emsg:
-            print 'Error: %s' % emsg 
-
-
-    for t in adb.filter_type(tree_type): print t, t.aliases
-

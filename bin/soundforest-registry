@@ -19,10 +19,17 @@ script.add_option('-u','--unregister',action='store_true',help='Unregister trees
 script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
 script.add_option('-c','--update-checksums',action='store_true',help='Update file SHA1 checksum while scanning trees')
 script.add_option('-t','--tree-type',help='Tree type')
-(opts,args) = script.parse_args()
+
+(opts,args) = (None,None)
+try:
+    (opts,args) = script.parse_args()
+except ScriptError,emsg:
+    script.exit(1,emsg)
 
 if opts.register and opts.unregister:
     script.exit(1,'Flags --register and --unregister conflict.')
+
+tree_type = None
 if opts.register or opts.unregister:
     if opts.tree_type is not None:
         tree_type = opts.tree_type
@@ -45,7 +52,7 @@ elif opts.unregister:
     script.exit(0)
 
 all_trees = adb.trees
-if len(args)==0:
+if not args:
     trees = all_trees
 else:
     trees = []
@@ -75,16 +82,3 @@ if opts.verify:
         for entry in t:
             if entry.filetype=='unknown':
                 script.log.info('UNKNOWN: %s' % entry.realpath)
-
-if opts.list:
-    for tree in adb.trees:
-        if opts.tree_type and tree.tree_type!=opts.tree_type:
-            continue
-        print '%s%s' % (tree,not tree.is_available and ' (UNAVAILABLE)' or '')
-        if (opts.verbose or opts.debug) and tree.aliases:
-            print 'Symlinks to tree:'
-            print '\n'.join('\t%s' % alias for alias in tree.aliases)
-
-if opts.list_types:
-    for ttype,description in adb.tree_types:
-        print '%-12s %s' % (ttype,description)

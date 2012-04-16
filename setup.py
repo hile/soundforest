@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Setup for soundforest package for setuptools
+"""
 
 import os,glob
 from setuptools import setup
@@ -10,7 +13,7 @@ setup(
     name = 'soundforest',
     version = VERSION,
     license = 'PSF',
-    keywords = 'Sound File Tree',
+    keywords = 'Sound Audio File Tree Codec Database',
     url = 'http://tuohela.net/packages/soundforest',
     zip_safe = False,
     install_requires = [ 'systematic' ],
@@ -18,7 +21,7 @@ setup(
     packages = [ 'soundforest' ],
     author = 'Ilkka Tuohela', 
     author_email = 'hile@iki.fi',
-    description = 'Detect audio file libraries',
+    description = 'Manage audio file libraries',
     long_description = README,
 
 )   

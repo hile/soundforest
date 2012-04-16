@@ -9,15 +9,24 @@ from soundforest.codecs import CodecDB,CodecError
 script = Script()
 script.add_option('-l','--list-codecs',action='store_true',help='List configured codecs')
 script.add_option('-c','--list-config',action='store_true',help='List codec config')
-(opts,args) = script.parse_args()
+(opts,args,codecs) = (None,None,None)
+try:
+    (opts,args) = script.parse_args()
+except ScriptError,emsg:
+    script.exit(1,emsg)
 
-codecs = CodecDB()
+try:
+    codecs = CodecDB()
+except CodecError,emsg:
+    script.exit(1,emsg)
 
 if opts.list_codecs:
+    #noinspection PyUnresolvedReferences
     for codec in codecs.registered_codecs():
         print codec.name,','.join(codec.extensions)
 
 if opts.list_config:
+    #noinspection PyUnresolvedReferences
     for codec in codecs.registered_codecs():
         print codec.name
         for encoder in codec.encoders:

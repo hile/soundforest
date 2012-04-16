@@ -107,6 +107,8 @@ class MetaData(list):
         """
         Register instances of the MetaDataFileType classes in the module
         """
+        #noinspection PyTypeChecker
+        list.__init__(self)
         self.register_metadata(CoverArt())
         self.register_metadata(m3uPlaylist())
         self.register_metadata(AbletonAnalysisFile())
@@ -130,10 +132,3 @@ class MetaData(list):
             if m.match(path):
                 return m
         return None
-
-if __name__  == '__main__':
-    import sys
-    metadata = MetaData()
-
-    for arg in sys.argv[1:]:
-        print arg, metadata.match_metadata(arg)

@@ -2,19 +2,21 @@
 Support for various codec programs in soundforest.
 """
 
-import os,sqlite3
+import os,sqlite3,logging
 
 from subprocess import Popen,PIPE
 
-from systematic.shell import normalized,CommandPathCache
+from systematic.shell import CommandPathCache
 from systematic.sqlite import SQLiteDatabase
 
-"""
-Default codec commands and parameters to register to database.
-NOTE:
-  Changing this dictionary after a codec is registered does NOT
-  register a codec parameters, if the codec was already in DB!
-"""
+# Buffer size for Popen command execution
+POPEN_BUFSIZE = 1024
+
+#
+# Default codec commands and parameters to register to database.
+# NOTE:
+#  Changing this dictionary after a codec is registered does NOT
+#  register a codec parameters, if the codec was already in DB!
 DEFAULT_CODECS = {
 
   'mp3': {
@@ -135,10 +137,16 @@ PATH_CACHE = CommandPathCache()
 PATH_CACHE.update()
 
 class CodecError(Exception):
+    """
+    Exceptions raised by CodecDB and other classes in this module
+    """
     def __str__(self):
         return self.args[0]
 
 class CodecDB(object):
+    """
+    Codec sqlite database backend class.
+    """
     __instance = None
     def __init__(self,db_path=DB_PATH):
         if CodecDB.__instance is None:
@@ -152,6 +160,9 @@ class CodecDB(object):
         return setattr(self.__instance,attr,value)
 
     class CodecDBInstance(SQLiteDatabase):
+        """
+        Singleton instance of one sqlite database path
+        """
         def __init__(self,db_path=DB_PATH):
             SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
 
@@ -169,6 +180,10 @@ class CodecDB(object):
                         codec.register_encoder(encoder)
 
         def get_codec(self,name):
+            """
+            Return Codec instance for given codec name.
+            Raises CodecError if codec name is not configured
+            """
             c = self.cursor
             c.execute('SELECT name,description FROM codec where name=?',(name,))
             result = c.fetchone()
@@ -213,7 +228,7 @@ class CodecDB(object):
                     return [Codec(r[0],r[1],self) for r in self.conn.execute(
                         'SELECT name,description from codec'
                     )]
-                except sqlite3.DataBaseError,emsg:
+                except sqlite3.DatabaseError,emsg:
                     raise CodecError('Error querying codec database: %s' % emsg)
 
         def match(self,path):
@@ -338,6 +353,7 @@ class CodecCommand(object):
     called.
     """
     def __init__(self,command):
+        self.log = logging.getLogger('modules')
         self.command = command.split()
 
     def __repr__(self):
@@ -412,29 +428,7 @@ class CodecCommand(object):
                         stderr.write('%s\n'%l.rstrip())
                 rval = p.poll()
 
+        #noinspection PySimplifyBooleanCheck
         if rval != 0:
-            log.info('Error executing (returns %d): %s' % (rval,cmd))
+            self.log.info('Error executing (returns %d): %s' % (rval,' '.join(args)))
         return rval
-
-if __name__ == '__main__':
-    import sys,logging
-    logging.basicConfig(level=logging.DEBUG)
-    cdb = CodecDB()
-
-    for arg in sys.argv[1:]:
-        print arg,cdb.match(arg)
-
-    sys.exit(0)
-    for name in DEFAULT_CODECS.keys():
-        codec = cdb.get_codec(name)
-        print '%s %s (%s)' % (
-            codec.name,codec.description,','.join(codec.extensions)
-        )
-        print ' BE', codec.best_encoder
-        for encoder in codec.encoders:
-            print ' E  %s' % encoder
-        print ' BD', codec.best_decoder
-        for decoder in codec.decoders:
-            print ' D  %s' % decoder
-        
-
