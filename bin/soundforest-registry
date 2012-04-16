@@ -12,9 +12,12 @@ DEFAULT_TREE_TYPE = 'Songs'
 
 script = Script()
 script.add_option('-l','--list',action='store_true',help='List trees')
+script.add_option('-L','--list-types',action='store_true',help='List tree types')
 script.add_option('-r','--register',action='store_true',help='Register trees')
+script.add_option('-e','--verify',action='store_true',help='Verify file types in trees')
 script.add_option('-u','--unregister',action='store_true',help='Unregister trees')
 script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
+script.add_option('-c','--update-checksums',action='store_true',help='Update file SHA1 checksum while scanning trees')
 script.add_option('-t','--tree-type',help='Tree type')
 (opts,args) = script.parse_args()
 
@@ -30,12 +33,16 @@ adb = AudioTreeDB()
 
 if opts.register:
     for path in args:
+        script.log.debug('Registering: %s' % path)
         tree = AudioTree(tree_type,path)
         adb.register(tree)
+
 elif opts.unregister:
     for path in args:
+        script.log.debug('Unregistering: %s' % path)
         tree = AudioTree(tree_type,path)
         adb.unregister(tree)
+    script.exit(0)
 
 all_trees = adb.trees
 if len(args)==0:
@@ -51,14 +58,33 @@ else:
 
 if opts.scan_updates:
     for t in trees:
-        script.log.info('Scanning: %s' % t.path)
-        changes = t.update()
+        script.log.info('Updating tree: %s' % t.path)
+        changes = t.update(opts.update_checksums)
+
+if opts.update_checksums and not opts.scan_updates:
+    for t in trees:
+        script.log.info('Updating tree file checksums: %s' % t.path)
+        for entry in t:
+            # Note: don't pass opts.update_checksums, it would force update
+            # of good checksums.
+            entry.update_checksum()
+
+if opts.verify:
+    for t in trees:
+        script.log.info('Verifying tree files: %s' % t.path)
+        for entry in t:
+            if entry.filetype=='unknown':
+                script.log.info('UNKNOWN: %s' % entry.realpath)
 
 if opts.list:
     for tree in adb.trees:
         if opts.tree_type and tree.tree_type!=opts.tree_type:
             continue
         print '%s%s' % (tree,not tree.is_available and ' (UNAVAILABLE)' or '')
-        if opts.verbose and tree.aliases:
+        if (opts.verbose or opts.debug) and tree.aliases:
+            print 'Symlinks to tree:'
             print '\n'.join('\t%s' % alias for alias in tree.aliases)
 
+if opts.list_types:
+    for ttype,description in adb.tree_types:
+        print '%-12s %s' % (ttype,description)

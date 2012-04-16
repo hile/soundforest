@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+"""
+Example script to list changes in soundforest trees after given timestamp.
+
+If timestamp is not given, all changes are listed.
+"""
+
+from systematic.shell import normalized,Script,ScriptError
+from soundforest.trees import AudioTree,AudioTreeDB,FILE_ADDED,FILE_DELETED,FILE_MODIFIED
+
+FILE_MSGS = {
+    FILE_ADDED:     'Added',
+    FILE_DELETED:   'Deleted',
+    FILE_MODIFIED:  'Modified,'
+}
+
+DEFAULT_TREE_TYPE = 'Songs'
+
+script = Script()
+script.add_option('-s','--timestamp',type='int',help='Event start timestamp')
+script.add_option('-t','--tree-type',help='Tree type')
+(opts,args) = script.parse_args()
+
+if opts.tree_type is not None:
+    tree_type = opts.tree_type
+else:
+    tree_type = DEFAULT_TREE_TYPE
+
+adb = AudioTreeDB()
+
+for tree in adb.trees:
+    for event in tree.file_events(opts.timestamp):
+        msg = FILE_MSGS[event['event']]
+        print '%12d %8s %s' % (event['mtime'],msg,event['path'])
