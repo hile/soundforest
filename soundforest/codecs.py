@@ -75,14 +75,24 @@ DEFAULT_CODECS = {
   'caf': {
     'description': 'CoreAudio Format audio',
     'extensions':   ['caf'],
-    'encoders': [], 'decoders': [],
+    'encoders': [
+        'afconvert -f caff -d LEI16 FILE OUTFILE',
+    ],
+    'decoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
+    ],
   },
 
   # TODO - Raw audio, what should be decoder/encoder commands?
   'aif': {
       'description': 'AIFF audio',
       'extensions':   ['aif','aiff'],
-      'encoders': [], 'decoders': [],
+      'encoders': [ 
+        'afconvert -f AIFF -d BEI16 FILE OUTFILE',
+      ],
+      'decoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
+      ],
       },
 
   # TODO - Raw audio, what should be decoder/encoder commands?
@@ -254,6 +264,7 @@ class Codec(object):
     """
     def __init__(self,name,description,codecdb=None):
         self.cdb = codecdb is not None and codecdb or CodecDB()
+        self.log = logging.getLogger('modules')
         self.name = name
         self.description = description
 
@@ -305,7 +316,7 @@ class Codec(object):
                     (self.cid,extension,)
                 )
         except sqlite3.IntegrityError,emsg:
-            self.log.debug(emsg)
+            self.log.debug('Error adding extension %s: %s' % (extension,emsg))
 
     def register_decoder(self,command,priority=0):
         """

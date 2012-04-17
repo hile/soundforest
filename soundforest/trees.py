@@ -34,10 +34,14 @@ CREATE TABLE IF NOT EXISTS treetypes (
 """
 CREATE TABLE IF NOT EXISTS tree (
     id          INTEGER PRIMARY KEY,
+    source      TEXT,
     treetype    INTEGER,
-    path        TEXT UNIQUE,
+    path        TEXT,
     FOREIGN KEY(treetype) REFERENCES treetypes(id) ON DELETE CASCADE
 );
+""",
+"""
+CREATE UNIQUE INDEX IF NOT EXISTS source_files ON tree (source,path);
 """,
 """
 CREATE TABLE IF NOT EXISTS aliases (
@@ -54,15 +58,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS tree_aliases ON aliases (tree,alias)
 CREATE TABLE IF NOT EXISTS files (
     id          INTEGER PRIMARY KEY,
     tree        INTEGER,
-    path        TEXT UNIQUE,
+    directory   TEXT,
+    filename    TEXT,
     mtime       INTEGER,
     shasum      TEXT,
     deleted     BOOLEAN DEFAULT FALSE,
     FOREIGN KEY(tree) REFERENCES tree(id) ON DELETE CASCADE
 );
 """,
-"""CREATE UNIQUE INDEX IF NOT EXISTS file_paths ON files (tree,path)""",
-"""CREATE UNIQUE INDEX IF NOT EXISTS file_mtimes ON files (path,mtime)""",
+"""CREATE UNIQUE INDEX IF NOT EXISTS file_paths ON files (tree,directory,filename)""",
+"""CREATE UNIQUE INDEX IF NOT EXISTS file_mtimes ON files (directory,filename,mtime)""",
 """
 CREATE TABLE IF NOT EXISTS filechanges (
     id          INTEGER PRIMARY KEY,
@@ -119,19 +124,19 @@ class AudioTreeDB(object):
         def __getattr__(self,attr):
             if attr == 'tree_types':
                 results = self.conn.execute(
-                    'SELECT type,description from treetypes ORDER BY type'
+                    'SELECT type,description FROM treetypes ORDER BY type'
                 )
                 return [(r[0],r[1]) for r in results]
             if attr == 'trees':
-                return [self.get_tree(r[0]) for r in \
-                    self.conn.execute('SELECT path from tree')
+                return [self.get_tree(r[0],r[1]) for r in \
+                    self.conn.execute('SELECT path,source FROM tree')
                 ]
             try:
                 return SQLiteDatabase.__getattr__(self,attr)
             except AttributeError:
                 raise AttributeError('No such AudioTreeDB attribute: %s' % attr)
 
-        def get_tree(self,path):
+        def get_tree(self,path,source='filesystem'):
             """
             Retrieve AudioTree matching give path from database.
 
@@ -139,16 +144,16 @@ class AudioTreeDB(object):
             """
             path = normalized(os.path.realpath(path))
             c = self.cursor
-            c.execute('SELECT t.id,tt.type,t.path ' +
+            c.execute('SELECT t.id,tt.type,t.path,t.source ' +
                 'FROM treetypes AS tt, tree AS t ' +
-                'WHERE tt.id=t.treetype AND t.path=?',
-                (path,)
+                'WHERE tt.id=t.treetype AND t.source=? AND t.path=?',
+                (source,path,)
             )
             result = c.fetchone()
             if result is None:
                 raise ValueError('Path not in database: %s' % path)
             tree = AudioTree(*result[1:])
-            c.execute('SELECT alias FROM aliases where tree=?',(result[0],))
+            c.execute('SELECT alias FROM aliases WHERE tree=?',(result[0],))
             for r in c.fetchall():
                 tree.aliases.append(r[0])
             return tree
@@ -191,7 +196,7 @@ class AudioTreeDB(object):
             try:
                 with self.conn:
                     self.conn.execute(
-                        'DELETE FROM tree where path=?',(tree.path,)
+                        'DELETE FROM tree where source=? AND path=?',(tree.source,tree.path,)
                     )
             except sqlite3.IntegrityError,emsg:
                 raise ValueError(emsg)
@@ -213,15 +218,15 @@ class AudioTreeDB(object):
 
             try:
                 c.execute(
-                    'INSERT INTO tree (treetype,path) VALUES (?,?)',
-                    (tt_id,tree.path,)
+                    'INSERT INTO tree (treetype,source,path) VALUES (?,?,?)',
+                    (tt_id,tree.source,tree.path,)
                 )
                 self.commit()
             except sqlite3.IntegrityError:
                 if not ignore_duplicate:
-                    raise ValueError('Already registered: %s' % tree.path)
+                    raise ValueError('Already registered: %s %s' % (tree.source,tree.path))
 
-            c.execute('SELECT id FROM tree where path=?',(tree.path,))
+            c.execute('SELECT id FROM tree where source=? AND path=?',(tree.source,tree.path,))
             tree_id = c.fetchone()[0]
 
             for alias in tree.aliases:
@@ -256,9 +261,10 @@ class AudioTree(object):
     path        Normalized unicode real path to tree root
     aliases     Symlink paths for this tree
     tree_type   Tree type (reference to treetypes table)
+    source      Source reference, by default 'filesystem'
 
     """
-    def __init__(self,tree_type,path):
+    def __init__(self,tree_type,path,source='filesystem'):
         self.__cached_attrs = {}
         self.__next = None
         self.__iterfiles = None
@@ -266,6 +272,7 @@ class AudioTree(object):
         self.adb = AudioTreeDB()
         self.aliases = []
         self.tree_type = tree_type
+        self.source = source
 
         self.path = normalized(os.path.realpath(path))
         path = normalized(path)
@@ -290,10 +297,19 @@ class AudioTree(object):
         if attr == 'files':
             # Return relative path names for tree from database
             c = self.adb.cursor
-            c.execute('SELECT path FROM files where tree=? ORDER BY path',(self.id,))
-            files = [r[0] for r in c.fetchall()]
+            c.execute('SELECT directory,filename FROM files WHERE tree=? ORDER BY directory,filename',(self.id,))
+            files = [os.path.join(r[0],r[1]) for r in c.fetchall()]
             del c
             return files
+
+        if attr == 'directories':
+            # Return relative path names for unique directories (albums) which contain files
+            c = self.adb.cursor
+            c.execute('SELECT distinct directory FROM files WHERE tree=? ORDER BY directory',(self.id,))
+            directories = [r[0] for r in c.fetchall()]
+            del c
+            return directories
+
         raise AttributeError('No such Tree attribute: %s' % attr)
 
     def __update_cached_attrs(self):
@@ -315,6 +331,17 @@ class AudioTree(object):
 
     def __repr__(self):
         return '%s %s' % (self.tree_type,self.path)
+
+    def directory_files(self,directory):
+        """
+        Return files from database matching tree and directory
+        """
+        c = self.adb.cursor
+        c.execute(
+            'SELECT filename FROM files WHERE tree=? AND directory=?',
+            (self.id,directory,)
+        )
+        return [r[0] for r in c.fetchall()]
 
     def __iter__(self):
         return self
@@ -348,7 +375,7 @@ class AudioTree(object):
         try:
             if time_start is  None:
                 c.execute(
-                    'SELECT f.path,fc.mtime,fc.event FROM filechanges AS fc, files AS f ' +\
+                    'SELECT f.directory,f.filename,fc.mtime,fc.event FROM filechanges AS fc, files AS f ' +\
                     'WHERE file in (SELECT f.id FROM files AS f, tree AS t WHERE f.tree=t.id AND t.id=?) ' +\
                     'ORDER BY fc.mtime',
                     (self.id,)
@@ -361,12 +388,17 @@ class AudioTree(object):
                 except ValueError:
                     raise ValueError('Invalid time_start timestamp: %s' % time_start)
                 c.execute(
-                    'SELECT f.path,fc.mtime,fc.event FROM filechanges AS fc, files AS f ' +\
+                    'SELECT f.directory,f.filename,fc.mtime,fc.event FROM filechanges AS fc, files AS f ' +\
                     'WHERE fc.mtime>=? AND file in (SELECT f.id FROM files AS f, tree AS t WHERE f.tree=t.id AND t.id=?) ' +\
                     'ORDER BY fc.mtime',
                     (time_start,self.id,)
                 )
-            results = [self.adb.__result2dict__(c,r) for r in c.fetchall()]
+            results = []
+            for r in [self.adb.__result2dict__(c,r) for r in c.fetchall()]:
+                r['path'] = os.path.join(r['directory'],r['filename'])
+                del r['directory']
+                del r['filename']
+                results.append(r)
         except sqlite3.DatabaseError,emsg:
             raise ValueError('Error querying file events: %s' % emsg)
         del c
@@ -385,11 +417,13 @@ class AudioTree(object):
             raise ValueError('Invalid file event: %s' % event)
         mtime = time.mktime(time.localtime())
 
+        directory = os.path.dirname(path)
+        filename = os.path.basename(path)
         try:
             c = self.adb.cursor
             c.execute(
-                'SELECT id FROM files WHERE tree=? AND path=?',
-                (self.id,path,)
+                'SELECT id FROM files WHERE tree=? AND directory=? AND filename=?',
+                (self.id,directory,filename)
             )
             file_id = c.fetchone()[0]
             c.execute(
@@ -432,8 +466,8 @@ class AudioTree(object):
         changes = {'added':[],'deleted':[],'modified':[]}
 
         c = self.adb.cursor
-        c.execute('SELECT path,mtime,deleted FROM files WHERE tree=?',(self.id,))
-        tree_songs = dict([(r[0],{'mtime': r[1],'deleted': r[2]}) for r in c.fetchall()])
+        c.execute('SELECT directory,filename,mtime,deleted FROM files WHERE tree=?',(self.id,))
+        tree_songs = dict([(os.path.join(r[0],r[1]),{'mtime': r[2],'deleted': r[3]}) for r in c.fetchall()])
 
         for (root,dirs,files) in os.walk(self.path):
             for f in files:
@@ -444,6 +478,8 @@ class AudioTree(object):
                 is_modified = False
                 f = normalized(os.path.realpath(os.path.join(root,f)))
                 db_path = f[len(self.path):].lstrip(os.sep)
+                db_directory = os.path.dirname(db_path)
+                db_filename = os.path.basename(db_path)
                 mtime = long(os.stat(f).st_mtime)
 
                 try:
@@ -451,8 +487,8 @@ class AudioTree(object):
                     if db_mtime != mtime:
                         try:
                             c.execute(
-                                'UPDATE files SET mtime=? WHERE path=?',
-                                (mtime,db_path,)
+                                'UPDATE files SET mtime=? WHERE directory=? AND filename=?',
+                                (mtime,db_directory,db_filename,)
                             )
                             is_modified = True
                         except sqlite3.IntegrityError,emsg:
@@ -467,8 +503,8 @@ class AudioTree(object):
                     if is_deleted:
                         try:
                             c.execute(
-                                'UPDATE files SET deleted=0 WHERE path=?',
-                                (db_path,)
+                                'UPDATE files SET deleted=0 WHERE directory=? AND filename=?',
+                                (db_directory,db_filename,)
                             )
                             is_modified = True
                         except sqlite3.DatabaseError,emsg:
@@ -479,8 +515,8 @@ class AudioTree(object):
                 except KeyError:
                     try:
                         c.execute(
-                            'INSERT INTO files (tree,mtime,path) VALUES (?,?,?)',
-                            (self.id,mtime,db_path,)
+                            'INSERT INTO files (tree,mtime,directory,filename) VALUES (?,?,?,?)',
+                            (self.id,mtime,db_directory,db_filename)
                         )
                         is_modified = True
                     except sqlite3.IntegrityError,emsg:
@@ -502,10 +538,12 @@ class AudioTree(object):
                 continue
             f = os.path.join(self.path,db_path)
             if not os.path.isfile(f):
+                db_directory = os.path.dirname(db_path)
+                db_filename = os.path.basename(db_path)
                 try:
                     c.execute(
-                        'UPDATE files SET deleted=1 WHERE tree=? and path=?',
-                        (self.id,db_path,)
+                        'UPDATE files SET deleted=1 WHERE tree=? AND directory=? AND filename=?',
+                        (self.id,db_directory,db_filename,)
                     )
                 except sqlite3.IntegrityError:
                     raise ValueError('Error marking file deleted: %s' % db_path)
@@ -535,6 +573,8 @@ class TreeFile(object):
         if self.path[:len(self.tree.path)] == self.tree.path:
             self.path = self.path[len(self.tree.path):].lstrip(os.sep)
         self.realpath = os.path.join(self.tree.path,self.path)
+        self.directory = os.path.dirname(self.path)
+        self.filename = os.path.basename(self.path)
 
     def __getattr__(self,attr):
         if attr in ['mtime','shasum','deleted']:
@@ -544,6 +584,10 @@ class TreeFile(object):
                 return self.__cached_attrs[attr]
             except KeyError:
                 raise AttributeError('No database details for %s' % self.path)
+        if attr == 'path_noext':
+            return os.path.splitext(self.path)[0]
+        if attr == 'realpath_noext':
+            return os.path.splitext(self.realpath)[0]
         if attr == 'filetype':
             if self.__filetype is None:
                 self.__match_fileformat()
@@ -576,8 +620,8 @@ class TreeFile(object):
     def __update_cached_attrs(self):
         c = self.adb.cursor
         c.execute(
-            'SELECT * FROM files WHERE tree=? AND path=?',
-            (self.tree.id,self.path,)
+            'SELECT * FROM files WHERE tree=? AND directory=? AND filename=?',
+            (self.tree.id,self.directory,self.filename,)
         )
         result = c.fetchone()
         if result is None:
@@ -607,8 +651,8 @@ class TreeFile(object):
         shasum.update(open(self.realpath,'r').read())
         c = self.adb.cursor
         c.execute(
-            'UPDATE files set shasum=? WHERE tree=? and path=?',
-            (shasum.hexdigest(),self.tree.id,self.path,)
+            'UPDATE files set shasum=? WHERE tree=? AND directory=? AND filename=?',
+            (shasum.hexdigest(),self.tree.id,self.directory,self.filename,)
         )
         self.adb.commit()
         del c

@@ -11,15 +11,27 @@ from soundforest.trees import AudioTree,AudioTreeDB
 DEFAULT_TREE_TYPE = 'Songs'
 
 script = Script()
+script.set_usage("""Usage: %s [options] tree paths
+
+Register, update and verify music file trees in soundforest sqlite database.
+
+Terms used:
+- Tree type is used for grouping the resulting trees in programs using it
+  If not specified, 'Songs' (music library) is used as default type.
+- Tree source can be given, if same path is used from multiple programs,
+  to register same tree for each program. If not specified, 'filesystem'
+  is used as source.""" % script.name)
 script.add_option('-l','--list',action='store_true',help='List trees')
 script.add_option('-L','--list-types',action='store_true',help='List tree types')
+script.add_option('-D','--list-directories',action='store_true',help='List directories found in a tree')
 script.add_option('-r','--register',action='store_true',help='Register trees')
 script.add_option('-e','--verify',action='store_true',help='Verify file types in trees')
 script.add_option('-u','--unregister',action='store_true',help='Unregister trees')
 script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
+script.add_option('-S','--tree-source',help='Tree source, default is filesystem')
 script.add_option('-c','--update-checksums',action='store_true',help='Update file SHA1 checksum while scanning trees')
-script.add_option('-t','--tree-type',help='Tree type')
-
+script.add_option('-t','--tree-type',help='Tree type, default is Songs')
+script.set_defaults(**{'tree_source':'filesystem'})
 (opts,args) = (None,None)
 try:
     (opts,args) = script.parse_args()
@@ -41,13 +53,13 @@ adb = AudioTreeDB()
 if opts.register:
     for path in args:
         script.log.debug('Registering: %s' % path)
-        tree = AudioTree(tree_type,path)
+        tree = AudioTree(tree_type,path,opts.tree_source)
         adb.register(tree)
 
 elif opts.unregister:
     for path in args:
         script.log.debug('Unregistering: %s' % path)
-        tree = AudioTree(tree_type,path)
+        tree = AudioTree(tree_type,path,opts.tree_source)
         adb.unregister(tree)
     script.exit(0)
 
@@ -75,6 +87,22 @@ if opts.update_checksums and not opts.scan_updates:
             # Note: don't pass opts.update_checksums, it would force update
             # of good checksums.
             entry.update_checksum()
+
+if opts.list_types:
+    for name,description in adb.tree_types:
+        print '%-16s %s' % (name,description)
+
+if opts.list:
+    for t in trees:
+        print '%-16s %s' % (t.source,t.path)
+
+if opts.list_directories:
+    for t in trees:
+        script.log.info('Listing directories in %s' % t.path)
+        for relative_path in t.directories:
+            print relative_path
+            if opts.verbose:
+                print '\t%s' % '\n\t'.join(str(f) for f in t.directory_files(relative_path))
 
 if opts.verify:
     for t in trees:

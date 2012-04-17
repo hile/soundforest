@@ -7,8 +7,12 @@ from systematic.shell import Script,ScriptError
 from soundforest.codecs import CodecDB,CodecError
 
 script = Script()
-script.add_option('-l','--list-codecs',action='store_true',help='List configured codecs')
-script.add_option('-c','--list-config',action='store_true',help='List codec config')
+script.add_option('-l','--list-codecs',action='store_true',help='List codecs and extensions')
+script.add_option('-c','--list-commands',action='store_true',help='List codec commands')
+script.add_option('-r','--register',action='store_true',help='Register codec')
+script.add_option('-u','--unregister',action='store_true',help='Unregister codec')
+script.add_option('-e','--register-extensions',help='Register codec extensions')
+
 (opts,args,codecs) = (None,None,None)
 try:
     (opts,args) = script.parse_args()
@@ -20,17 +24,52 @@ try:
 except CodecError,emsg:
     script.exit(1,emsg)
 
+if opts.register:
+    if len(args)!=2:
+        script.exit(1,'Registering codec requires name and description as arguments')
+    try:
+        #noinspection PyUnresolvedReferences
+        codecs.register_codec(name=args[0],description=args[1])
+    except CodecError,emsg:
+        script.exit(1,emsg)
+
+if opts.unregister:
+    if len(args)!=1:
+        script.exit(1,'Registering codec requires name as argument')
+    try:
+        #noinspection PyUnresolvedReferences
+        codecs.unregister_codec(name=args[0])
+    except CodecError,emsg:
+        script.exit(1,emsg)
+
+if opts.register_extensions:
+    try:
+        #noinspection PyUnresolvedReferences
+        codec = codecs.get_codec(opts.register_extensions)
+    except CodecError,emsg:
+        script.exit(1,emsg)
+    for ext in args:
+        try:
+            codec.register_extension(ext)
+        except CodecError,emsg:
+            script.exit(1,emsg)
+
 if opts.list_codecs:
     #noinspection PyUnresolvedReferences
     for codec in codecs.registered_codecs():
-        print codec.name,','.join(codec.extensions)
+        print '%-8s %s' % (codec.name,','.join(codec.extensions))
 
-if opts.list_config:
+if opts.list_commands:
     #noinspection PyUnresolvedReferences
+    print
     for codec in codecs.registered_codecs():
-        print codec.name
+        if args and codec.name not in args:
+            continue
+        print 'Codec %s: %s' % (codec.name,codec.description)
+        if not len(codec.encoders) and not len(codec.decoders):
+            print '  No commands registered'
         for encoder in codec.encoders:
-            print 'ENCODER: ', encoder
+            print '  Encoder: %s ' % encoder
         for encoder in codec.decoders:
-            print 'DECODER: ', encoder
-
+            print '  Decoder: %s' % encoder
+        print
