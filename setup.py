@@ -16,7 +16,7 @@ setup(
     keywords = 'Sound Audio File Tree Codec Database',
     url = 'http://tuohela.net/packages/soundforest',
     zip_safe = False,
-    install_requires = [ 'systematic' ],
+    install_requires = [ 'systematic>=1.4.1' ],
     scripts = glob.glob('bin/*'),
     packages = [ 'soundforest' ],
     author = 'Ilkka Tuohela', 
