@@ -28,7 +28,6 @@ if opts.register:
     if len(args)!=2:
         script.exit(1,'Registering codec requires name and description as arguments')
     try:
-        #noinspection PyUnresolvedReferences
         codecs.register_codec(name=args[0],description=args[1])
     except CodecError,emsg:
         script.exit(1,emsg)
@@ -37,30 +36,27 @@ if opts.unregister:
     if len(args)!=1:
         script.exit(1,'Registering codec requires name as argument')
     try:
-        #noinspection PyUnresolvedReferences
         codecs.unregister_codec(name=args[0])
     except CodecError,emsg:
         script.exit(1,emsg)
 
 if opts.register_extensions:
     try:
-        #noinspection PyUnresolvedReferences
         codec = codecs.get_codec(opts.register_extensions)
+        for ext in args:
+            try:
+                codec.register_extension(ext)
+            except CodecError,emsg:
+                script.exit(1,emsg)
     except CodecError,emsg:
         script.exit(1,emsg)
-    for ext in args:
-        try:
-            codec.register_extension(ext)
-        except CodecError,emsg:
-            script.exit(1,emsg)
+
 
 if opts.list_codecs:
-    #noinspection PyUnresolvedReferences
     for codec in codecs.registered_codecs():
         print '%-8s %s' % (codec.name,','.join(codec.extensions))
 
 if opts.list_commands:
-    #noinspection PyUnresolvedReferences
     print
     for codec in codecs.registered_codecs():
         if args and codec.name not in args:

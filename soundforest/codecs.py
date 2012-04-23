@@ -7,7 +7,7 @@ import os,sqlite3,logging
 from subprocess import Popen,PIPE
 
 from systematic.shell import CommandPathCache
-from systematic.sqlite import SQLiteDatabase
+from systematic.sqlite import SQLiteDatabase,SQLiteError
 
 # Buffer size for Popen command execution
 POPEN_BUFSIZE = 1024
@@ -163,110 +163,131 @@ class CodecDB(object):
             CodecDB.__instance = CodecDB.CodecDBInstance(db_path)
         self.__dict__['_CodecDB.__instance'] = CodecDB.__instance
 
-    def __getattr__(self,attr):
-        return getattr(self.__instance,attr)
-
-    def __setattr__(self,attr,value):
-        return setattr(self.__instance,attr,value)
+        for name,config in DEFAULT_CODECS.items():
+            try:
+                self.get_codec(name)
+                # Already configured, skip
+            except CodecError:
+                codec = self.register_codec(name,config['description'])
+                for ext in config['extensions']:
+                    codec.register_extension(ext)
+                for decoder in config['decoders']:
+                    codec.register_decoder(decoder)
+                for encoder in config['encoders']:
+                    codec.register_encoder(encoder)
 
     class CodecDBInstance(SQLiteDatabase):
         """
         Singleton instance of one sqlite database path
         """
         def __init__(self,db_path=DB_PATH):
-            SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
+            try:
+                SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
+            except SQLiteError,emsg:
+                raise CodecError(
+                    'Error initializing database %s: %s' % (db_path,emsg)
+                )
 
-            for name,config in DEFAULT_CODECS.items():
-                try:
-                    self.get_codec(name)
-                    # Already configured, skip
-                except CodecError:
-                    codec = self.register_codec(name,config['description'])
-                    for ext in config['extensions']:
-                        codec.register_extension(ext)
-                    for decoder in config['decoders']:
-                        codec.register_decoder(decoder)
-                    for encoder in config['encoders']:
-                        codec.register_encoder(encoder)
+        def __getattr__(self,attr):
+            try:
+                return SQLiteDatabase.__getattr__(self,attr)
+            except AttributeError:
+                raise AttributeError('No such CodecDB attribute: %s' % attr)
 
-        def get_codec(self,name):
-            """
-            Return Codec instance for given codec name.
-            Raises CodecError if codec name is not configured
-            """
+    def __getattr__(self,attr):
+        return getattr(self.__instance,attr)
+
+    def __setattr__(self,attr,value):
+        return setattr(self.__instance,attr,value)
+
+    def get_codec(self,name):
+        """
+        Return Codec instance for given codec name.
+        Raises CodecError if codec name is not configured
+        """
+        return Codec(self,name)
+
+    def register_codec(self,name,description=''):
+        """
+        Register a codec to database. Returns a Codec object, to add codec
+        encoders or decoders use the methods in returned object.
+
+        Codec name must unique in database. Description is just a textual
+        description for the codec.
+        """
+        try:
             c = self.cursor
-            c.execute('SELECT name,description FROM codec where name=?',(name,))
-            result = c.fetchone()
-            if result is None:
-                raise CodecError('Codec not configured: %s' % name)
-            return Codec(result[0],result[1],self)
+            c.execute(
+                'INSERT INTO codec (name,description) VALUES (?,?)',
+                (name,description,)
+            )
+            self.commit()
+            del c
+        except sqlite3.IntegrityError:
+            self.log.debug('ERROR: codec already registered: %s' % name)
+        return Codec(self,name,description)
 
-        def register_codec(self,name,description=''):
-            """
-            Register a codec to database. Returns a Codec object, to add codec
-            encoders or decoders use the methods in returned object.
+    def unregister_codec(self,name):
+        """
+        Remove references to a registered codec from database
+        """
+        try:
+            c = self.cursor
+            c.execute('DELETE FROM codec WHERE name=?',(name,))
+            self.commit()
+            del c
+        except sqlite3.IntegrityError:
+            pass
 
-            Codec name must unique in database. Description is just a textual
-            description for the codec.
-            """
-            try:
-                with self.conn:
-                    self.conn.execute(
-                        'INSERT INTO codec (name,description) VALUES (?,?)',
-                        (name,description,)
-                    )
-            except sqlite3.IntegrityError:
-                self.log.debug('ERROR: codec already registered: %s' % name)
-            return Codec(name,description,self)
+    def registered_codecs(self):
+        """
+        Returns list of Codec objects matching codecs registered to database
+        """
+        c = self.cursor
+        c.execute('SELECT name,description from codec')
+        results = [Codec(self,r[0],r[1]) for r in c.fetchall()]
+        del c
+        return results
 
-        def unregister_codec(self,name):
-            """
-            Remove references to a registered codec from database
-            """
-            try:
-                with self.conn:
-                    self.conn.execute('DELETE FROM codec WHERE name=?',(name,))
-            except sqlite3.IntegrityError:
-                pass
-
-        def registered_codecs(self):
-            """
-            Returns list of Codec objects matching codecs registered to database
-            """
-            with self.conn:
-                try:
-                    return [Codec(r[0],r[1],self) for r in self.conn.execute(
-                        'SELECT name,description from codec'
-                    )]
-                except sqlite3.DatabaseError,emsg:
-                    raise CodecError('Error querying codec database: %s' % emsg)
-
-        def match(self,path):
-            """
-            Match given filename to codec extensions.
-            Returns Codec matching file path or None if no match is found.
-            """
-            path = os.path.realpath(path)
-            if os.path.isdir(path):
-                self.log.debug('BUG: attempt to match codec extension to directory: %s' % path)
-                return None
-            ext = os.path.splitext(path)[1][1:].lower()
-            if ext=='':
-                return None
-            for codec in self.registered_codecs():
-                if ext in codec.extensions:
-                    return codec
+    def match(self,path):
+        """
+        Match given filename to codec extensions.
+        Returns Codec matching file path or None if no match is found.
+        """
+        path = os.path.realpath(path)
+        if os.path.isdir(path):
+            self.log.debug('BUG: attempt to match codec extension to directory: %s' % path)
             return None
+        ext = os.path.splitext(path)[1][1:].lower()
+        if ext=='':
+            return None
+        for codec in self.registered_codecs():
+            if ext in codec.extensions:
+                return codec
+        return None
 
 class Codec(object):
     """
-    Instance representing one codec from database
+    Instance representing one codec from database.
+
+    If description is given, we expect this to be a reference from
+    calls to registered_codecs or register_codec: don't call this
+    directly, use CodecDB methods.
     """
-    def __init__(self,name,description,codecdb=None):
+    def __init__(self,codecdb,name,description=None):
         self.cdb = codecdb is not None and codecdb or CodecDB()
         self.log = logging.getLogger('modules')
         self.name = name
-        self.description = description
+        if description is not None:
+            self.description = description
+            return
+
+        c = self.cdb.cursor
+        c.execute('SELECT description FROM codec where name=?',(name,))
+        result = c.fetchone()
+        if result is None:
+            raise CodecError('Codec not configured: %s' % name)
+        self.description = result[0]
 
     def __repr__(self):
         return ': '.join([self.name,self.description])
@@ -310,11 +331,13 @@ class Codec(object):
         """
         extension = extension.lstrip('.')
         try:
-            with self.cdb.conn:
-                self.cdb.conn.execute(
-                    'INSERT INTO extensions (codec,extension) VALUES (?,?)',
-                    (self.cid,extension,)
-                )
+            c = self.cdb.cursor
+            c.execute(
+                'INSERT INTO extensions (codec,extension) VALUES (?,?)',
+                (self.cid,extension,)
+            )
+            self.cdb.commit()
+            del c
         except sqlite3.IntegrityError,emsg:
             self.log.debug('Error adding extension %s: %s' % (extension,emsg))
 
@@ -326,16 +349,17 @@ class Codec(object):
         try:
             cmd = CodecCommand(command)
             cmd.validate()
-            with self.cdb.conn:
-                self.cdb.conn.execute(
-                    'INSERT INTO decoder (codec,command,priority) VALUES (?,?,?)',
-                    (self.cid,command,priority)
-                )
+            c = self.cdb.cursor
+            c.execute(
+                'INSERT INTO decoder (codec,command,priority) VALUES (?,?,?)',
+                (self.cid,command,priority)
+            )
+            self.cdb.commit()
+            del c
         except ValueError,emsg:
             raise CodecError('Error registering decoder: %s: %s' % (
                 command,emsg
             ))
-         
 
     def register_encoder(self,command,priority=0):
         """
@@ -345,23 +369,26 @@ class Codec(object):
         try:
             cmd = CodecCommand(command)
             cmd.validate()
-            with self.cdb.conn:
-                self.cdb.conn.execute(
-                    'INSERT INTO encoder (codec,command,priority) VALUES (?,?,?)',
-                    (self.cid,command,priority)
-                )
+            c = self.cdb.cursor
+            c.execute(
+                'INSERT INTO encoder (codec,command,priority) VALUES (?,?,?)',
+                (self.cid,command,priority)
+            )
+            self.cdb.commit()
+            del c
         except ValueError,emsg:
-            raise CodecError('Error registering encoder: %s: %s' % (
-                command,emsg
-            ))
+            raise CodecError(
+                'Error registering encoder: %s: %s' % (command,emsg)
+            )
 
 class CodecCommand(object):
     """
     Wrapper to validate and run codec commands from command line.
 
-    A codec command specification must contain special arguments FILE and OUTFILE.
-    These arguments are replaced with input and output file names when run() is
-    called.
+    A codec command specification must contain special arguments FILE
+    and OUTFILE.
+    These arguments are replaced with input and output file names when
+    run() is called.
     """
     def __init__(self,command):
         self.log = logging.getLogger('modules')

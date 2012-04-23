@@ -71,12 +71,6 @@ class PlaylistDB(object):
             PlaylistDB.__instance = PlaylistDB.PlaylistDBInstance(db_path)
         self.__dict__['_PlaylistDB.__instance'] = PlaylistDB.__instance
 
-    def __getattr__(self,attr):
-        return getattr(self.__instance,attr)
-
-    def __setattr__(self,attr,value):
-        return setattr(self.__instance,attr,value)
-
     class PlaylistDBInstance(SQLiteDatabase):
         """
         Singleton instance of one PlaylistDB database
@@ -85,57 +79,72 @@ class PlaylistDB(object):
             try:
                 SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
             except SQLiteError,emsg:
-                raise PlaylistError(str(emsg))
+                raise PlaylistError(
+                    'Error initializing database %s: %s' % (db_path,emsg)
+                )
 
         def __getattr__(self,attr):
-            if attr == 'sources':
-                with self.conn:
-                    return [PlaylistSource(self,r[0],r[1]) for r in self.conn.execute(
-                        'SELECT name,path FROM sources'
-                    )]
-            return SQLiteDatabase.__getattr__(self,attr)
 
-        def add_source(self,path,source='filesystem'):
-            """
-            Add a playlist data source
-            source  Name of application - 'filesystem' if not given
-            path    Path to source file or database
-            """
-            c = self.cursor
             try:
-                c.execute(
-                    'INSERT INTO sources (name,path) VALUES (?,?)',
-                    (source,path,)
+                return SQLiteDatabase.__getattr__(self,attr)
+            except AttributeError:
+                raise AttributeError(
+                    'No such PlaylistDB attribute: %s' % attr
                 )
-            except sqlite3.IntegrityError:
-                raise PlaylistError('Source already configured')
-            self.commit()
-            del c
-            return PlaylistSource(self,source,path)
 
-        def remove_source(self,source,path):
-            """
-            Remove a playlist data source from database
-            source  Name of application
-            path    Path to source file or database
-            """
+    def __getattr__(self,attr):
+        if attr == 'sources':
             c = self.cursor
+            c.execute('SELECT name,path FROM sources')
+            results = [PlaylistSource(self,r[0],r[1]) for r in c.fetchall()]
+            del c
+            return results
+        return getattr(self.__instance,attr)
+
+    def __setattr__(self,attr,value):
+        return setattr(self.__instance,attr,value)
+
+    def add_source(self,path,source='filesystem'):
+        """
+        Add a playlist data source
+        source  Name of application - 'filesystem' if not given
+        path    Path to source file or database
+        """
+        c = self.cursor
+        try:
             c.execute(
-                'DELETE FROM sources WHERE name=? AND path=?',
+                'INSERT INTO sources (name,path) VALUES (?,?)',
                 (source,path,)
             )
-            del c
+        except sqlite3.IntegrityError:
+            raise PlaylistError('Source already configured')
+        self.commit()
+        del c
+        return PlaylistSource(self,source,path)
 
-        def get_source(self,source,path):
-            """
-            Return named source from database
-            source  Name of application
-            path    Path to source file or database
-            """
-            try:
-                return PlaylistSource(self,source,path)
-            except KeyError:
-                return None
+    def remove_source(self,source,path):
+        """
+        Remove a playlist data source from database
+        source  Name of application
+        path    Path to source file or database
+        """
+        c = self.cursor
+        c.execute(
+            'DELETE FROM sources WHERE name=? AND path=?',
+            (source,path,)
+        )
+        del c
+
+    def get_source(self,source,path):
+        """
+        Return named source from database
+        source  Name of application
+        path    Path to source file or database
+        """
+        try:
+            return PlaylistSource(self,source,path)
+        except KeyError:
+            return None
 
 class PlaylistSource(object):
     """

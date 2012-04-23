@@ -3,7 +3,6 @@
 # Install the scrips, configs and python modules
 #
 
-CONFIG:=/etc/musa
 ifndef PREFIX
 	PREFIX:=/usr/local
 endif
@@ -28,9 +27,6 @@ register:
 
 modules:
 	python setup.py build
-
-install_config: 
-	make -C examples install
 
 install_modules: modules
 	@echo "Installing python modules"

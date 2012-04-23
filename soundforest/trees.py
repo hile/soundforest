@@ -2,12 +2,12 @@
 Module to detect and store known audio file library paths
 """
 
-import os,sqlite3,time,hashlib
+import os,logging,sqlite3,time,hashlib
 
 from systematic.shell import normalized 
-from systematic.sqlite import SQLiteDatabase
+from systematic.sqlite import SQLiteDatabase,SQLiteError
 
-from soundforest.codecs import CodecDB
+from soundforest.codecs import CodecDB,CodecError
 from soundforest.metadata import MetaData
 
 DB_PATH = os.path.join(os.getenv('HOME'),'.soundforest','trees.sqlite')
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS treetypes (
 """
 CREATE TABLE IF NOT EXISTS tree (
     id          INTEGER PRIMARY KEY,
-    source      TEXT,
     treetype    INTEGER,
+    source      TEXT,
     path        TEXT,
     FOREIGN KEY(treetype) REFERENCES treetypes(id) ON DELETE CASCADE
 );
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS files (
 );
 """,
 """CREATE UNIQUE INDEX IF NOT EXISTS file_paths ON files (tree,directory,filename)""",
-"""CREATE UNIQUE INDEX IF NOT EXISTS file_mtimes ON files (directory,filename,mtime)""",
+"""CREATE UNIQUE INDEX IF NOT EXISTS file_mtimes ON files (tree,directory,filename,mtime)""",
 """
 CREATE TABLE IF NOT EXISTS filechanges (
     id          INTEGER PRIMARY KEY,
@@ -86,6 +86,13 @@ FILE_MODIFIED = 3
 
 VALID_FILE_EVENTS = [FILE_ADDED,FILE_DELETED,FILE_MODIFIED]
 
+class AudioTreeError(Exception):
+    """
+    Exceptions raised by audio tree processing
+    """
+    def __str__(self):
+        return self.args[0]
+
 class AudioTreeDB(object):
     """
     Database of audio tree paths and their aliases, including the tree
@@ -102,155 +109,186 @@ class AudioTreeDB(object):
         if AudioTreeDB.__instance is None:
             AudioTreeDB.__instance = AudioTreeDB.AudioTreeDBInstance(db_path,metadata_lookup)
         self.__dict__['_AudioTreeDB.__instance'] = AudioTreeDB.__instance
-
-    def __getattr__(self,attr):
-        return getattr(self.__instance,attr)
-
-    def __setattr__(self,attr,value):
-        return setattr(self.__instance,attr,value)
+        for ttype,description in DEFAULT_TREE_TYPES.items():
+            self.register_tree_type(ttype,description,ignore_duplicate=True)
 
     class AudioTreeDBInstance(SQLiteDatabase):
         """
         Singleton instance of one AudioTree sqlite database.
         """
-        def __init__(self,db_path=DB_PATH,metadata_lookup=None):
-            SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
-            for ttype,description in DEFAULT_TREE_TYPES.items():
-                self.register_tree_type(ttype,description,ignore_duplicate=True)
+        def __init__(self,db_path=DB_PATH,codec_db=None,metadata_lookup=None):
+            try:
+                SQLiteDatabase.__init__(self,db_path,tables_sql=DB_TABLES)
+            except SQLiteError,emsg:
+                raise AudioTreeError(
+                    'Error initializing database %s: %s' % (db_path,emsg)
+                )
 
-            self.metadata_lookup = metadata_lookup is not None and metadata_lookup or MetaData()
-            self.codec_db = CodecDB()
+            if codec_db is None:
+                try:
+                    codec_db = CodecDB()
+                except CodecError,emsg:
+                    raise AudioTreeError(
+                       'Error initializing codec database: %s' % emsg
+                    )
+            if not isinstance(codec_db,CodecDB):
+                raise AudioTreeError('Not a codec database: %s' % type(codec_db))
+            self.codec_db = codec_db
+
+            if metadata_lookup is None:
+                metadata_lookup = MetaData()
+            self.metadata_lookup = metadata_lookup
 
         def __getattr__(self,attr):
-            if attr == 'tree_types':
-                results = self.conn.execute(
-                    'SELECT type,description FROM treetypes ORDER BY type'
-                )
-                return [(r[0],r[1]) for r in results]
-            if attr == 'trees':
-                return [self.get_tree(r[0],r[1]) for r in \
-                    self.conn.execute('SELECT path,source FROM tree')
-                ]
             try:
                 return SQLiteDatabase.__getattr__(self,attr)
             except AttributeError:
                 raise AttributeError('No such AudioTreeDB attribute: %s' % attr)
 
-        def get_tree(self,path,source='filesystem'):
-            """
-            Retrieve AudioTree matching give path from database.
-
-            Raises ValueError if path was not found.
-            """
-            path = normalized(os.path.realpath(path))
-            c = self.cursor
-            c.execute('SELECT t.id,tt.type,t.path,t.source ' +
-                'FROM treetypes AS tt, tree AS t ' +
-                'WHERE tt.id=t.treetype AND t.source=? AND t.path=?',
-                (source,path,)
-            )
-            result = c.fetchone()
-            if result is None:
-                raise ValueError('Path not in database: %s' % path)
-            tree = AudioTree(*result[1:])
-            c.execute('SELECT alias FROM aliases WHERE tree=?',(result[0],))
-            for r in c.fetchall():
-                tree.aliases.append(r[0])
-            return tree
-
-        def unregister_tree_type(self,ttype):
-            """
-            Unregister audio tree type from database
-            """
-            try:
-                with self.conn:
-                    self.conn.execute(
-                        'DELETE FROM treetypes WHERE type=?',(ttype,)
-                    )
-            except sqlite3.IntegrityError,emsg:
-                raise ValueError('Error unregistering tree type %s: %s' % (ttype,emsg))
-
-        def register_tree_type(self,ttype,description,ignore_duplicate=False):
-            """
-            Register audio tree type to database
-            ttype       Name of tree type ('Music','Samples' etc.)
-            description Description of the usage of the files
-            """
-            try:
-                with self.conn:
-                    self.conn.execute(
-                        'INSERT INTO treetypes (type,description) VALUES (?,?)',
-                        (ttype,description)
-                    )
-            except sqlite3.IntegrityError:
-                if ignore_duplicate:
-                    return
-                raise ValueError('Tree type %s already registered' % ttype)
-
-        def unregister(self,tree):
-            """
-            Remove audio file tree from database. Will remove fill references to the tree.
-            """
-            if type(tree) != AudioTree:
-                raise TypeError('Tree must be AudioTree object')
-            try:
-                with self.conn:
-                    self.conn.execute(
-                        'DELETE FROM tree where source=? AND path=?',(tree.source,tree.path,)
-                    )
-            except sqlite3.IntegrityError,emsg:
-                raise ValueError(emsg)
-
-        def register(self,tree,ignore_duplicate=True):
-            """
-            Register a audio file tree to database
-            """
-
-            if type(tree) != AudioTree:
-                raise TypeError('Tree must be AudioTree object')
-
-            c = self.cursor
-            c.execute('SELECT id FROM treetypes WHERE type=?',(tree.tree_type,))
-            result = c.fetchone()
-            if result is None:
-                raise ValueError('Tree type not found: %s' % tree.tree_type)
-            tt_id = result[0]
-
-            try:
-                c.execute(
-                    'INSERT INTO tree (treetype,source,path) VALUES (?,?,?)',
-                    (tt_id,tree.source,tree.path,)
-                )
-                self.commit()
-            except sqlite3.IntegrityError:
-                if not ignore_duplicate:
-                    raise ValueError('Already registered: %s %s' % (tree.source,tree.path))
-
-            c.execute('SELECT id FROM tree where source=? AND path=?',(tree.source,tree.path,))
-            tree_id = c.fetchone()[0]
-
-            for alias in tree.aliases:
-                try:
-                    with self.conn:
-                        self.conn.execute(
-                            'INSERT INTO aliases (tree,alias) VALUES (?,?)',
-                            (tree_id,alias)
-                        )
-                except sqlite3.IntegrityError:
-                    # Alias already in database
-                    pass
-
-        def filter_type(self,tree_type):
-            """
-            Filter audio trees from database based on the tree type
-            """
+    def __getattr__(self,attr):
+        if attr == 'tree_types':
             c = self.cursor
             c.execute(
-                'SELECT t.path FROM treetypes as tt, tree as t ' +
-                'WHERE tt.id=t.treetype and tt.type=?',
-                (tree_type,)
+                'SELECT type,description FROM treetypes ORDER BY type'
             )
-            return [self.get_tree(r[0]) for r in c.fetchall()]
+            results = [(r[0],r[1]) for r in c.fetchall()]
+            del c
+            return results
+        if attr == 'trees':
+            c = self.cursor
+            c.execute('SELECT path,source FROM tree')
+            results = [self.get_tree(r[0],r[1]) for r in c.fetchall()]
+            del c
+            return results
+        return getattr(self.__instance,attr)
+
+    def __setattr__(self,attr,value):
+        return setattr(self.__instance,attr,value)
+
+    def get_tree(self,path,source='filesystem'):
+        """
+        Retrieve AudioTree matching give path from database.
+
+        Raises ValueError if path was not found.
+        """
+        path = normalized(os.path.realpath(path))
+        c = self.cursor
+        c.execute('SELECT t.id,tt.type,t.path,t.source ' +
+            'FROM treetypes AS tt, tree AS t ' +
+            'WHERE tt.id=t.treetype AND t.source=? AND t.path=?',
+            (source,path,)
+        )
+        result = c.fetchone()
+        if result is None:
+            raise ValueError('Path not in database: %s' % path)
+        tree = AudioTree(*result[1:],audio_db=self)
+        c.execute('SELECT alias FROM aliases WHERE tree=?',(result[0],))
+        for r in c.fetchall():
+            tree.aliases.append(r[0])
+        return tree
+
+    def unregister_tree_type(self,ttype):
+        """
+        Unregister audio tree type from database
+        """
+        try:
+            c = self.cursor
+            c.execute(
+                'DELETE FROM treetypes WHERE type=?',
+                (ttype,)
+            )
+            self.commit()
+            del c
+        except sqlite3.IntegrityError,emsg:
+            raise ValueError('Error unregistering tree type %s: %s' % (ttype,emsg))
+
+    def register_tree_type(self,ttype,description,ignore_duplicate=False):
+        """
+        Register audio tree type to database
+        ttype       Name of tree type ('Music','Samples' etc.)
+        description Description of the usage of the files
+        """
+        try:
+            c = self.cursor
+            c.execute(
+                'INSERT INTO treetypes (type,description) VALUES (?,?)',
+                (ttype,description)
+            )
+            self.commit()
+            del c
+        except sqlite3.IntegrityError:
+            if ignore_duplicate:
+                return
+            raise ValueError('Tree type %s already registered' % ttype)
+
+    def unregister(self,tree):
+        """
+        Remove audio file tree from database. Will remove fill references to the tree.
+        """
+        if type(tree) != AudioTree:
+            raise TypeError('Tree must be AudioTree object')
+        try:
+            c = self.cursor
+            c.execute(
+                'DELETE FROM tree where source=? AND path=?',
+                (tree.source,tree.path,)
+            )
+            self.commit()
+            del c
+        except sqlite3.IntegrityError,emsg:
+            raise ValueError(emsg)
+
+    def register(self,tree,ignore_duplicate=True):
+        """
+        Register a audio file tree to database
+        """
+
+        if type(tree) != AudioTree:
+            raise TypeError('Tree must be AudioTree object')
+
+        c = self.cursor
+
+        c.execute('SELECT id FROM treetypes WHERE type=?',(tree.tree_type,))
+        result = c.fetchone()
+        if result is None:
+            raise ValueError('Tree type not found: %s' % tree.tree_type)
+        tt_id = result[0]
+
+        try:
+            c.execute(
+                'INSERT INTO tree (treetype,source,path) VALUES (?,?,?)',
+                (tt_id,tree.source,tree.path,)
+            )
+            self.commit()
+        except sqlite3.IntegrityError:
+            if not ignore_duplicate:
+                raise ValueError('Already registered: %s %s' % (tree.source,tree.path))
+
+        c.execute('SELECT id FROM tree where source=? AND path=?',(tree.source,tree.path,))
+        tree_id = c.fetchone()[0]
+
+        for alias in tree.aliases:
+            try:
+                c.execute(
+                    'INSERT INTO aliases (tree,alias) VALUES (?,?)',
+                    (tree_id,alias)
+                )
+            except sqlite3.IntegrityError:
+                # Alias already in database
+                pass
+            self.commit()
+
+    def filter_type(self,tree_type):
+        """
+        Filter audio trees from database based on the tree type
+        """
+        c = self.cursor
+        c.execute(
+            'SELECT t.path FROM treetypes as tt, tree as t ' +
+            'WHERE tt.id=t.treetype and tt.type=?',
+            (tree_type,)
+        )
+        return [self.get_tree(r[0]) for r in c.fetchall()]
 
 class AudioTree(object):
     """
@@ -264,12 +302,18 @@ class AudioTree(object):
     source      Source reference, by default 'filesystem'
 
     """
-    def __init__(self,tree_type,path,source='filesystem'):
+    def __init__(self,tree_type,path,source='filesystem',audio_db=None):
         self.__cached_attrs = {}
         self.__next = None
         self.__iterfiles = None
 
-        self.adb = AudioTreeDB()
+        if audio_db is None:
+            audio_db = AudioTreeDB()
+        if not isinstance(audio_db,AudioTreeDB):
+            raise AudioTreeError('Not a audio tree database: %s' % type(audio_db))
+        self.adb = audio_db
+
+        self.log = logging.getLogger('modules')
         self.aliases = []
         self.tree_type = tree_type
         self.source = source
@@ -469,7 +513,16 @@ class AudioTree(object):
         c.execute('SELECT directory,filename,mtime,deleted FROM files WHERE tree=?',(self.id,))
         tree_songs = dict([(os.path.join(r[0],r[1]),{'mtime': r[2],'deleted': r[3]}) for r in c.fetchall()])
 
-        for (root,dirs,files) in os.walk(self.path):
+        for (root,dirs,files) in os.walk(self.path,):
+
+            # Ignore files inside .itlp directories
+            is_itlp = filter(lambda x:
+                os.path.splitext(x)[1]=='.itlp',
+                root.split(os.sep)
+            )
+            if is_itlp:
+                continue
+
             for f in files:
                 # Some special filenames cause errors
                 if f in IGNORED_FILES:
@@ -560,6 +613,7 @@ class TreeFile(object):
     """
     def __init__(self,tree,path):
         self.adb = AudioTreeDB()
+        self.log = logging.getLogger('modules')
         self.__cached_attrs = {}
         self.tree = tree
         self.__filetype = None

@@ -2,5 +2,5 @@
 Soundforest database backend modules
 """
 
-__all__ = ['codecs','playlists','metadata','trees']
+__all__ = ['codecs','metadata','playlists','tags,','trees']
 

@@ -53,13 +53,13 @@ adb = AudioTreeDB()
 if opts.register:
     for path in args:
         script.log.debug('Registering: %s' % path)
-        tree = AudioTree(tree_type,path,opts.tree_source)
+        tree = AudioTree(tree_type,path,opts.tree_source,audio_db=adb)
         adb.register(tree)
 
 elif opts.unregister:
     for path in args:
         script.log.debug('Unregistering: %s' % path)
-        tree = AudioTree(tree_type,path,opts.tree_source)
+        tree = AudioTree(tree_type,path,opts.tree_source,audio_db=adb)
         adb.unregister(tree)
     script.exit(0)
 
