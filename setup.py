@@ -4,7 +4,7 @@ Setup for soundforest package for setuptools
 """
 
 import os,glob
-from setuptools import setup
+from setuptools import setup,find_packages
 
 VERSION='1.0.2'
 README = open(os.path.join(os.path.dirname(__file__),'README.txt'),'r').read()
@@ -20,7 +20,7 @@ setup(
     license = 'PSF',
     url = 'http://tuohela.net/packages/soundforest',
     zip_safe = False,
-    install_requires = [ 'systematic>=1.4.1', 'PIL', 'mutagen' ],
+    packages = ['soundforest']+ ['soundforest.%s' % p for p in find_packages('soundforest')],
+    install_requires = ['systematic>=2.0.0','PIL','mutagen'],
     scripts = glob.glob('bin/*'),
-    packages = ['soundforest','soundforest.tags','soundforest.tags.formats'],
 )

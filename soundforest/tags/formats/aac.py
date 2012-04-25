@@ -7,9 +7,10 @@ import base64,struct
 
 from mutagen.mp4 import MP4,MP4Cover,MP4StreamInfoError,MP4MetadataValueError
 
-from soundforest.tags import TagParser
+from soundforest.tags import TagError
+from soundforest.tags.formats import TagParser
 from soundforest.tags.albumart import AlbumArt,AlbumArtError
-from soundforest.tags.db import base64_tag,TagError
+from soundforest.tags.db import base64_tag
 
 # Albumart filed processing
 AAC_ALBUMART_TAG = 'covr'
@@ -49,15 +50,22 @@ AAC_STANDARD_TAGS = {
 
 # Internal program tags for itunes. Ignored by current code
 ITUNES_TAG_MAP = {
-    # Indicates the encoder command used to encode track
-    'encoder':              ['\xa9too','enco'],
-    # Boolean flag indicating if track is part of compilation
+
+    # Boolean flag indicating if track is part of compilation, useful
+    # but buggy even with iTunes 10.x, I don't recommend using this:
+    # set album_artist to 'Various Artists' instead.
     'compilation':          ['cpil'],
     # iTunes grouping flag
     'grouping':             ['\xa9grp'],
+    # Indicates the encoder command used to encode track
+    'encoder':              ['\xa9too','enco'],
+    # Another way iTunes stores tool info
+    'itunes_tool':          ['----:com.apple.iTunes:tool'],
     # iTunes encoder and normalization data
     'itunes_encoder':       ['----:com.apple.iTunes:cdec'],
     'itunes_normalization': ['----:com.apple.iTunes:iTunNORM'],
+    # XML info for song
+    'itunes_movi':          ['----:com.apple.iTunes:iTunMOVI'],
     # NO idea what this is
     'itunes_smbp':          ['----:com.apple.iTunes:iTunSMPB'],
     # iTunes store purchase details
@@ -71,12 +79,11 @@ ITUNES_TAG_MAP = {
 }
 
 AAC_UNOFFICIAL_TAGS = {
-    # String containing exact command used to encode the file
-    'encoder_command':      ['encoder_command'],
     # Musicbrainz ID reference
     'musicbrainz_id':       ['musi'],
 }
 
+# These values are (value,value) pairs in metadata
 AAC_INTEGER_TUPLE_TYPES = [ 'trkn', 'disk' ]
 
 # Placeholder to write lambda functions to process specific tags if needed
@@ -229,13 +236,24 @@ class AAC(TagParser):
 
     def __getitem__(self,item):
         if item == 'tracknumber':
-            return self.track_numbering.value
+            return unicode('%d' % self.track_numbering.value)
         if item == 'totaltracks':
-            return self.track_numbering.total
+            return unicode('%d' % self.track_numbering.total)
         if item == 'disknumber':
-            return self.disk_numbering.value
+            return unicode('%d' % self.disk_numbering.value)
         if item == 'totaldisks':
-            return self.disk_numbering.total
+            return unicode('%d' % self.disk_numbering.total)
+        if item == 'unknown_tags':
+            keys = []
+            for tag in self.entry.keys():
+                if tag in AAC_STANDARD_TAGS.values():
+                    continue
+                if tag in ITUNES_TAG_MAP.values():
+                    continue
+                if tag in AAC_UNOFFICIAL_TAGS.values():
+                    continue
+                keys.append(tag)
+            return keys
         return TagParser.__getitem__(self,item)
 
     def keys(self):

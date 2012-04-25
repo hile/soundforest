@@ -270,9 +270,9 @@ class Codec(object):
     """
     Instance representing one codec from database.
 
-    If description is given, we expect this to be a reference from
-    calls to registered_codecs or register_codec: don't call this
-    directly, use CodecDB methods.
+    If description is given, we expect this to be a reference
+    from calls to registered_codecs or register_codec: don't
+    call this directly, use CodecDB methods.
     """
     def __init__(self,codecdb,name,description=None):
         self.cdb = codecdb is not None and codecdb or CodecDB()
@@ -385,10 +385,10 @@ class CodecCommand(object):
     """
     Wrapper to validate and run codec commands from command line.
 
-    A codec command specification must contain special arguments FILE
-    and OUTFILE.
-    These arguments are replaced with input and output file names when
-    run() is called.
+    A codec command specification must contain special arguments
+    FILE and OUTFILE.
+    These arguments are replaced with input and output file names
+    when run() is called.
     """
     def __init__(self,command):
         self.log = logging.getLogger('modules')

@@ -21,6 +21,7 @@ import os,sqlite3,base64,time,logging
 from systematic.shell import normalized
 from systematic.sqlite import SQLiteDatabase,SQLiteError
 
+from soundforest.tags import TagError
 from soundforest.tags.constants import STANDARD_TAG_MAP,STANDARD_TAG_ORDER
 
 TAGS_DB_PATH = os.path.expanduser('~/.soundforest/tags.sqlite')
@@ -63,13 +64,6 @@ CREATE TABLE IF NOT EXISTS tag (
 CREATE UNIQUE INDEX IF NOT EXISTS filetags ON tag (file,tag,value);
 """,
 ]
-
-class TagError(Exception):
-    """
-    Exceptions raised by tag processing
-    """
-    def __str__(self):
-        return self.args[0]
 
 class TagsDB(object):
     """
@@ -195,7 +189,17 @@ class TagsDB(object):
         self.commit()
         del c
 
-    def source_files(self,source):
+    def source_file_mtimes(self,source='filesystem'):
+        """
+        Return mtime of all paths for a source in batch result
+        """
+        c = self.cursor
+        c.execute('SELECT path,mtime FROM file WHERE source=? ORDER BY path',(source,))
+        results = dict([(r[0],r[1]) for r in c.fetchall()])
+        del c
+        return results
+
+    def source_files(self,source='filesystem'):
         """
         Return filetags entries for given source
         """
@@ -227,6 +231,8 @@ class base64_tag(object):
 class FileTags(dict):
     """
     Tags database file entry, used to access tags for particular file.
+    It is recommended to use this via soundforest.tags.formats.Tags class
+    attribute db_tags, not directly.
 
     If id is given, id and mtime values are expected to be valid database
     references (from TagsDB.source_files() etc.)
@@ -274,8 +280,8 @@ class FileTags(dict):
             )
             result = c.fetchone()
 
-        for k,v in self.db.__result2dict__(c,result).items():
-            setattr(self,k,v)
+        self.id = result[0]
+        self.mtime = result[1]
 
     def __getitem__(self,item):
         """
@@ -423,29 +429,3 @@ class FileTags(dict):
         self.db.commit()
         del c
 
-if __name__ == '__main__':
-    import sys
-    tdb = TagsDB()
-    for tag in tdb.standard_tag_order:
-        print tdb.get_taglabel(tag)
-
-    bt = base64_tag(base64.b64encode('foo bar baz'))
-
-    for f in sys.argv[1:]:
-        ft = FileTags(tdb,f)
-        ft.update_tags({
-            'album': 'Test Album',
-            'artist': 'Test Artist',
-            'test': bt,
-            'performers': ['foo','bar','baz']
-        })
-
-        ft.load_tags(merge_string=', ')
-        for t,v in ft.items():
-            print 'TAG', t,type(v),v
-        ft.load_tags(merge_string='')
-        for t,v in ft.items():
-            print 'TAG', t,type(v),v
-
-    #for tags in tdb.source_files('filesystem'):
-    #    print tags.source,tags.id,tags.path,tags.items()
