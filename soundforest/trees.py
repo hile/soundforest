@@ -5,7 +5,7 @@ Module to detect and store known audio file library paths
 import os,logging,sqlite3,time,hashlib
 
 from systematic.shell import normalized
-from systematic.filesystems import MountPoints
+from systematic.filesystems import MountPoint,MountPoints
 from systematic.sqlite import SQLiteDatabase,SQLiteError
 
 from soundforest.codecs import CodecDB,CodecError
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS files (
     filename    TEXT,
     mtime       INTEGER,
     shasum      TEXT,
-    deleted     BOOLEAN DEFAULT FALSE,
+    deleted     BOOLEAN DEFAULT 0,
     FOREIGN KEY(tree) REFERENCES tree(id) ON DELETE CASCADE
 );
 """,
@@ -81,10 +81,12 @@ CREATE TABLE IF NOT EXISTS filechanges (
 """
 CREATE TABLE IF NOT EXISTS removablemedia (
     id          INTEGER PRIMARY KEY,
-    name        TEXT UNIQUE,
+    name        TEXT,
+    format      TEXT,
     updated     INTEGER
 );
 """,
+"""CREATE UNIQUE INDEX IF NOT EXISTS removablemedias ON removablemedia (name,format)""",
 """
 CREATE TABLE IF NOT EXISTS removablefiles (
     id          INTEGER PRIMARY KEY,
@@ -310,7 +312,7 @@ class AudioTreeDB(object):
 
     def register_removable(self,removable_media,ignore_duplicate=False):
         """
-        Register removable media device by name
+        Register removable media device by name and format
         """
         if not isinstance(removable_media,RemovableMedia):
             raise TypeError('Removable media must be RemovableMedia instance')
@@ -318,13 +320,15 @@ class AudioTreeDB(object):
         c.execute('')
         try:
             c.execute(
-                'INSERT INTO removablemedia (name,updated) VALUES (?,?)',
-                (removable_media.name,0)
+                'INSERT INTO removablemedia (name,format,updated) VALUES (?,?,?)',
+                (removable_media.name,removable_media.format,0)
             )
             self.commit()
         except sqlite3.IntegrityError:
             if not ignore_duplicate:
-                raise ValueError('Already registered: %s %s' % removable_media.name)
+                raise ValueError('Already registered: %s %s' % (
+                    removable_media.name,removable_media.format
+                ))
         del c
 
 class AudioTree(object):
@@ -722,7 +726,7 @@ class TreeFile(object):
         del c
 
     def __repr__(self):
-        return '%s%s' % (self.path,self.deleted and ' (DELETED)' or '')
+        return '%s%s' % (self.path,self.deleted==1 and ' (DELETED)' or '')
 
     def update_checksum(self,force_update=False):
         """
@@ -753,30 +757,70 @@ class RemovableMedia(object):
     """
     Removable media device accessed by mountpoint name
     """
-    def __init__(self,adb,name):
+    def __init__(self,adb,name,format):
         self.adb = adb
         self.name = name
+        self.format = format
 
     def __getattr__(self,attr):
         if attr == 'id':
             c = self.adb.cursor
-            c.execute('SELECT id FROM removablemedia WHERE name=?',(self.name,))
+            c.execute(
+                'SELECT id FROM removablemedia WHERE name=? AND format=?',
+                (self.name,self.format,)
+            )
             result = c.fetchone()
             del c
             if result is None:
                 raise AudioTreeError('Removable media not registered: %s' % self.name)
             return result[0]
-        if attr == 'is_available':
+        if attr == 'volume':
             mp = MountPoints()
             matches = filter(lambda x: x.name==self.name, mp)
             if len(matches)>1:
                 raise AudioTreeError('Multiple removable devices with name %s' % self.name)
             elif matches:
-                return True
-            return False
+                return matches[0]
+            else:
+                raise AttributeError('Removable media volume not available: %s' % self.name)
+        if attr == 'is_available':
+            try:
+                return isinstance(self.volume,MountPoint)
+            except AttributeError:
+                return False
         raise AttributeError('No such RemovableMedia attribute: %s' % attr)
 
+class RemovableMediaFile(object):
+    """
+    Database info for one file on a removable media device
+    """
+    def __init__(self,media,source_track):
+        if not isinstance(media,RemovableMedia):
+            raise TypeError('Media must be instance of RemovableMedia')
+        if not isinstance(source_track,TreeFile):
+            raise TypeError('Source track must be instance of TreeFile')
+        self.media = media
+        self.source = source_track
+        self.path = '%s.%s' % (
+            os.path.splitext(self.source.path)[0],
+            self.media.format,
+        )
+
+    def __repr__(self):
+        return '%s on removable media %s from %s' % (
+            self.path,self.media.name,
+            self.source.realpath
+        )
+
 if __name__ == '__main__':
+    import sys
     adb = AudioTreeDB()
-    r = RemovableMedia(adb,'ELENTRA')
-    print r.is_available
+    t = adb.get_tree('/music/m4a')
+    print t.path
+    r = RemovableMedia(adb,sys.argv[1],format='mp3')
+    print r.name,r.is_available
+    for path in sys.argv[2:]:
+        track = t[path]
+        rmf = RemovableMediaFile(r,track)
+        print rmf
+    print r.volume

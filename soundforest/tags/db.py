@@ -16,7 +16,7 @@ Maps tags for a single file to the 'file' table instance. Tags are updated
 via 'FileTags' objects, and by default only single tag is stored: however,
 it is possible to store multiple same tags for a file if you wish.
 """
-import os,sqlite3,base64,time,logging
+import os,sqlite3,base64,decimal,time,logging
 
 from systematic.shell import normalized
 from systematic.sqlite import SQLiteDatabase,SQLiteError
@@ -400,7 +400,11 @@ class FileTags(dict):
             tag = entry['tag']
             value = entry['value']
             base64 = entry['base64']
-            if type(value) is not unicode:
+            if isinstance(value,int):
+                value = unicode('%d' % value,'utf-8')
+            if isinstance(value,float) or isinstance(value,decimal.Decimal):
+                value = unicode('%0.4f' % value,'utf-8')
+            if not isinstance(value,unicode):
                 try:
                     value = unicode(value,'utf-8')
                 except UnicodeEncodeError:

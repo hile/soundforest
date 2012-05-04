@@ -2,21 +2,22 @@
 Tag metadata reader and writer classes
 """
 
-import os
+import os,base64
 
 from systematic.shell import normalized
 from soundforest.codecs import CodecDB,CodecError
 from soundforest.tags import TagError
-from soundforest.tags.db import FileTags,TagsDB
+from soundforest.tags.db import base64_tag,FileTags,TagsDB
 from soundforest.tags.albumart import AlbumArt,AlbumArtError
 from soundforest.tags.constants import STANDARD_TAG_ORDER
 
 __all__ = ['aac']
 
 TAG_FORMATTERS = {
-    'aac':      'soundforest.tags.formats.aac.AAC',
-    'mp3':      'soundforest.tags.formats.mp3.MP3',
-    'flac':     'soundforest.tags.formats.flac.FLAC',
+    'aac':      'soundforest.tags.formats.aac.aac',
+    'mp3':      'soundforest.tags.formats.mp3.mp3',
+    'flac':     'soundforest.tags.formats.flac.flac',
+    'vorbis':   'soundforest.tags.formats.vorbis.vorbis',
 }
 
 class TagParser(dict):
@@ -158,7 +159,7 @@ class TagParser(dict):
         """
         Return tag,value pairs using tag_map keys.
         """
-        return [(self.__field2tag__(k),self[k]) for k in self.keys()]
+        return [(k,self[k]) for k in self.keys()]
 
     def values(self):
         """
@@ -183,6 +184,99 @@ class TagParser(dict):
             return
         # TODO - replace with copying of file to new inode
         self.entry.save()
+
+class TrackAlbumart(object):
+    """
+    Parent class for common albumart operations
+    """
+    def __init__(self,track):
+        self.track  = track
+        self.modified = False
+        self.albumart = None
+
+    def __repr__(self):
+        return self.albumart.__repr__()
+
+    def as_base64_tag(self):
+        """
+        Return albumart image data as base64_tag tag
+        """
+        if self.albumart is None:
+            raise TagError('Albumart is not loaded')
+        return base64_tag(base64.b64encode(self.albumart.dump()))
+
+    def defined(self):
+        """
+        Returns True if albumart is defined, False otherwise
+        """
+        if self.albumart is None:
+            return False
+        return True
+
+    def import_albumart(self,albumart):
+        """
+        Parent method to set albumart tag. Child class must
+        implement actual embedding of the tag to file.
+        """
+        if not isinstance(albumart,AlbumArt):
+            raise TagError('Albumart must be AlbumArt instance')
+        if not albumart.is_loaded:
+            raise TagError('Albumart to import is not loaded with image.')
+        self.albumart = albumart
+
+class TrackNumberingTag(object):
+    """
+    Parent class for processing track numbering info, including track and
+    disk numbers and total counts.
+
+    Fields should be set and read from attributes 'value' and 'total'
+    """
+    def __init__(self,track,tag):
+        self.track = track
+        self.tag = tag
+        self.f_value = None
+        self.f_total = None
+
+    def __repr__(self):
+        if self.total is not None:
+            return '%d/%d' % (self.value,self.total)
+        else:
+            return '%d' % (self.value)
+
+    def __getattr__(self,attr):
+        if attr == 'value':
+            return self.f_value
+        if attr == 'total':
+            return self.f_total
+        raise AttributeError('No such TrackNumberingTag attribute: %s' % attr)
+
+    def __setattr__(self,attr,value):
+        if attr in ['value','total']:
+            if isinstance(value,list):
+                value = value[0]
+            try:
+                if value is not None:
+                    value = int(value)
+            except ValueError:
+                raise TagError('TrackNumberingTag values must be integers')
+            except TypeError:
+                raise TagError('TrackNumberingTag values must be integers')
+            if attr == 'value':
+                self.f_value = value
+            if attr == 'total':
+                self.f_total = value
+            self.save_tag()
+        else:
+            object.__setattr__(self,attr,value)
+
+    def save_tag(self):
+        """
+        Export this numbering information back to file tags.
+
+        If value is None, ignore both values without setting tag.
+        If total is None but value is set, set total==value.
+        """
+        raise NotImplementedError('save_tag must be implemented in child class')
 
 class Tags(dict):
     """
@@ -219,6 +313,8 @@ class Tags(dict):
             return FileTags(self.tags_db,self.path)
         if attr == 'mtime':
             return os.stat(self.path).st_mtime
+        if attr == 'albumart':
+            return self.file_tags.albumart
         if attr == 'file_tags':
             codec = self.codec_db.match(self.path)
             if codec is None:
@@ -253,20 +349,45 @@ class Tags(dict):
         db_tags = self.db_tags
         if tags is None:
             tags = {}
-
             # No new tags: check if we need to do anything
             if db_tags.mtime>=self.mtime:
-                return
+                pass
+                #return
 
         if not isinstance(tags,dict):
             raise TagError('Updated tags must be instance of dict')
 
-        all_tags = dict(self.file_tags.items())
-        for tag,values in all_tags.items():
-            if not tags.has_key(tag):
-                continue
+        file_tags = self.file_tags
+        all_tags = dict(file_tags.copy().items())
+        for tag,values in tags.items():
+            if not isinstance(values,list):
+                values = [values]
             if append:
                 all_tags[tag].extend(values)
+            elif all_tags.has_key(tag) and all_tags[tag] == tags[tag]:
+                continue
             else:
                 all_tags[tag] = values
+
+        for tag,values in all_tags.items():
+            if file_tags.has_key(tag) and file_tags[tag] == all_tags[tag]:
+                continue
+            file_tags[tag] = values
+        if file_tags.modified:
+            file_tags.save()
+
         self.db_tags.update_tags(all_tags,mtime=self.mtime)
+
+if __name__ == '__main__':
+    import sys
+    for f in sys.argv[1:]:
+        print 'Processing: %s' % f
+        t = Tags(f)
+        t.update_tags(tags={
+            'artist': 'Subsistence','album': 'Psytrance', 'title': 'Space Sphere',
+            'totaltracks': 12,
+        })
+        t.file_tags.save()
+        print t.albumart
+        for k,v in t.file_tags.items():
+            print '%16s %s' % (k,'.'.join(v))

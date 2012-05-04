@@ -32,6 +32,7 @@ class AlbumArt(object):
         self.log = logging.getLogger('modules')
         self.__image = None
         self.__mimetype = None
+
         if path is not None:
             self.import_file(path)
 
@@ -76,13 +77,9 @@ class AlbumArt(object):
         """
         Returns text description of image type and size
         """
-        if self.__image is None:
+        if not self.is_loaded:
             return 'Uninitialized AlbumArt object.'
-
-        info = self.info
-        return '%s %d bytes %dx%d' % (
-            info['mime'],len(info['data']),info['width'],info['height']
-        )
+        return '%(mime)s %(bytes)d bytes %(width)dx%(height)d' % self.info
 
     def __getattr__(self,attr):
         """
@@ -97,6 +94,10 @@ class AlbumArt(object):
             height  image height
             colors  always 0
         """
+        if attr == 'is_loaded':
+            if self.__image is None:
+                return False
+            return True
         if attr in ['image','format']:
             if self.__image is None:
                 raise AlbumArtError('AlbumArt not yet initialized.')
@@ -110,28 +111,22 @@ class AlbumArt(object):
             colors = self.__image.getcolors()
             if colors is None:
                 colors = 0
-            if self.path is not None:
-                desc = os.path.basename(self.path)
-            else:
-                desc = 'albumart'
             return {
                 'type': 3, # Album cover
-                'desc': desc,
                 'mime': self.__mimetype,
+                'bytes': len(self.dump()),
                 'depth': self.__image.bits,
-                'width': self.__image.size[0],
-                'height': self.__image.size[1],
+                'width': int(self.__image.size[0]),
+                'height': int(self.__image.size[1]),
                 'colors': colors,
-                'data': self.dump(),
             }
         raise AttributeError('No such AlbumArt attribute: %s' % attr)
-
 
     def __unicode__(self):
         """
         Returns file format and size as unicode string
         """
-        if self.__image is None:
+        if not self.is_loaded:
             return unicode('Uninitialized AlbumArt object')
         return unicode('%s file %d bytes' % (self.format,len(self)))
 
@@ -139,27 +134,31 @@ class AlbumArt(object):
         """
         Returns PIL image length as string
         """
+        if not self.is_loaded:
+            return 0
         return len(self.image.tostring())
 
     def dump(self):
         """
         Returns bytes from the image with StringIO.StringIO read() call
         """
-        if self.__image is None:
+        if not self.is_loaded:
             raise AlbumArtError('AlbumArt not yet initialized.')
         s = StringIO.StringIO()
-        self.__image.save(s,self.out_format)
+        self.__image.save(s,self.format)
         s.seek(0)
         return s.read()
 
-    def save(self,path,out_format=None):
+    def save(self,path,format=None):
         """
         Saves the image data to given target file.
 
         If target filename exists, it is removed before saving.
         """
-        if out_format is None:
-            out_format = self.format
+        if not self.is_loaded:
+            raise AlbumArtError('AlbumArt not yet initialized.')
+        if format is None:
+            format = self.format
         if os.path.isfile(path):
             try:
                 os.unlink(path)
@@ -168,7 +167,7 @@ class AlbumArt(object):
                     'Error removing existing file %s: %s' % (path,emsg)
                 )
         try:
-            self.__image.save(path,out_format)
+            self.__image.save(path,format)
         except IOError,emsg:
             raise AlbumArtError('Error saving %s: %s' % (path,emsg))
 
