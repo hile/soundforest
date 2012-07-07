@@ -4,7 +4,8 @@ Script to manipulate soundforest registered codecs and codec commands
 """
 
 from systematic.shell import Script,ScriptError
-from soundforest.codecs import CodecDB,CodecError
+from soundforest.database.models import Codec,SoundForestDB,SoundForestDBError
+from soundforest.commands import DEFAULT_CODECS
 
 script = Script()
 script.add_option('-l','--list-codecs',action='store_true',help='List codecs and extensions')
@@ -12,6 +13,7 @@ script.add_option('-c','--list-commands',action='store_true',help='List codec co
 script.add_option('-r','--register',action='store_true',help='Register codec')
 script.add_option('-u','--unregister',action='store_true',help='Unregister codec')
 script.add_option('-e','--register-extensions',help='Register codec extensions')
+script.add_option('-D','--register-defaults',action='store_true',help='Register default codecs')
 
 (opts,args,codecs) = (None,None,None)
 try:
@@ -19,46 +21,60 @@ try:
 except ScriptError,emsg:
     script.exit(1,emsg)
 
+sfdb = None
 try:
-    codecs = CodecDB()
-except CodecError,emsg:
+    sfdb = SoundForestDB()
+except SoundForestDBError,emsg:
     script.exit(1,emsg)
 
 if opts.register:
     if len(args)!=2:
         script.exit(1,'Registering codec requires name and description as arguments')
     try:
-        codecs.register_codec(name=args[0],description=args[1])
-    except CodecError,emsg:
+        sfdb.register_codec(name=args[0],description=args[1])
+    except SoundForestDBError,emsg:
         script.exit(1,emsg)
 
 if opts.unregister:
     if len(args)!=1:
         script.exit(1,'Registering codec requires name as argument')
     try:
-        codecs.unregister_codec(name=args[0])
-    except CodecError,emsg:
+        sfdb.unregister_codec(name=args[0])
+    except SoundForestDBError,emsg:
         script.exit(1,emsg)
 
 if opts.register_extensions:
     try:
-        codec = codecs.get_codec(opts.register_extensions)
+        codec = sfdb.get_codec(opts.register_extensions)
         for ext in args:
             try:
                 codec.register_extension(ext)
-            except CodecError,emsg:
+            except SoundForestDBError,emsg:
                 script.exit(1,emsg)
-    except CodecError,emsg:
+    except SoundForestDBError,emsg:
         script.exit(1,emsg)
 
+if opts.register_defaults:
+    for name,details in DEFAULT_CODECS.items():
+        if name in sfdb.get_registered_codecs():
+            script.log.debug("Already Registered: %s" % name)
+            continue
+        codec = Codec(sfdb,name,details['description'])
+        for extension in details['extensions']:
+            if extension not in codec.extensions:
+                codec.register_extension(extension)
+        for encoder in details['encoders']:
+            codec.register_encoder(encoder)
+        for decoder in details['decoders']:
+            codec.register_decoder(decoder)
 
 if opts.list_codecs:
-    for codec in codecs.registered_codecs():
+    for codec in sfdb.get_registered_codecs():
         print '%-8s %s' % (codec.name,','.join(codec.extensions))
 
 if opts.list_commands:
     print
-    for codec in codecs.registered_codecs():
+    for codec in sfdb.get_registered_codecs():
         if args and codec.name not in args:
             continue
         print 'Codec %s: %s' % (codec.name,codec.description)

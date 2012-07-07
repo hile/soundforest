@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+"""
+Script to manage soundforest music playlitss 
+"""
+
+import os
+
+from systematic.shell import normalized,Script,ScriptError
+from soundforest.database.models import Playlist,PlaylistSource,SoundForestDB,SoundForestDBError
+
+script = Script()
+script.set_usage("""Usage: %s [options] tree paths
+
+Manage music file playlists in soundforest sqlite database.""" % script.name)
+script.add_option('-l','--list',action='store_true',help='List trees')
+script.add_option('-r','--register',action='store_true',help='Register playlist directory')
+script.add_option('-u','--unregister',action='store_true',help='Unregister playlist directory')
+script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
+script.add_option('-S','--playlist-source',help='Playlist source, default is filesystem')
+script.set_defaults(**{'playlist_source':'filesystem'})
+(opts,args) = (None,None)
+try:
+    (opts,args) = script.parse_args()
+except ScriptError,emsg:
+    script.exit(1,emsg)
+
+if opts.register and opts.unregister:
+    script.exit(1,'Flags --register and --unregister conflict.')
+
+try:
+    db = SoundForestDB()
+except SoundForestDBError,emsg:
+    db = None
+    script.exit(1,emsg)
+
+if opts.register:
+    for path in args:
+        script.log.debug('Registering: %s' % path)
+        pls = db.register_playlist_source(opts.playlist_source,path)
+
+elif opts.unregister:
+    for path in args:
+        script.log.debug('Unregistering: %s' % path)
+        pls = db.unregister_playlist_source(opts.playlist_source,path)
+
+all_sources = db.get_playlist_sources()
+if not args:
+    sources = all_sources
+else:
+    sources = []
+    for arg in args:
+        try:
+            pls = filter(lambda x:
+                x.name==opts.playlist_source and x.path==arg,
+                all_sources
+            )[0]
+        except IndexError:
+            script.exit(1,'Invalid playlist source name: %s' % arg)
+
+if opts.scan_updates:
+    for pls in sources:
+        script.log.info('Updating playlist source: %s' % pls.path)
+        source_lists = pls.playlists
+        for (root,dirs,files) in os.walk(pls.path):
+            for f in files:
+                if os.path.splitext(f)[1][1:] not in ['m3u','m3u8','pls']:
+                    continue
+                f = os.path.join(root,f)
+                try:
+                    playlist = filter(lambda x: x.path==f, source_lists)[0]
+                except IndexError:
+                    playlist = pls.add_playlist(f)
+                entries = filter(lambda x:
+                    x.strip()!='' and not x.startswith('# '), 
+                    open(f,'r').read().split('\n')
+                )
+                if not len(entries):
+                    continue
+                script.log.debug('Updating playlist %s' % f)
+                playlist.update(entries)
+
+if opts.list:
+    for pls in sources:
+        print pls
+        for pl in pls.playlists:
+            print pl
+

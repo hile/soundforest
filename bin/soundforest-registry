@@ -6,9 +6,15 @@ Script to manage soundforest music tree registrations
 import os
 
 from systematic.shell import normalized,Script,ScriptError
-from soundforest.trees import AudioTree,AudioTreeDB
+from soundforest.database.models import Tree,SoundForestDB,SoundForestDBError
 
 DEFAULT_TREE_TYPE = 'Songs'
+
+INFO_STRING="""%(path)s
+Tree Type:   %(type)s
+Alias Paths: %(aliases)s
+Total Files: %(file_count)s
+Directories: %(directory_count)s"""
 
 script = Script()
 script.set_usage("""Usage: %s [options] tree paths
@@ -22,6 +28,7 @@ Terms used:
   to register same tree for each program. If not specified, 'filesystem'
   is used as source.""" % script.name)
 script.add_option('-l','--list',action='store_true',help='List trees')
+script.add_option('-i','--info',action='store_true',help='Show details for registered path')
 script.add_option('-L','--list-types',action='store_true',help='List tree types')
 script.add_option('-D','--list-directories',action='store_true',help='List directories found in a tree')
 script.add_option('-r','--register',action='store_true',help='Register trees')
@@ -48,22 +55,26 @@ if opts.register or opts.unregister:
     else:
         tree_type = DEFAULT_TREE_TYPE
 
-adb = AudioTreeDB()
+try:
+    db = SoundForestDB()
+except SoundForestDBError,emsg:
+    db = None
+    script.exit(1,emsg)
 
 if opts.register:
     for path in args:
         script.log.debug('Registering: %s' % path)
-        tree = AudioTree(tree_type,path,opts.tree_source,audio_db=adb)
-        adb.register(tree)
+        tree = Tree(db,path,opts.tree_source,tree_type)
+        db.register_tree(tree)
 
 elif opts.unregister:
     for path in args:
         script.log.debug('Unregistering: %s' % path)
-        tree = AudioTree(tree_type,path,opts.tree_source,audio_db=adb)
-        adb.unregister(tree)
+        tree = Tree(db,path,opts.tree_source,tree_type)
+        db.unregister_tree(tree)
     script.exit(0)
 
-all_trees = adb.trees
+all_trees = db.get_trees()
 if not args:
     trees = all_trees
 else:
@@ -89,12 +100,22 @@ if opts.update_checksums and not opts.scan_updates:
             entry.update_checksum()
 
 if opts.list_types:
-    for name,description in adb.tree_types:
+    for name,description in db.tree_types:
         print '%-16s %s' % (name,description)
 
 if opts.list:
     for t in trees:
         print '%-16s %s' % (t.source,t.path)
+
+if opts.info:
+    for t in trees:
+        print INFO_STRING % ({
+            'type': t.tree_type,
+            'path': t.path,
+            'aliases': ', '.join(t.aliases),
+            'file_count': len(t.files),
+            'directory_count': len(t.directories)
+        })
 
 if opts.list_directories:
     for t in trees:
