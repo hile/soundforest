@@ -7,7 +7,12 @@ from systematic.shell import Script,ScriptError
 from soundforest.database.models import Codec,SoundForestDB,SoundForestDBError
 from soundforest.commands import DEFAULT_CODECS
 
+USAGE = """Usage: %(script)s [options] <path>
+
+Modify and list codecs and commands registered to soundforest database."""
+
 script = Script()
+script.set_usage(USAGE % {'script': script.name})
 script.add_option('-l','--list-codecs',action='store_true',help='List codecs and extensions')
 script.add_option('-c','--list-commands',action='store_true',help='List codec commands')
 script.add_option('-r','--register',action='store_true',help='Register codec')
@@ -85,3 +90,4 @@ if opts.list_commands:
         for encoder in codec.decoders:
             print '  Decoder: %s' % encoder
         print
+

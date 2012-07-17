@@ -6,7 +6,8 @@ If timestamp is not given, all changes are listed.
 """
 
 from systematic.shell import Script,ScriptError
-from soundforest.trees import AudioTreeDB,FILE_ADDED,FILE_DELETED,FILE_MODIFIED
+from soundforest.database.models import SoundForestDB,SoundForestDBError
+from soundforest.database.models import FILE_ADDED,FILE_DELETED,FILE_MODIFIED
 
 FILE_MSGS = {
     FILE_ADDED:     'Added',
@@ -16,12 +17,14 @@ FILE_MSGS = {
 
 DEFAULT_TREE_TYPE = 'Songs'
 
-script = Script()
-script.set_usage("""Usage: %s [option]
+USAGE = """Usage: %(script)s [option]
 List changes made to database trees, optionally limiting the data by timestamp.
 
 This script is intended only as an example how to write watchers, but it still
-works as advertised.""" % script.name)
+works as advertised."""
+
+script = Script()
+script.set_usage(USAGE % {'script':script.name})
 script.add_option('-s','--timestamp',type='int',help='Event start timestamp')
 script.add_option('-S','--tree-source',help='Only show trees with this source')
 script.add_option('-t','--tree-type',help='Tree type, default Songs')
@@ -36,11 +39,12 @@ if opts.tree_type is not None:
 else:
     tree_type = DEFAULT_TREE_TYPE
 
-adb = AudioTreeDB()
+sfdb = SoundForestDB()
 
-for tree in adb.trees:
+for tree in sfdb.trees:
     if opts.tree_source and tree.source != opts.tree_source:
         continue
     for event in tree.file_events(opts.timestamp):
         msg = FILE_MSGS[event['event']]
         print '%12d %8s %s' % (event['mtime'],msg,event['path'])
+

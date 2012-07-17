@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+"""
+Compare two trees in soundforest database
+"""
+
+import os
+
+from systematic.shell import normalized,Script,ScriptError
+from soundforest.database.models import Tree,SoundForestDB,SoundForestDBError
+
+USAGE = """Usage: %(script)s <first tree> <second tree>
+
+Compare files in two music file trees registered to soundforest database.
+
+Reports differences in directory and file names in trees, discarding file
+extension.""" 
+
+script = Script()
+script.add_option('-c','--cross-compare',help='Compare files in second tree as well')
+script.set_usage(USAGE % {'script': script.name})
+(opts,args) = script.parse_args()
+
+if len(args)!=2:
+    script.exit(1,script.get_usage())
+
+sfdb = SoundForestDB()
+all_trees = sfdb.get_trees()
+trees = [] 
+for path in args:
+    path = normalized(os.path.realpath(path))
+    try:
+        trees.append(filter(lambda t: t.path==path, all_trees)[0])
+    except IndexError:
+        script.exit(1,'Unknown tree path: %s' % path)
+
+script.log.debug('Comparing directories')
+src_dirs = trees[0].directories
+dst_dirs = trees[1].directories
+missing_dirs = []
+for d in src_dirs:
+    if d not in dst_dirs:
+        missing_dirs.append(d)        
+        print "MISSING DIRECTORY %s" % d
+
+script.log.debug('Comparing files')
+src_files = trees[0].files
+dst_files = trees[1].files
+for f in src_files:
+    if os.path.dirname(f) in missing_dirs:
+        continue
+    if f not in dst_files:
+        print "MISSING FILE %s" % f
+

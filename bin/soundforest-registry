@@ -16,8 +16,7 @@ Alias Paths: %(aliases)s
 Total Files: %(file_count)s
 Directories: %(directory_count)s"""
 
-script = Script()
-script.set_usage("""Usage: %s [options] tree paths
+USAGE = """Usage: %(script)s [options] <tree paths>
 
 Register, update and verify music file trees in soundforest sqlite database.
 
@@ -26,17 +25,22 @@ Terms used:
   If not specified, 'Songs' (music library) is used as default type.
 - Tree source can be given, if same path is used from multiple programs,
   to register same tree for each program. If not specified, 'filesystem'
-  is used as source.""" % script.name)
+  is used as source."""
+
+script = Script()
+script.set_usage(USAGE % {'script': script.name})
 script.add_option('-l','--list',action='store_true',help='List trees')
 script.add_option('-i','--info',action='store_true',help='Show details for registered path')
+script.add_option('-x','--extension',help='File extension to filter with')
 script.add_option('-L','--list-types',action='store_true',help='List tree types')
 script.add_option('-D','--list-directories',action='store_true',help='List directories found in a tree')
 script.add_option('-r','--register',action='store_true',help='Register trees')
-script.add_option('-e','--verify',action='store_true',help='Verify file types in trees')
 script.add_option('-u','--unregister',action='store_true',help='Unregister trees')
 script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
 script.add_option('-S','--tree-source',help='Tree source, default is filesystem')
+script.add_option('-e','--verify',action='store_true',help='Verify file types in trees')
 script.add_option('-c','--update-checksums',action='store_true',help='Update file SHA1 checksum while scanning trees')
+script.add_option('-C','--cleanup',action='store_true',help='Remove deleted files from database')
 script.add_option('-t','--tree-type',help='Tree type, default is Songs')
 script.set_defaults(**{'tree_source':'filesystem'})
 (opts,args) = (None,None)
@@ -56,7 +60,7 @@ if opts.register or opts.unregister:
         tree_type = DEFAULT_TREE_TYPE
 
 try:
-    db = SoundForestDB()
+    db = SoundForestDB(message_callback=opts.debug and script.log.debug or None)
 except SoundForestDBError,emsg:
     db = None
     script.exit(1,emsg)
@@ -74,30 +78,28 @@ elif opts.unregister:
         db.unregister_tree(tree)
     script.exit(0)
 
-all_trees = db.get_trees()
 if not args:
-    trees = all_trees
+    trees = db.get_trees()
 else:
     trees = []
     for path in args:
-        path = normalized(os.path.realpath(path))
-        try:
-            trees.append(filter(lambda t: t.path==path, all_trees)[0])
-        except IndexError:
+        tree = db.match_tree(path)
+        if tree is None:
             script.exit(1,'Unknown tree path: %s' % path)
+        trees.append(tree)
 
 if opts.scan_updates:
     for t in trees:
-        script.log.info('Updating tree: %s' % t.path)
         changes = t.update(opts.update_checksums)
 
 if opts.update_checksums and not opts.scan_updates:
     for t in trees:
-        script.log.info('Updating tree file checksums: %s' % t.path)
         for entry in t:
-            # Note: don't pass opts.update_checksums, it would force update
-            # of good checksums.
             entry.update_checksum()
+
+if opts.cleanup:
+    for t in trees:
+        t.remove_deleted()
 
 if opts.list_types:
     for name,description in db.tree_types:
@@ -109,17 +111,20 @@ if opts.list:
 
 if opts.info:
     for t in trees:
+        if opts.extension:
+            filecount = len(t.match_extension(opts.extension))
+        else:
+            filecount = len(t.files)
         print INFO_STRING % ({
             'type': t.tree_type,
             'path': t.path,
             'aliases': ', '.join(t.aliases),
-            'file_count': len(t.files),
-            'directory_count': len(t.directories)
+            'directory_count': len(t.directories),
+            'file_count': filecount,
         })
 
 if opts.list_directories:
     for t in trees:
-        script.log.info('Listing directories in %s' % t.path)
         for relative_path in t.directories:
             print relative_path
             if opts.verbose:
@@ -131,3 +136,4 @@ if opts.verify:
         for entry in t:
             if entry.filetype=='unknown':
                 script.log.info('UNKNOWN: %s' % entry.realpath)
+

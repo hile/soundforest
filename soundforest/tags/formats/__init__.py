@@ -5,13 +5,13 @@ Tag metadata reader and writer classes
 import os,base64
 
 from systematic.shell import normalized
-from soundforest.codecs import CodecDB,CodecError
+from soundforest.database.models import SoundForestDB
 from soundforest.tags import TagError
 from soundforest.tags.db import base64_tag,FileTags,TagsDB
 from soundforest.tags.albumart import AlbumArt,AlbumArtError
 from soundforest.tags.constants import STANDARD_TAG_ORDER
 
-__all__ = ['aac']
+__all__ = ['aac','flac','mp3','vorbis']
 
 TAG_FORMATTERS = {
     'aac':      'soundforest.tags.formats.aac.aac',
@@ -284,47 +284,36 @@ class Tags(dict):
     file formats is implemented by tag formatter classes in module
     soundforest.tags.formats, initialized automatically by this class.
     """
-    def __init__(self,path,tags_db=None,codec_db=None):
+    def __init__(self,path,db=None):
         dict.__init__(self)
         if not os.path.isfile(path):
             raise TagError('No such file: %s' % path)
         self.path = normalized(os.path.realpath(path))
 
-        if codec_db is None:
-            try:
-                codec_db = CodecDB()
-            except CodecError,emsg:
-                raise TagError(
-                    'Error initializing codec database: %s' % emsg
-                )
-        self.codec_db = codec_db
+        if db is None:
+            db = SoundForestDB() 
+        if not isinstance(db,SoundForestDB):
+            raise SoundForestError('Not a soundforest database: %s' % db)
+        self.db = db
 
-        if tags_db is None:
-            try:
-                tags_db = TagsDB()
-            except TagError,emsg:
-                raise TagError(
-                    'Error initializing tags database: %s' % emsg
-                )
-        self.tags_db = tags_db
+        self.codec = self.db.match_codec(self.path)
+        if self.codec is None:
+            raise TagError('No codec configured for %s' % self.path)
 
     def __getattr__(self,attr):
         if attr == 'db_tags':
-            return FileTags(self.tags_db,self.path)
+            return FileTags(self.db,self.path)
         if attr == 'mtime':
             return os.stat(self.path).st_mtime
         if attr == 'albumart':
             return self.file_tags.albumart
         if attr == 'file_tags':
-            codec = self.codec_db.match(self.path)
-            if codec is None:
-                raise TagError('No codec configured for %s' % self.path)
             try:
-                classpath = TAG_FORMATTERS[codec.name]
+                classpath = TAG_FORMATTERS[self.codec.name]
                 module_path = '.'.join(classpath.split('.')[:-1])
                 class_name = classpath.split('.')[-1]
                 m = __import__(module_path,globals(),fromlist=[class_name])
-                return getattr(m,class_name)(codec,self.path)
+                return getattr(m,class_name)(self.codec,self.path)
             except KeyError:
                 raise TagError('No tag parser configured for %s' % self.path)
         raise AttributeError('No such Tags attribute: %s' % attr)
@@ -378,6 +367,15 @@ class Tags(dict):
 
         self.db_tags.update_tags(all_tags,mtime=self.mtime)
 
+    def keys(self):
+        return self.file_tags.keys()
+
+    def items(self):
+        return self.file_tags.items()
+
+    def values(self):
+        return self.file_tags.values()
+
 if __name__ == '__main__':
     import sys
     for f in sys.argv[1:]:
@@ -391,3 +389,4 @@ if __name__ == '__main__':
         print t.albumart
         for k,v in t.file_tags.items():
             print '%16s %s' % (k,'.'.join(v))
+

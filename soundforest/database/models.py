@@ -2,14 +2,16 @@
 Module to detect and store known audio file library paths
 """
 
-import os,logging,sqlite3,time,hashlib
+import os,logging,sqlite3,base64,time,hashlib
 
-from systematic.shell import normalized
+from systematic.shell import normalized,ScriptLogger
 from systematic.filesystems import MountPoint,MountPoints
 
 from soundforest.metadata import MetaData
 from soundforest.commands import CodecCommand,CodecCommandError
 from soundforest.database import DEFAULT_DATABASE_BACKEND,DATABASE_BACKENDS,SoundForestDBError
+
+DATABASE_LOG = os.path.expanduser('~/.soundforest/db.log')
 
 # Valid database fields to query for tree files
 VALID_FILES_FIELDS = [
@@ -26,6 +28,8 @@ VALID_FILE_EVENTS = [FILE_ADDED,FILE_DELETED,FILE_MODIFIED]
 # Ignored special filenames causing problems
 IGNORED_FILES = [ 'Icon\r']
 
+DEFAULT_SOURCE = 'filesystem'
+
 DEFAULT_TREE_TYPES = {
     'Songs':        'Complete song files',
     'Recordings':   'Live performance recordings',
@@ -39,6 +43,18 @@ class SoundForestDB(object):
     Common class to access all soundforest database backends
     """
     def __init__(self,backend=DEFAULT_DATABASE_BACKEND,**backend_args):
+
+        # If message_callback is given, use it for logging. Otherwise log
+        # to standard db.log logfile.
+        self.__init_logfile__()
+        message_callback = backend_args.get('message_callback',None)
+        if backend_args.has_key('message_callback'):
+            del backend_args['message_callback']
+        if message_callback:
+            self.message = message_callback
+        else:
+            self.message = self.dblog.debug
+
         try:
             backend = DATABASE_BACKENDS[backend]
             module = '.'.join(backend.split('.')[:-1])
@@ -54,29 +70,46 @@ class SoundForestDB(object):
                 continue
             self.backend.register_tree_type(ttype,description,ignore_duplicate=True)
 
+    def __init_logfile__(self):
+        """
+        Initialize soundforest database event log
+        """
+        logdir = os.path.dirname(DATABASE_LOG)
+        logfile = os.path.splitext(os.path.basename(DATABASE_LOG))[0]
+        if not os.path.isdir(logdir):
+            os.makedirs(logdir)
+        self.logger = ScriptLogger('soundforest')
+        self.logger.level = logging.DEBUG
+        self.logger.file_handler(logfile,logdir)
+        self.dblog = self.logger[logfile]
+
     def register_tree_type(self,ttype,description,ignore_duplicate=False):
         """
         Register audio tree type to database
         ttype       Name of tree type ('Music','Samples' etc.)
         description Description of the usage of the files
+
+        Returns ID for newly created tree type
         """
-        return self.backend.register_tree_type(ttype,description,ignore_duplicate)
+        return self.backend.register_tree_type(
+                ttype,description,ignore_duplicate
+        )
 
     def register_tree(self,tree,ignore_duplicate=True):
         """
         Register a audio file tree to database
         """
         if not isinstance(tree,Tree):
-            raise TypeError('Tree must be Tree object')
+            raise TypeError('Tree must be a Tree object')
         return self.backend.register_tree(tree,ignore_duplicate)
 
-    def register_removable_media(self,removable_media,ignore_duplicate=False):
+    def register_removable_media(self,media,ignore_duplicate=False):
         """
         Register removable media device by name and format
         """
-        if not isinstance(removable_media,RemovableMedia):
+        if not isinstance(media,RemovableMedia):
             raise TypeError('Removable media must be RemovableMedia instance')
-        return self.backend.register_removable_media(removable_media,ignore_duplicate)
+        return self.backend.register_removable_media(media,ignore_duplicate)
 
     def register_playlist_source(self,name,path):
         """
@@ -88,8 +121,9 @@ class SoundForestDB(object):
         """
         Register a playlist in matching source_id
         """
-        self.backend.register_playlist(source_id,folder,name,description,updated)
-        return self.get_playlist(source_id,folder,name)
+        return self.backend.register_playlist(
+            source_id,folder,name,description,updated
+        )
 
     def register_codec(self,name,description=''):
         """
@@ -132,6 +166,20 @@ class SoundForestDB(object):
             raise SoundForestDBError('Tree must be Tree object')
         return self.backend.unregister_tree(tree)
 
+    def unregister_removable_media(self,media):
+        """
+        Unregister given RemovableMedia object from database.
+        """
+        if not isinstance(media,RemovableMedia):
+            raise SoundForestDBError('Media must be RemovableMedia object')
+        return self.backend.unregister_removable_media(media)
+
+    def unregister_playlist_source(self,name,path):
+        """
+        Unregister a playlist in matching source_id
+        """
+        return self.unregister_playlist_source(name,path)
+
     def unregister_playlist(self,playlist_id):
         """
         Register a playlist in matching source_id
@@ -143,6 +191,24 @@ class SoundForestDB(object):
         Remove references to codec with given name from database
         """
         self.backend.unregister_codec(name)
+
+    def unregister_codec_extension(self,codec_id,extension):
+        """
+        Remove references to codec with given name from database
+        """
+        self.backend.unregister_codec_extension(codec_id,extension)
+
+    def unregister_codec_encoder(self,codec_id,command):
+        """
+        Unregister given codec encoder command from database.
+        """
+        return self.backend.unregister_codec_encoder(codec_id,command)
+
+    def unregister_codec_decoder(self,codec_id,command):
+        """
+        Unregister given codec decoder command from database.
+        """
+        return self.backend.unregister_codec_decoder(codec_id,command)
 
     def get_tree_types(self):
         """
@@ -159,16 +225,21 @@ class SoundForestDB(object):
             trees.append(self.get_tree(path,source))
         return trees
 
-    def get_tree(self,path,source='filesystem'):
+    def get_tree_aliases(self,source=DEFAULT_SOURCE):
+        """
+        Return filesystem aliases (links) to given tree and source.
+        """
+        return self.backend.get_tree_aliases(source)
+
+    def get_tree(self,path,source=DEFAULT_SOURCE):
         """
         Return audio tree details matching parameters:
         path        Tree path
         source      Tree source type
 
-        Returns dictionary to create Tree objects:
-        id,type,path,source,aliases
+        Returns a Tree object from this data.
         """
-        path = normalized(os.path.realpath(path))
+        path = normalized(path)
         (details,aliases) = self.backend.get_tree(path,source)
         return Tree(self,
             path=details['path'],
@@ -178,42 +249,122 @@ class SoundForestDB(object):
             aliases=aliases,
         )
 
-    def get_tree_directories(self,tree_id):
+    def match_tree(self,path,source=DEFAULT_SOURCE):
         """
-        Return relative path names for unique directories
-        (albums) which contain files
+        Match given tree path to trees in database
         """
-        return self.backend.get_tree_directories(tree_id)
+        path = normalized(path)
+        try:
+            (details,aliases) = self.backend.match_tree(path,source)
+        except ValueError:
+            try:
+                (details,aliases) = self.backend.match_tree_aliases(path,source)
+            except ValueError:
+                return None
+        return Tree(self,
+            path=details['path'],
+            source=details['source'],
+            tree_type=details['type'],
+            tree_id=details['id'],
+            aliases=aliases,
+        )
 
-    def get_tree_directory_files(self,tree_id,directory):
+    def match_tree_extension(self,tree_id,path):
         """
-        Return files from database matching tree and directory
+        Return files matching given extension from audio tree
         """
-        self.backend.get_tree_directory_files(tree_id,directory)
+        return self.backend.tree_match_extension(tree_id,extension)
 
-    def get_tree_files(self,tree_id):
+    def match_tree_path(self,tree_id,path):
+        """
+        Return file paths matching given path from audio tree
+        """
+        return self.backend.tree_match_path(tree_id,path)
+
+    def match_filename(self,tree_id,name):
+        """
+        Return file paths matching given name from audio tree
+        """
+        return self.backend.match_filename(tree_id,name)
+
+    def cleanup_tree(self,tree_id):
+        """
+        Remove database entries for deleted files (with deleted flag)
+        """
+        return self.backend.cleanup_tree(tree_id)
+
+    def tree_add_file(self,tree_id,directory,filename,mtime):
+        """
+        Append a file to given audio tree
+        """
+        return self.backend.tree_add_file(tree_id,directory,filename,mtime)
+
+    def tree_remove_file(self,tree_id,directory,filename):
+        """
+        Remove given file instantly from database
+        """
+        return self.backend.tree_remove_file(tree_id,directory,filename)
+
+    def update_file_shasum(self,file_id,shasum):
+        """
+        Update shasum for a file in audio tree
+        """
+        return self.backend.update_file_shasum(file_id,shasum)
+
+    def update_file_mtime(self,file_id,mtime):
+        """
+        Update mtime for a file in audio tree
+        """
+        return self.backend.update_file_mtime(file_id,mtime)
+
+    def set_file_deleted_flag(self,directory,filename,value=1):
+        """
+        Update the 'deleted' flag for given file in database
+        """
+        if value in [True,1]:
+            value = 1
+        elif value in [False,0]:
+            value = 0
+        else:
+            raise SoundForestDBError('Unsupported deleted flag value: %s' % value)
+        return self.backend.set_file_deleted_flag(directory,filename,value)
+
+    def get_directories(self,tree_id):
+        """
+        Return registered directories from given tree
+        """
+        return self.backend.get_directories(tree_id)
+
+    def get_files(self,tree_id,directory=None):
         """
         Return audio tree files matching tree ID
         """
-        return self.backend.get_tree_files(tree_id)
+        return self.backend.get_files(tree_id,directory)
 
-    def get_tree_file_details(self,tree_id,directory,filename):
+    def get_file_details(self,tree_id,directory,filename):
         """
         Return all details for specific tree file as dictionary
         """
-        return self.backend.get_tree_file_details(tree_id,directory,filename)
+        return self.backend.get_file_details(tree_id,directory,filename)
 
-    def get_tree_fields(self,tree_id,fields):
+    def file_events(self,tree_id,time_start=None):
         """
-        Return requested fields from audio tree files matching
-        tree ID.
+        Return file events from database for given tree
         """
-        if not isinstance(fields,list):
-            raise SoundForestDBError('Parameter fields must be a list')
-        for f in fields:
-            if f not in VALID_FILES_FIELDS:
-                raise SoundForestDBError('Invalid field: %s' % f)
-        return self.backend.get_tree_fields(tree_id,fields)
+        return self.backend.tree_file_events(tree_id,time_start)
+
+    def create_file_event(self,tree_id,path,event):
+        """
+        Create a new filechanges event for given file path in given tree
+        Event must be from one of FILE_ADDED, FILE_DELETED, FILE_MODIFIED
+        """
+        try:
+            event = int(event)
+            if event not in VALID_FILE_EVENTS:
+                raise ValueError
+        except ValueError:
+            raise SoundForestDBError('Invalid file event: %s' % event)
+        self.backend.create_file_event(tree_id,path,event)
 
     def get_playlist_sources(self):
         """
@@ -229,17 +380,26 @@ class SoundForestDB(object):
         """
         return self.backend.get_playlist_source_id(name,path)
 
+    def get_playlist_source_playlists(self,source_id):
+        """
+        Return playlists matching given playlist source ID
+        """
+        return [Playlist(self,source_id,**details)
+                for details in \
+                self.backend.get_playlist_source_playlists(source_id)
+        ]
+
     def get_playlist_id(self,source_id,name,path):
         """
         Return playlist ID matching source, name and path
         """
         return self.backend.get_playlist_id(source_id,name,path)
 
-    def get_playlist(self,source_id,name,path):
+    def get_playlist(self,source_id,folder,name):
         """
-        Return playlist source ID matching name and path
+        Return playlist matching folder and name
         """
-        details = self.backend.get_playlist(source_id,name,path)
+        details = self.backend.get_playlist(source_id,folder,name)
         if details is not None:
             details['source_id'] = details['source']
             details['playlist_id'] = details['id']
@@ -248,16 +408,25 @@ class SoundForestDB(object):
             return Playlist(self,**details)
         return None
 
-    def get_playlist_source_playlists(self,source_id):
-        """
-        Return playlists matching given playlist source ID
-        """
-        return [Playlist(self,source_id,**details) 
-            for details in self.backend.get_playlist_source_playlists(source_id)
-        ]
-
     def get_playlist_tracks(self,playlist_id):
+        """
+        Return playlist track paths for given playlist ID
+        """
         return self.backend.get_playlist_tracks(playlist_id)
+
+    def clear_playlist(self,playlist_id):
+        """
+        Clear tracks from given playlist
+        """
+        self.backend.clear_playlist(playlist_id)
+
+    def replace_playlist_tracks(self,playlist_id,tracks):
+        """
+        Replace playlist tracks with given track paths
+        """
+        if not isinstance(tracks,list):
+            raise TypeError('tracks must be list instance')
+        return self.backend.replace_playlist_tracks(playlist_id,tracks)
 
     def get_registered_codecs(self):
         """
@@ -298,68 +467,6 @@ class SoundForestDB(object):
             for decoder in self.backend.get_codec_decoders(codec_id)
         ]
 
-    def cleanup_tree(self,tree_id):
-        """
-        Remove database entries for deleted files (with deleted flag)
-        """
-        return self.backend.cleanup_tree(tree_id)
-
-    def tree_append_file(self,tree_id,directory,filename,mtime):
-        """
-        Append a file to given audio tree
-        """
-        return self.backend.tree_append_file(tree_id,directory,filename,mtime)
-
-    def update_tree_file_mtime(self,file_id,mtime):
-        """
-        Update mtime for a file in audio tree
-        """
-        return self.backend.update_tree_file_mtime(file_id,mtime)
-
-    def update_tree_file_shasum(self,file_id,shasum):
-        """
-        Update shasum for a file in audio tree
-        """
-        return self.backend.update_tree_file_shasum(file_id,shasum)
-
-    def tree_file_deleted_flag(self,directory,filename,value=1):
-        """
-        Update the 'deleted' flag for given file in database
-        """
-        if value in [True,1]:
-            value = 1
-        elif value in [False,0]:
-            value = 0
-        else:
-            raise SoundForestDBError('Unsupported deleted flag value: %s' % value)
-        return self.backend.tree_file_deleted_flag(directory,filename,value)
-
-    def tree_file_events(self,tree_id,time_start=None):
-        """
-        Return file events from database for given tree
-        """
-        return self.backend.tree_file_events(tree_id,time_start)
-
-    def create_file_event(self,tree_id,path,event):
-        """
-        Create a new filechanges event for given file path in given tree
-        Event must be from one of FILE_ADDED, FILE_DELETED, FILE_MODIFIED
-        """
-        try:
-            event = int(event)
-            if event not in VALID_FILE_EVENTS:
-                raise ValueError
-        except ValueError:
-            raise SoundForestDBError('Invalid file event: %s' % event)
-        self.backend.create_file_event(tree_id,path,event)
-
-
-    def replace_playlist_tracks(self,playlist_id,tracks):
-        """
-        Register given track to playlist with given list position
-        """
-        return self.backend.replace_playlist_tracks(playlist_id,tracks)
-
     def match_codec(self,path):
         """
         Match given filename to codec extensions.
@@ -376,6 +483,127 @@ class SoundForestDB(object):
                 return codec
         return None
 
+    def set_labels(self,labels,source=DEFAULT_SOURCE):
+        """
+        Initialize default tag labels
+        """
+        self.backend.set_labels(self,labels,source)
+
+    def get_labels(self,source=DEFAULT_SOURCE):
+        """
+        Return all defined tag labels in correct order
+        """
+        return self.backend.get_labels(source)
+
+    def set_label(self,tag,position,label,description,source=DEFAULT_SOURCE):
+        """
+        Set a new tab label 
+        """
+        return self.backend.set_label(self,tag,position,label,description,source)
+
+    def get_label(self,tag,source=DEFAULT_SOURCE):
+        """
+        Return info for a tag label
+        """
+        return self.backend.get_label(tag)
+
+    def set_tags(self,path,tags,mtime=None,source=DEFAULT_SOURCE):
+        """
+        Set file tags file matching given path  
+        """
+        self.backend.set_tags(path,tags,mtime)
+
+    def get_tags(self,path,source=DEFAULT_SOURCE):
+        """
+        get file tags file matching given path  
+        """
+        return self.backend.get_tags(path,source)
+
+class Codec(object):
+    """
+    Class representing one codec from database.
+    """
+    def __init__(self,db,name,description=None,codec_id=None):
+        self.message = db.message
+
+        if not isinstance(db,SoundForestDB):
+            raise SoundForestDBError('Not an instance of SoundForestDB')
+        self.db = db
+        self.name = name
+        self.description = description
+        if codec_id is None:
+            codec_id = db.register_codec(name,description)
+        self.codec_id = codec_id
+
+    def __repr__(self):
+        return ': '.join([self.name,self.description])
+
+    def __getattr__(self,attr):
+        if attr == 'extensions':
+            return self.db.get_codec_extensions(self.codec_id)
+        if attr == 'best_encoder':
+            try:
+                return filter(lambda x: x.is_available(), self.encoders)[0]
+            except IndexError:
+                raise SoundForestDBError('No encoders available')
+        if attr == 'best_decoder':
+            try:
+                return filter(lambda x: x.is_available(), self.decoders)[0]
+            except IndexError:
+                raise SoundForestDBError('No decoders available')
+        if attr == 'encoders':
+            return self.db.get_codec_encoders(self.codec_id)
+        if attr == 'decoders':
+            return self.db.get_codec_decoders(self.codec_id)
+        raise AttributeError('No such Codec attribute: %s' % attr)
+
+    def register_extension(self,extension):
+        """
+        Registers given extension for this code to database.
+        Extensions must be unique.
+        """
+        extension = extension.lstrip('.')
+        try:
+            self.db.register_codec_extension(self.codec_id,extension)
+        except sqlite3.IntegrityError,emsg:
+            self.message('Error adding extension %s: %s' % (extension,emsg))
+
+    def register_decoder(self,command,priority=0):
+        """
+        Register a decoder command for this codec to database.
+        Codec command must validate with CodecCommand.validate()
+        """
+        try:
+            cmd = CodecCommand(command)
+            cmd.validate()
+            self.db.register_codec_decoder(self.codec_id,command,priority)
+        except sqlite3.IntegrityError,emsg:
+            raise SoundForestDBError(
+                'Error registering decoder: %s: %s' % (command,emsg)
+            )
+        except ValueError,emsg:
+            raise SoundForestDBError(
+                'Error registering decoder: %s: %s' % (command,emsg)
+            )
+
+    def register_encoder(self,command,priority=0):
+        """
+        Register encoder command for this codec to database.
+        Codec command must validate with CodecCommand.validate()
+        """
+        try:
+            cmd = CodecCommand(command)
+            cmd.validate()
+            self.db.register_codec_encoder(self.codec_id,command,priority)
+        except sqlite3.IntegrityError,emsg:
+            raise SoundForestDBError(
+                'Error registering encoder: %s: %s' % (command,emsg)
+            )
+        except ValueError,emsg:
+            raise SoundForestDBError(
+                'Error registering encoder: %s: %s' % (command,emsg)
+            )
+
 class Tree(object):
     """
     Representation of one audio tree object in database
@@ -384,13 +612,13 @@ class Tree(object):
     db          Instance of SoundForestDB()
     path        Normalized unicode real path to tree root
     tree_type   Tree type (reference to treetypes table)
-    source      Source reference, by default 'filesystem'
+    source      Source reference, by default DEFAULT_SOURCE
     aliases     Symlink paths for this tree
     """
-    def __init__(self,db,path,source='filesystem',tree_type='Songs',tree_id=None,aliases=None):
-        self.log = logging.getLogger('modules')
-        self.metadata = MetaData()
+    def __init__(self,db,path,source=DEFAULT_SOURCE,tree_type='Songs',tree_id=None,aliases=None):
 
+        self.message = db.message
+        self.metadata = MetaData()
         if not isinstance(db,SoundForestDB):
             raise SoundForestDBError('db not an instance of SoundForestDB')
 
@@ -468,8 +696,10 @@ class Tree(object):
         Update SHA1 checksum for files in tree with TreeFile.update_checksum()
         If force_update is True, all file checksums are updated.
         """
+        self.message('Updating file checksums: %s' % self.path)
         for entry in self:
             entry.update_checksum(force_update)
+        self.message('Finished updating file checksums: %s' % self.path)
 
     def update(self,update_checksums=False):
         """
@@ -478,8 +708,10 @@ class Tree(object):
         files in library.
         """
         if not self.is_available:
-            self.log.debug('Tree not available, skipping update: %s' % self.path)
+            self.message('Tree not available, skipping update: %s' % self.path)
             return
+
+        self.message('Updating tree: %s' % self.path)
 
         changes = {'added':[],'deleted':[],'modified':[]}
 
@@ -509,7 +741,11 @@ class Tree(object):
                 is_modified = False
                 f = normalized(os.path.realpath(os.path.join(root,f)))
                 db_path = f[len(self.path):].lstrip(os.sep)
-                mtime = long(os.stat(f).st_mtime)
+                try:
+                    mtime = long(os.stat(f).st_mtime)
+                except OSError,(ecode,emsg):
+                    self.message('ERROR checking %s: %s' % (f,emsg))
+                    continue
 
                 if db_path in db_song_paths:
                     db_info = db_songs[db_path]
@@ -519,8 +755,7 @@ class Tree(object):
                         self.db.create_file_event(self.id,db_path,FILE_MODIFIED)
                         if update_checksums:
                             TreeFile(self,db_path).update_checksum(force_update=True)
-                        else:
-                            self.log.debug('Modified: %s' % db_path)
+                        self.message('Modified: %s' % db_path)
 
                     if db_info['deleted']:
                         self.db.tree_file_deleted_flag(
@@ -531,7 +766,7 @@ class Tree(object):
                         is_modified = True
                         if update_checksums:
                             TreeFile(self,db_path).update_checksum(force_update=True)
-
+                        self.message('Restored: %s' % db_path)
                 else:
                     self.db.tree_append_file(
                         self.id,
@@ -546,7 +781,7 @@ class Tree(object):
                     if update_checksums:
                         TreeFile(self,db_path).update_checksum(force_update=True)
                     else:
-                        self.log.debug('Added: %s' % db_path)
+                        self.message('Added: %s' % db_path)
 
         for db_path,flags in db_songs.items():
             if flags['deleted']:
@@ -560,7 +795,49 @@ class Tree(object):
                 )
                 self.db.create_file_event(self.id,db_path,FILE_DELETED)
                 changes['deleted'].append(db_path)
+                self.message('Deleted: %s' % db_path)
+
+        self.message('Finished updating tree: %s' % self.path)
+
         return changes
+
+    def remove_deleted(self):
+        """
+        Remove deleted entries for tree from database
+        """
+        self.message('Cleaning up deleted files: %s' % self.path)
+        self.db.cleanup_tree(self.id) 
+
+    def match(self,name):
+        """
+        Return files matching given name as list of TreeFile entries
+        """
+        return [TreeFile(self,os.path.join(self.path,x)) for x in self.db.tree_lookup_name(self.id,name)]
+
+    def match_path(self,path):
+        """
+        Return files matching given path as list of TreeFile entries
+        """
+        return [TreeFile(self,os.path.join(self.path,x)) for x in self.db.tree_match_path(self.id,path)]
+
+    def match_extension(self,extension):
+        """
+        Return files from tree matching given extension
+        """
+        return [TreeFile(self,os.path.join(self.path,x)) for x in self.db.tree_match_extension(self.id,extension)]
+
+    def relative_path(self,path):
+        """
+        Return relative path for given target.
+
+        Raises ValueError if path not under this tree.
+        """
+        path = normalized(os.path.realpath(path))
+        mpath = path.strip('/').split(os.sep)
+        tpath = self.path.strip('/').split(os.sep)
+        if mpath[:len(tpath)]!=tpath:
+            raise ValueError('Not in tree %s: %s' % (self.path,path))
+        return os.sep.join(mpath[len(tpath):])
 
 class TreeFile(object):
     """
@@ -570,13 +847,16 @@ class TreeFile(object):
     pdf or anything else when initialized.
     """
     def __init__(self,tree,path):
-        self.log = logging.getLogger('modules')
-        if not isinstance(db,SoundForestDB):
+        
+        self.message = tree.message
+        if not isinstance(tree.db,SoundForestDB):
             raise SoundForestDBError('Not an instance of SoundForestDB')
         self.db = tree.db
         self.tree = tree
         self.__filetype = None
         self.__fileformat = None
+        self.__tags = None
+        self.__cached_attrs  = {}
 
         if path.startswith(os.sep):
             self.path = normalized(os.path.realpath(path))
@@ -609,6 +889,10 @@ class TreeFile(object):
             if self.__filetype is None:
                 self.__match_fileformat()
             return self.__fileformat
+        if attr == 'tags':
+            if self.__tags is None:
+                self.__tags = TreeFileTags(self.db,self)
+            return self.__tags
         raise AttributeError('No such TreeFile attribute: %s' % attr)
 
     def __match_fileformat(self):
@@ -656,98 +940,82 @@ class TreeFile(object):
         self.db.update_tree_file_checksum(self.id,shasum.hexdigest())
         return shasum.hexdigest()
 
-class Codec(object):
+class Base64Tag(object):
     """
-    Class representing one codec from database.
+    Wrapper to store a base64 formatted value to tags cleanly.
     """
-    def __init__(self,db,name,description=None,codec_id=None):
-        self.log = logging.getLogger('modules')
+    def __init__(self,value):
+        if not isinstance(value,basestring):
+            raise ValueError('base64_tag value must be a string')
+        try:
+            base64.b64decode(value)
+        except TypeError:
+            raise ValueError('base64_tag value is not valid base64 string')
+        self.value = unicode(value)
+
+    def __repr__(self):
+        return self.value
+
+    def __unicode__(self):
+        return self.value
+
+    def decode(self):
+        """
+        Return decoded base64 tag value as binary
+        """
+        return base64.b64decode(str(self.value))
+
+class TreeFileTags(dict):
+    """
+    Tags stored to database for given file
+    """
+    def __init__(self,db,tree_file):
+        dict.__init__(self)
         if not isinstance(db,SoundForestDB):
             raise SoundForestDBError('Not an instance of SoundForestDB')
         self.db = db
-        self.name = name
-        self.description = description
-        if codec_id is None:
-            codec_id = db.register_codec(name,description)
-        self.codec_id = codec_id
+        self.path = tree_file.path
+        self.source = tree_file.tree.source
 
-    def __repr__(self):
-        return ': '.join([self.name,self.description])
+        for entry in self.db.get_tags(tree_file.path,tree_file.tree.source):
+            if entry['base64']:
+                self[entry['tag']] = Base64Tag(entry['value'])
+            else:
+                self[entry['tag']] = entry['value']
 
-    def __getattr__(self,attr):
-        if attr == 'extensions':
-            return self.db.get_codec_extensions(self.codec_id)
-        if attr == 'best_encoder':
+    def update_tags(self,tags):
+        """
+        Update given tags for this file to database
+        """
+        if not isinstance(tags,dict):
+            raise ValueError('Tags argument must be dictionary')
+        data = []
+        for name,value in tags.items():
             try:
-                return filter(lambda x: x.is_available(), self.encoders)[0]
-            except IndexError:
-                raise SoundForestDBError('No encoders available')
-        if attr == 'best_decoder':
-            try:
-                return filter(lambda x: x.is_available(), self.decoders)[0]
-            except IndexError:
-                raise SoundForestDBError('No decoders available')
-        if attr == 'encoders':
-            return self.db.get_codec_encoders(self.codec_id)
-        if attr == 'decoders':
-            return self.db.get_codec_decoders(self.codec_id)
-        raise AttributeError('No such Codec attribute: %s' % attr)
-
-    def register_extension(self,extension):
-        """
-        Registers given extension for this code to database.
-        Extensions must be unique.
-        """
-        extension = extension.lstrip('.')
-        try:
-            self.db.register_codec_extension(self.codec_id,extension)
-        except sqlite3.IntegrityError,emsg:
-            self.log.debug('Error adding extension %s: %s' % (extension,emsg))
-
-    def register_decoder(self,command,priority=0):
-        """
-        Register a decoder command for this codec to database.
-        Codec command must validate with CodecCommand.validate()
-        """
-        try:
-            cmd = CodecCommand(command)
-            cmd.validate()
-            self.db.register_codec_decoder(self.codec_id,command,priority)
-        except sqlite3.IntegrityError,emsg:
-            raise SoundForestDBError(
-                'Error registering decoder: %s: %s' % (command,emsg)
-            )
-        except ValueError,emsg:
-            raise SoundForestDBError(
-                'Error registering decoder: %s: %s' % (command,emsg)
-            )
-
-    def register_encoder(self,command,priority=0):
-        """
-        Register encoder command for this codec to database.
-        Codec command must validate with CodecCommand.validate()
-        """
-        try:
-            cmd = CodecCommand(command)
-            cmd.validate()
-            self.db.register_codec_encoder(self.codec_id,command,priority)
-        except sqlite3.IntegrityError,emsg:
-            raise SoundForestDBError(
-                'Error registering encoder: %s: %s' % (command,emsg)
-            )
-        except ValueError,emsg:
-            raise SoundForestDBError(
-                'Error registering encoder: %s: %s' % (command,emsg)
-            )
+                data.append({
+                    'tag': name,
+                    'value': value,
+                    'base64': isinstance(value,Base64Tag)
+                })
+            except KeyError:
+                raise ValueErro('Invalid tags to set')
+        self.db.set_tags(self.path,data,self.source)
+        self.clear()
+        for entry in self.db.get_tags(self.path,self.source):
+            if entry['base64']:
+                value = Base64Tag(entry['value'])
+            else:
+                value = entry['value']
+            self[entry['tag']] = value
 
 class PlaylistSource(object):
     """
     Database entry for playlist data sources (program,path)
     """
     def __init__(self,db,name,path,source_id=None):
-        self.log = logging.getLogger('modules')
         if not isinstance(db,SoundForestDB):
             raise SoundForestDBError('Not an instance of SoundForestDB')
+        self.message = db.message
         self.db = db
         self.name = name
         self.path = path
@@ -796,9 +1064,9 @@ class Playlist(list):
     we DO use os.sep as path separator.
     """
     def __init__(self,db,source_id,folder,name,description=None,updated=0,playlist_id=None):
-        self.log = logging.getLogger('modules')
         if not isinstance(db,SoundForestDB):
             raise SoundForestDBError('Not an instance of SoundForestDB')
+        self.message = db.message
         self.db = db
         self.folder = folder
         self.name = name
@@ -872,16 +1140,3 @@ class RemovableMediaFile(object):
             self.source.realpath
         )
 
-if __name__ == '__main__':
-    import sys
-    db = SoundForestDB()
-
-    t = db.get_tree('/music/m4a')
-    print t.path
-    r = RemovableMedia(db,sys.argv[1],format='mp3')
-    print r.name,r.is_available
-    for path in sys.argv[2:]:
-        track = t[path]
-        rmf = RemovableMediaFile(r,track)
-        print rmf
-    print r.volume

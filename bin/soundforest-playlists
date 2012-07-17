@@ -8,10 +8,12 @@ import os
 from systematic.shell import normalized,Script,ScriptError
 from soundforest.database.models import Playlist,PlaylistSource,SoundForestDB,SoundForestDBError
 
-script = Script()
-script.set_usage("""Usage: %s [options] tree paths
+USAGE = """Usage: %(script)s [options] tree paths
 
-Manage music file playlists in soundforest sqlite database.""" % script.name)
+Manage music file playlists in soundforest sqlite database."""
+
+script = Script()
+script.set_usage(USAGE % {'script': script.name})
 script.add_option('-l','--list',action='store_true',help='List trees')
 script.add_option('-r','--register',action='store_true',help='Register playlist directory')
 script.add_option('-u','--unregister',action='store_true',help='Unregister playlist directory')

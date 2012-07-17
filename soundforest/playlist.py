@@ -26,6 +26,11 @@ class Playlist(list):
             self.read()
         return list.__len__(self)
 
+    def __getattr__(self,attr):
+        if attr=='exists':
+            return os.path.isfile(self.path)
+        raise AttributeError('No such Playlist attribute: %s' % attr)
+
     def read(self):
         raise NotImplementedError('You must implement reading in subclass') 
 
@@ -34,9 +39,10 @@ class Playlist(list):
 
     def __insert(self,path,position=None):
         if self.unique and self.count(path)>0:
-            raise PlaylistError('File already on the list: %s' % path) 
+            return
+        self.modified = True
         if not position:
-            self.append(path)
+            list.append(self,path)
         else:
             try:
                 position = int(position)
@@ -48,7 +54,7 @@ class Playlist(list):
                 raise PlaylistError('Invalid position: %s' % position)
             self.insert(position,path)
     
-    def add(self,path,position=None,recursive=False):
+    def append(self,path,position=None,recursive=False):
         path = normalized(os.path.realpath(path))
         if os.path.isfile(path):
             self.__insert(path,position)
@@ -57,7 +63,7 @@ class Playlist(list):
                 f = normalized(os.path.realpath(f))
                 if not recursive and os.path.isdir(f): 
                     continue
-                self.add(f,position)
+                self.append(f,position)
         else:
             raise PlaylistError('Not a file or directory: %s' % path)
         self.modified = True
@@ -79,6 +85,8 @@ class m3uPlaylist(Playlist):
         self.folder = os.path.dirname(self.path)
 
     def read(self):
+        if not self.exists:
+            return
         self.__delslice__(0,list.__len__(self))
         with open(self.path,'r') as lines:
             for l in lines:
