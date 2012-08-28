@@ -10,9 +10,11 @@ from systematic.shell import normalized,Script,ScriptError
 from soundforest.metadata import MetaData
 from soundforest.tags import TagError
 from soundforest.tags.formats import Tags
+from soundforest.tags.xml import XMLTags
 from soundforest.database.models import SoundForestDB
 
 script = Script()
+script.add_option('--xml',action='store_true',help='Output XML')
 opts,args = script.parse_args()
 
 metadata = MetaData()
@@ -32,6 +34,7 @@ for arg in args:
         dbfile = None
         script.log.debug('No matching tree and file found')
     try:
+        xml = XMLTags()
         file_tags = Tags(arg)
     except TagError,emsg:
         script.log.debug(emsg)
@@ -39,6 +42,13 @@ for arg in args:
 
     tags = dict((k,' '.join(v)) for k,v in file_tags.items())
     dbfile.tags.update_tags(tags)
-    for k,v in dbfile.tags.items():
-        print '%16s %s' % (k,v)
+    if opts.xml:
+        xml.update({'path': arg})
+        xml.update(tags)
+        print xml.toxml()
+    else:
+        for k,v in dbfile.tags.items():
+            print '%16s %s' % (k,v)
+
+
 

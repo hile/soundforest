@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="track">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="path"/>
+        <xs:element ref="album_artist"/>
+        <xs:element ref="artist"/>
+        <xs:element ref="album"/>
+        <xs:element ref="title"/>
+        <xs:element ref="genre"/>
+        <xs:element ref="bpm"/>
+        <xs:element ref="year"/>
+        <xs:element ref="tracknumber"/>
+        <xs:element ref="comment"/>
+        <xs:element ref="composer"/>
+        <xs:element ref="copyright"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="path" type="xs:string"/>
+  <xs:element name="album_artist" type="xs:string"/>
+  <xs:element name="artist" type="xs:string"/>
+  <xs:element name="album" type="xs:string"/>
+  <xs:element name="title" type="xs:string"/>
+  <xs:element name="genre" type="xs:NCName"/>
+  <xs:element name="bpm" type="xs:integer"/>
+  <xs:element name="year" type="xs:integer"/>
+  <xs:element name="tracknumber">
+    <xs:complexType>
+      <xs:attribute name="total" use="required" type="xs:integer"/>
+      <xs:attribute name="track" use="required" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="comment" type="xs:string"/>
+  <xs:element name="composer" type="xs:string"/>
+  <xs:element name="copyright" type="xs:string"/>
+</xs:schema>

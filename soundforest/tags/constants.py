@@ -3,6 +3,8 @@ Tag constants, including names and descriptions of
 standard tags
 """
 
+import time
+
 # Used for formatting output nicely
 STANDARD_TAG_ORDER = [
     'album_artist',
@@ -162,3 +164,27 @@ STANDARD_TAG_MAP = {
         'description': 'Title used for sorting',
     },
 }
+
+DATE_FORMATS = [
+    '%Y-%m-%dT%H:%M:%SZ',
+    '%Y-%m-%d',
+    '%Y%m%d',
+    '%Y',
+]
+
+def parsedate(value):
+    tval = None
+    for fmt in DATE_FORMATS:
+        try:
+            tval = time.strptime(value,fmt)
+            break
+        except ValueError,emsg:
+            print emsg
+            continue
+    return tval
+
+if __name__ == '__main__':
+    import sys
+    for v in sys.argv[1:]:
+        print v, parsedate(v)
+

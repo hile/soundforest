@@ -7,7 +7,7 @@ import os,base64
 from systematic.shell import normalized
 from soundforest.database.models import SoundForestDB
 from soundforest.tags import TagError
-from soundforest.tags.db import base64_tag,FileTags,TagsDB
+from soundforest.tags.db import base64_tag
 from soundforest.tags.albumart import AlbumArt,AlbumArtError
 from soundforest.tags.constants import STANDARD_TAG_ORDER
 
@@ -375,18 +375,4 @@ class Tags(dict):
 
     def values(self):
         return self.file_tags.values()
-
-if __name__ == '__main__':
-    import sys
-    for f in sys.argv[1:]:
-        print 'Processing: %s' % f
-        t = Tags(f)
-        t.update_tags(tags={
-            'artist': 'Subsistence','album': 'Psytrance', 'title': 'Space Sphere',
-            'totaltracks': 12,
-        })
-        t.file_tags.save()
-        print t.albumart
-        for k,v in t.file_tags.items():
-            print '%16s %s' % (k,'.'.join(v))
 

@@ -249,6 +249,17 @@ class SoundForestDB(object):
             aliases=aliases,
         )
 
+    def get_tree_file_fields(self,tree_id,fields=None):
+        """
+        Return given fields for files matching tree
+        """
+        if fields is not None:
+            if not isinstance(fields,list):
+                raise TypeError(
+                    'get_tree_file_fields field list not a list instance'
+                )
+        return self.backend.get_tree_file_fields(tree_id,fields)
+
     def match_tree(self,path,source=DEFAULT_SOURCE):
         """
         Match given tree path to trees in database
@@ -716,11 +727,14 @@ class Tree(object):
         changes = {'added':[],'deleted':[],'modified':[]}
 
         db_songs = {}
-        db_file_details = self.db.get_tree_fields(
+        db_file_details = self.db.get_tree_file_fields(
             self.id,['id','directory','filename','mtime','deleted']
         )
         for r in db_file_details:
-            db_path = os.path.join(r['directory'],r['filename'])
+            try:
+                db_path = os.path.join(r['directory'],r['filename'])
+            except KeyError:
+                raise ValueError("Received invalid db data: %s" % r)
             db_songs[db_path] = r
         db_song_paths = db_songs.keys()
 
@@ -750,7 +764,7 @@ class Tree(object):
                 if db_path in db_song_paths:
                     db_info = db_songs[db_path]
                     if db_info['mtime'] != mtime:
-                        self.db.update_tree_file_mtime(db_info['id'],mtime)
+                        self.db.update_file_mtime(db_info['id'],mtime)
                         changes['modified'].append(db_path)
                         self.db.create_file_event(self.id,db_path,FILE_MODIFIED)
                         if update_checksums:
@@ -758,7 +772,7 @@ class Tree(object):
                         self.message('Modified: %s' % db_path)
 
                     if db_info['deleted']:
-                        self.db.tree_file_deleted_flag(
+                        self.db.set_file_deleted_flag(
                             os.path.dirname(db_path),
                             os.path.basename(db_path),
                             False
@@ -768,7 +782,7 @@ class Tree(object):
                             TreeFile(self,db_path).update_checksum(force_update=True)
                         self.message('Restored: %s' % db_path)
                 else:
-                    self.db.tree_append_file(
+                    self.db.tree_add_file(
                         self.id,
                         os.path.dirname(db_path),
                         os.path.basename(db_path),
@@ -788,7 +802,7 @@ class Tree(object):
                 continue
             f = os.path.join(self.path,db_path)
             if not os.path.isfile(f):
-                self.db.tree_file_deleted_flag(
+                self.db.set_file_deleted_flag(
                     os.path.dirname(db_path),
                     os.path.basename(db_path),
                     True 

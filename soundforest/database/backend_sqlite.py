@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS files (
 """,
 """CREATE UNIQUE INDEX IF NOT EXISTS file_paths ON files (tree,directory,filename)""",
 """CREATE UNIQUE INDEX IF NOT EXISTS file_mtimes ON files (tree,directory,filename,mtime)""",
+"""CREATE UNIQUE INDEX IF NOT EXISTS files_deleted ON files (id,tree,deleted)""",
 """
 CREATE TABLE IF NOT EXISTS filechanges (
     id          INTEGER PRIMARY KEY,
@@ -109,6 +110,9 @@ CREATE TABLE IF NOT EXISTS decoder (
 );
 """,
 """
+CREATE UNIQUE INDEX IF NOT EXISTS decoders ON decoder(codec,command);
+""",
+"""
 CREATE TABLE IF NOT EXISTS encoder (
     id          INTEGER PRIMARY KEY,
     priority    INTEGER,
@@ -116,6 +120,9 @@ CREATE TABLE IF NOT EXISTS encoder (
     command     TEXT,
     FOREIGN KEY(codec) REFERENCES codec(id) ON DELETE CASCADE
 );
+""",
+"""
+CREATE UNIQUE INDEX IF NOT EXISTS encoders ON encoder(codec,command);
 """,
 """
 CREATE TABLE IF NOT EXISTS playlistsources (
@@ -178,6 +185,10 @@ CREATE TABLE IF NOT EXISTS tags (
 """
 CREATE UNIQUE INDEX IF NOT EXISTS file_tag ON tags (file,tag,value);
 """,
+]
+
+VALID_FILE_FIELDS = [
+    'id','tree','directory','filename','extension','mtime','shasum','deleted'
 ]
 
 class SQliteBackend(object):
@@ -427,7 +438,7 @@ class SQliteBackend(object):
             )
             self.commit()
         except sqlite3.IntegrityError,emsg:
-            self.log.debug('Error adding encoder %s: %s' % (command,emsg))
+            pass
         c.execute(
             'SELECT id FROM encoder WHERE codec=? AND command=?',
             (codec_id,command,),
@@ -448,7 +459,7 @@ class SQliteBackend(object):
             )
             self.commit()
         except sqlite3.IntegrityError,emsg:
-            self.log.debug('Error adding decoder %s: %s' % (command,emsg))
+            pass
         c.execute(
             'SELECT id FROM decoder WHERE codec=? AND command=?',
             (codec_id,command,),
@@ -668,6 +679,26 @@ class SQliteBackend(object):
         aliases = [r[0] for r in c.fetchall()]
         return details,aliases
 
+    def get_tree_file_fields(self,tree_id,fields=None):
+        """
+        Retrieve given fields for all files matching tree ID
+        """
+        c = self.cursor
+        if fields is None:
+            c.execute(
+                'SELECT * FROM files WHERE tree=?',
+                (tree_id,)
+            )
+        else:
+            for f in fields:
+                if f not in VALID_FILE_FIELDS:
+                    raise ValueError('Invalid file query field')
+            c.execute(
+                'SELECT %s FROM files WHERE tree=?' % ','.join(fields),
+                (tree_id,)
+            )
+        return [self.__result2dict__(c,r) for r in c.fetchall()]
+
     def match_tree(self,path,source):
         """
         Retrieve AudioTree matching given path prefix from database.
@@ -717,7 +748,7 @@ class SQliteBackend(object):
         else:
             # Compare path prefix to alias paths
             mpath = path.strip('os.sep').split(os.sep)
-            for alias,tree_path in self.get_aliases(source=source):
+            for alias,tree_path in self.get_tree_aliases(source=source):
                 apath = alias.split(os.sep)
                 if (mpath[:len(apath)] != apath):
                     continue
@@ -788,23 +819,34 @@ class SQliteBackend(object):
         """
         c = self.cursor
         c.execute(
-            'DELETE FROM files WHERE tree=? and deleted=1',
+            'SELECT id,directory,filename FROM files WHERE tree=? AND deleted=1',
             (tree_id,)
         )
+        deleted_ids = [r for r in c.fetchall()]
+        for entry in deleted_ids:
+            fileid,directory,filename = entry
+            self.log.debug('Tree %s: removing deleted file %s' % (
+                tree_id,os.path.join(directory,filename)
+            ))
+            c.execute('DELETE FROM filechanges WHERE file=?',(fileid,))
+            c.execute('DELETE FROM removablefiles WHERE source=?',(fileid,))
+            c.execute('DELETE FROM tags WHERE file=?',(fileid,))
+            c.execute('DELETE FROM files WHERE id=?',(fileid,))
         self.commit()
         del c
 
-    def tree_add_file(self,tree_id,directory,filename,mtime):
+    def tree_add_file(self,tree_id,directory,filename,mtime,deleted=0):
         """
-        Sqlite backend implemenatation of tree_append_file
+        Sqlite backend implemenatation of tree_add_file
         """
         extension = os.path.splitext(filename)[1][1:]
         try:
             c = self.cursor
             c.execute(
-                'INSERT INTO files (tree,mtime,directory,filename,extension) ' +
-                ' VALUES (?,?,?,?,?)',
-                (tree_id,mtime,directory,filename,extension)
+                'INSERT INTO files ' +
+                '(tree,mtime,directory,filename,extension,deleted) ' +
+                'VALUES (?,?,?,?,?,?)',
+                (tree_id,mtime,directory,filename,extension,deleted,),
             )
         except sqlite3.IntegrityError,emsg:
             raise SoundForestDBError('Error adding song: %s' % emsg)
@@ -838,7 +880,7 @@ class SQliteBackend(object):
 
     def update_file_mtime(self,file_id,mtime):
         """
-        Sqlite backend implementation of update_tree_file_mtime
+        Sqlite backend implementation of update_file_mtime
         """
         try:
             c = self.cursor
