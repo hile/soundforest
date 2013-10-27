@@ -4,7 +4,8 @@ Module to detect and store known audio file library paths
 
 import os,logging,sqlite3,base64,time,hashlib
 
-from systematic.shell import normalized,ScriptLogger
+from systematic.shell import normalized
+from systematic.log import Logger
 from systematic.filesystems import MountPoint,MountPoints
 
 from soundforest.metadata import MetaData
@@ -53,7 +54,7 @@ class SoundForestDB(object):
         if message_callback:
             self.message = message_callback
         else:
-            self.message = self.dblog.debug
+            self.message = self.dblog
 
         try:
             backend = DATABASE_BACKENDS[backend]
@@ -78,10 +79,7 @@ class SoundForestDB(object):
         logfile = os.path.splitext(os.path.basename(DATABASE_LOG))[0]
         if not os.path.isdir(logdir):
             os.makedirs(logdir)
-        self.logger = ScriptLogger('soundforest')
-        self.logger.level = logging.DEBUG
-        self.logger.file_handler(logfile,logdir)
-        self.dblog = self.logger[logfile]
+        self.dblog = Logger().register_stream_handler(logfile)
 
     def register_tree_type(self,ttype,description,ignore_duplicate=False):
         """
@@ -262,7 +260,7 @@ class SoundForestDB(object):
 
     def match_tree(self,path,source=DEFAULT_SOURCE):
         """
-        Match given tree path to trees in database
+        Match given path to trees in database
         """
         path = normalized(path)
         try:
@@ -524,11 +522,11 @@ class SoundForestDB(object):
         """
         self.backend.set_tags(path,tags,mtime)
 
-    def get_tags(self,path,source=DEFAULT_SOURCE):
+    def get_tags(self,path,tree_id):
         """
         get file tags file matching given path  
         """
-        return self.backend.get_tags(path,source)
+        return self.backend.get_tags(path,tree_id)
 
 class Codec(object):
     """
@@ -664,10 +662,10 @@ class Tree(object):
             return os.access(self.path,os.X_OK)
 
         if attr == 'directories':
-            return self.db.get_tree_directories(self.id)
+            return self.db.get_directories(self.id)
 
         if attr == 'files':
-            return self.db.get_tree_files(self.id)
+            return self.db.get_files(self.id)
 
         raise AttributeError('No such Tree attribute: %s' % attr)
 
@@ -723,7 +721,6 @@ class Tree(object):
             return
 
         self.message('Updating tree: %s' % self.path)
-
         changes = {'added':[],'deleted':[],'modified':[]}
 
         db_songs = {}
@@ -928,7 +925,7 @@ class TreeFile(object):
             self.__fileformat = None
 
     def __update_cached_attrs(self):
-        self.__cached_attrs.update(self.db.get_tree_file_details(
+        self.__cached_attrs.update(self.db.get_file_details(
             self.tree.id,self.directory,self.filename
         ))
 
@@ -989,9 +986,10 @@ class TreeFileTags(dict):
             raise SoundForestDBError('Not an instance of SoundForestDB')
         self.db = db
         self.path = tree_file.path
+        self.tree = tree_file.tree.id
         self.source = tree_file.tree.source
 
-        for entry in self.db.get_tags(tree_file.path,tree_file.tree.source):
+        for entry in self.db.get_tags(tree_file.path,self.tree):
             if entry['base64']:
                 self[entry['tag']] = Base64Tag(entry['value'])
             else:
@@ -1015,7 +1013,7 @@ class TreeFileTags(dict):
                 raise ValueErro('Invalid tags to set')
         self.db.set_tags(self.path,data,self.source)
         self.clear()
-        for entry in self.db.get_tags(self.path,self.source):
+        for entry in self.db.get_tags(self.path,self.tree):
             if entry['base64']:
                 value = Base64Tag(entry['value'])
             else:

@@ -23,18 +23,13 @@ List changes made to database trees, optionally limiting the data by timestamp.
 This script is intended only as an example how to write watchers, but it still
 works as advertised."""
 
-script = Script()
-script.set_usage(USAGE % {'script':script.name})
-script.add_option('-s','--timestamp',type='int',help='Event start timestamp')
-script.add_option('-S','--tree-source',help='Only show trees with this source')
-script.add_option('-t','--tree-type',help='Tree type, default Songs')
-(opts,args) = (None,None)
-try:
-    (opts,args) = script.parse_args()
-except ScriptError,emsg:
-    script.exit(1,emsg)
+script = Script(description=USAGE)
+script.add_argument('-s','--timestamp',type=int,help='Event start timestamp')
+script.add_argument('-S','--tree-source',help='Only show trees with this source')
+script.add_argument('-t','--tree-type',help='Tree type, default Songs')
+args = script.parse_args()
 
-if opts.tree_type is not None:
+if args.tree_type is not None:
     tree_type = opts.tree_type
 else:
     tree_type = DEFAULT_TREE_TYPE
@@ -42,9 +37,9 @@ else:
 sfdb = SoundForestDB()
 
 for tree in sfdb.trees:
-    if opts.tree_source and tree.source != opts.tree_source:
+    if args.tree_source and tree.source != args.tree_source:
         continue
     for event in tree.file_events(opts.timestamp):
         msg = FILE_MSGS[event['event']]
-        print '%12d %8s %s' % (event['mtime'],msg,event['path'])
+        script.message('%12d %8s %s' % (event['mtime'],msg,event['path']))
 

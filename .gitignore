@@ -5,3 +5,4 @@ dist/
 test/data/*
 *.egg-info/
 .idea
+database.sqlite

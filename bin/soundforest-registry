@@ -7,6 +7,8 @@ import os
 
 from systematic.shell import normalized,Script,ScriptError
 from soundforest.database.models import Tree,SoundForestDB,SoundForestDBError
+from soundforest.tags import TagError
+from soundforest.tags.formats import Tags
 
 DEFAULT_TREE_TYPE = 'Songs'
 
@@ -91,6 +93,11 @@ else:
 if opts.scan_updates:
     for t in trees:
         changes = t.update(opts.update_checksums)
+        for path in [os.path.join(t.path,x) for x in changes['added']]: 
+            print 'Updating tags for new file: %s' % path
+            Tags(path).update()
+        for path in [os.path.join(t.path,x) for x in changes['modified']]: 
+            print 'Updating tags for modified file: %s' % path
 
 if opts.update_checksums and not opts.scan_updates:
     for t in trees:

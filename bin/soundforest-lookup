@@ -13,27 +13,19 @@ RE_TRACKNUMBER = re.compile('^(?P<tracknumber>[0-9]+) (?P<filename>(.*))$')
 DEFAULT_TREE = '/music/m4a'
 DEFAULT_TREE_TYPE = 'Songs'
 
-USAGE = """Usage: %(script)s [options] <names>
-
-Lookup files by name from library database."""
-script = Script()
-script.set_usage(USAGE % {'script': script.name})
-script.add_option('-T','--tree',help='Search files from this tree')
-script.set_defaults(**{'tree': DEFAULT_TREE})
-(opts,args) = (None,None)
-try:
-    (opts,args) = script.parse_args()
-except ScriptError,emsg:
-    script.exit(1,emsg)
-
-if not args or not opts.tree:
+USAGE = """Lookup files by name from library database."""
+script = Script(description=USAGE)
+script.add_argument('-T','--tree',default=DEFAULT_TREE,help='Search files from this tree')
+script.add_argument('paths',nargs='*',help='Paths to process')
+args = script.parse_args()
+if not args or not args.tree:
     script.exit(1,script.get_usage())
 
 adb = SoundForestDB()
-tree = adb.match_tree(opts.tree)
+tree = adb.match_tree(args.tree)
 
 names = []
-for arg in args:
+for arg in args.paths:
     arg = unicode(arg,'utf-8')
     if os.path.isfile(arg):
         names.append(arg)

@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS tree (
 );
 """,
 """
+CREATE UNIQUE INDEX IF NOT EXISTS source_files ON tree (id,source,path);
+""",
+"""
 CREATE UNIQUE INDEX IF NOT EXISTS source_files ON tree (source,path);
 """,
 """
@@ -1326,19 +1329,17 @@ class SQliteBackend(object):
             )
         self.commit()
 
-    def get_tags(self,path,source):
+    def get_tags(self,path,tree):
         """
-        Return tags for given path and data source
+        Return tags for given path and data tree 
         """
         directory = os.path.dirname(path)
         filename = os.path.basename(path)
         c = self.cursor
         c.execute(
             'SELECT tag,value,base64 FROM tags WHERE file=' +
-            '(SELECT f.id FROM files AS f, tree AS t ' +
-            'WHERE f.directory=? AND f.filename=? ' +
-            'AND f.tree=t.id AND t.source=?)',
-            (directory,filename,source,),
+            '(SELECT id FROM files WHERE directory=? AND filename=? AND tree=?)',
+            (directory,filename,tree,),
         )
         return [self.__result2dict__(c,r) for r in c.fetchall()]
 

@@ -28,11 +28,12 @@ for arg in args:
     try:
         arg = normalized(os.path.realpath(arg))
         tree = db.match_tree(arg)
+        if tree is None:
+            raise ValueError
         dbfile = tree[arg]
     except ValueError:
-        tree = None
-        dbfile = None
         script.log.debug('No matching tree and file found')
+        continue
     try:
         xml = XMLTags()
         file_tags = Tags(arg)

@@ -21,6 +21,6 @@ setup(
     url = 'http://tuohela.net/packages/soundforest',
     zip_safe = False,
     packages = ['soundforest']+ ['soundforest.%s' % p for p in find_packages('soundforest')],
-    install_requires = ['systematic>=2.0.0','PIL','mutagen'],
+    install_requires = ['musa>=2.0.1','sqlalchemy'],
     scripts = glob.glob('bin/*'),
 )
