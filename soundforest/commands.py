@@ -2,10 +2,11 @@
 Support for various codec programs in soundforest.
 """
 
+import os
+import sqlite3
+import logging
 
-from subprocess import Popen,PIPE
-import os,sqlite3,logging
-
+from subprocess import Popen, PIPE
 from systematic.shell import CommandPathCache
 
 # Buffer size for Popen command execution
@@ -44,7 +45,7 @@ DEFAULT_CODECS = {
 
   'vorbis': {
     'description': 'Ogg Vorbis',
-    'extensions': ['vorbis','ogg'], 
+    'extensions': ['vorbis','ogg'],
     'encoders': [
         'oggenc --quiet -q 7 -o OUTFILE FILE',
     ],
@@ -55,7 +56,7 @@ DEFAULT_CODECS = {
 
   'flac': {
     'description': 'Free Lossless Audio Codec',
-    'extensions': ['flac'], 
+    'extensions': ['flac'],
     'encoders': [
         'flac -f --silent --verify --replay-gain QUALITY -o OUTFILE FILE',
     ],
@@ -66,9 +67,9 @@ DEFAULT_CODECS = {
 
   'wavpack': {
     'description': 'WavPack Lossless Audio Codec',
-    'extensions': ['wv','wavpack'], 
-    'encoders': [ 'wavpack -yhx FILE -o OUTFILE', ],
-    'decoders': [ 'wvunpack -yq FILE -o OUTFILE', ],
+    'extensions': ['wv', 'wavpack'],
+    'encoders': [ 'wavpack -yhx FILE -o OUTFILE' ],
+    'decoders': [ 'wvunpack -yq FILE -o OUTFILE' ],
   },
 
   'caf': {
@@ -84,20 +85,21 @@ DEFAULT_CODECS = {
 
   'aif': {
       'description': 'AIFF audio',
-      'extensions':   ['aif','aiff'],
-      'encoders': [ 
+      'extensions':   ['aif', 'aiff'],
+      'encoders': [
         'afconvert -f AIFF -d BEI16 FILE OUTFILE',
       ],
       'decoders': [
         'afconvert -f WAVE -d LEI16 FILE OUTFILE',
       ],
-      },
+  },
 
   # TODO - Raw audio, what should be decoder/encoder commands?
   'wav': {
       'description': 'RIFF Wave Audio',
       'extensions':   ['wav'],
-      'encoders': [], 'decoders': [],
+      'encoders': [],
+      'decoders': [],
   },
 
 }
@@ -121,7 +123,7 @@ class CodecCommand(object):
     These arguments are replaced with input and output file names
     when run() is called.
     """
-    def __init__(self,command):
+    def __init__(self, command):
         self.log = logging.getLogger('modules')
         self.command = command.split()
 
@@ -143,7 +145,7 @@ class CodecCommand(object):
         """
         return PATH_CACHE.which(self.command[0]) is None and True or False
 
-    def parse_args(self,input_file,output_file):
+    def parse_args(self, input_file, output_file):
         """
         Validates and returns the command to execute as list, replacing the
         input_file and output_file fields in command arguments.
@@ -153,7 +155,7 @@ class CodecCommand(object):
             raise CodecCommandError('Command not found: %s' % self.command[0])
         try:
             self.validate()
-        except CodecCommandError,emsg:
+        except CodecCommandError, emsg:
             raise CodecCommandError('Error validating codec command: %s' % emsg)
 
         # Make a copy of self.command, not reference!
@@ -162,7 +164,7 @@ class CodecCommand(object):
         args[args.index('OUTFILE')] = output_file
         return args
 
-    def run(self,input_file,output_file,stdout=None,stderr=None,shell=False):
+    def run(self, input_file, output_file, stdout=None, stderr=None, shell=False):
         """
         Run codec command with given input and output files. Please note
         some command line tools may hang when executed like this!
@@ -174,9 +176,9 @@ class CodecCommand(object):
         Returns command return code after execution.
         """
 
-        args = self.parse_args(input_file,output_file)
-        p = Popen(args,bufsize=POPEN_BUFSIZE,env=os.environ,
-            stdin=PIPE,stdout=PIPE,stderr=PIPE,shell=shell
+        args = self.parse_args(input_file, output_file)
+        p = Popen(args, bufsize=POPEN_BUFSIZE, env=os.environ,
+            stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=shell
         )
 
         if stdout is None and stderr is None:
@@ -199,5 +201,5 @@ class CodecCommand(object):
 
         #noinspection PySimplifyBooleanCheck
         if rval != 0:
-            self.log.info('Error executing (returns %d): %s' % (rval,' '.join(args)))
+            self.log.info('Error executing (returns %d): %s' % (rval, ' '.join(args)))
         return rval

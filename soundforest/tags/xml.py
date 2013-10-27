@@ -9,8 +9,7 @@ from lxml.builder import E
 from soundforest.tags.constants import parsedate
 
 class XMLTagError(Exception):
-    def __init__(self):
-        return self.args[0]
+    pass
 
 XML_EXPORT_FIELDS = [
     'path',
@@ -45,9 +44,9 @@ def XMLTrackNumberField(details):
 
 def XMLTrackYear(details):
     value = parsedate(details['year'])
-    if value is None:   
+    if value is None:
         return None
-    return E('year','%d'%value.tm_year)
+    return E('year', '%d'%value.tm_year)
 
 XML_FIELD_CLASSES = {
     'tracknumber': XMLTrackNumberField,
@@ -57,12 +56,12 @@ XML_FIELD_CLASSES = {
 class XMLTags(dict):
     def __init__(self):
         dict.__init__(self)
-        self.tree = None 
+        self.tree = None
 
-    def update(self,details):
-        if not isinstance(details,dict):
+    def update(self, details):
+        if not isinstance(details, dict):
             raise XMLTagError('Details must be dictionary')
-        dict.update(self,details) 
+        dict.update(self, details)
 
     def toxml(self):
         tree = E('track')
@@ -74,6 +73,6 @@ class XMLTags(dict):
                 if node is not None:
                     tree.append(node)
             else:
-                tree.append(E(k,self[k]))
-        return ET.tostring(tree,pretty_print=True)
+                tree.append(E(k, self[k]))
+        return ET.tostring(tree, pretty_print=True)
 

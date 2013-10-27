@@ -9,16 +9,20 @@ import os
 
 # List of filenames we consider as albumart images. Can't be arsed to store this
 # to database, it's a static list anyway and we can extend the list if needed!
-ALBUMART_FILENAMES = [
-    'artwork.jpg','albumart.jpg','coverart.jpg','front.jpg','back.jpg'
-]
+ALBUMART_FILENAMES = ()
+    'artwork.jpg',
+    'albumart.jpg',
+    'coverart.jpg',
+    'front.jpg',
+    'back.jpg',
+)
 # Same for cover booklet filenames: rename these consistently in your library!
 BOOKLET_FILENAMES = [ 'booklet.pdf' ]
 
 # Apple OS/X system files we wish to ignore
 OSX_SYSTEM_FILES = [
     '.com.apple.timemachine.supported',
-    '.DS_Store','.DS Store'
+    '.DS_Store',
 ]
 
 class MetaDataFileType(object):
@@ -30,7 +34,7 @@ class MetaDataFileType(object):
     filenames       List of full filenames to match to this type of metadata
     extensions      List of file extensions to match to this type of metadata
     """
-    def __init__(self,description,filenames=None,extensions=None):
+    def __init__(self, description, filenames=None, extensions=None):
         self.description = description
         self.filenames = filenames
         self.extensions = extensions
@@ -41,7 +45,7 @@ class MetaDataFileType(object):
         """
         return self.description
 
-    def match(self,path):
+    def match(self, path):
         """
         Match given path to this metadata file type. Override in child class
         if you need more complicated logic.
@@ -64,14 +68,14 @@ class OSXSystemFile(MetaDataFileType):
     OS/X system metadata files not relevant for audio trees.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self,'OS/X System file',filenames=OSX_SYSTEM_FILES)
+        MetaDataFileType.__init__(self, 'OS/X System file', filenames=OSX_SYSTEM_FILES)
 
 class AbletonAnalysisFile(MetaDataFileType):
     """
     Ableton track metadata files.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self,'Ableton Live Track Metadata',extensions=['asd'])
+        MetaDataFileType.__init__(self, 'Ableton Live Track Metadata', extensions=['asd'])
 
 class PDFBooklet(MetaDataFileType):
     """
@@ -81,7 +85,7 @@ class PDFBooklet(MetaDataFileType):
     as the album. Someone else may add parser for PDF files in general if needed.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self,'Album Cover Booklet',filenames=BOOKLET_FILENAMES)
+        MetaDataFileType.__init__(self, 'Album Cover Booklet', filenames=BOOKLET_FILENAMES)
 
 class CoverArt(MetaDataFileType):
     """
@@ -90,14 +94,14 @@ class CoverArt(MetaDataFileType):
     Static list of albumart filenames we process are defined in module sources.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self,'Album Artwork',filenames=ALBUMART_FILENAMES)
+        MetaDataFileType.__init__(self, 'Album Artwork', filenames=ALBUMART_FILENAMES)
 
 class m3uPlaylist(MetaDataFileType):
     """
     Playlist files in m3u format
     """
     def __init__(self):
-        MetaDataFileType.__init__(self,'m3u playlist',extensions=['m3u'])
+        MetaDataFileType.__init__(self, 'm3u playlist', extensions=['m3u'])
 
 class MetaData(list):
     """
@@ -115,15 +119,15 @@ class MetaData(list):
         self.register_metadata(PDFBooklet())
         self.register_metadata(OSXSystemFile())
 
-    def register_metadata(self,metadata_class):
+    def register_metadata(self, metadata_class):
         """
         Register instance of a MetaDataFileType class
         """
-        if not isinstance(metadata_class,MetaDataFileType):
+        if not isinstance(metadata_class, MetaDataFileType):
             raise ValueError('Not a MetaDataFileType instance')
         self.append(metadata_class)
 
-    def match(self,path):
+    def match(self, path):
         """
         Match path to registered metadata type parsers.
         Returns matching metadata class or None

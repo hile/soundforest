@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-File embedded processing for soundforest 
+File embedded processing for soundforest
 """
 
 import os
 
-from systematic.shell import normalized,Script,ScriptError
+from systematic.shell import normalized, Script, ScriptError
 
 from soundforest.metadata import MetaData
 from soundforest.tags import TagError
@@ -14,16 +14,17 @@ from soundforest.tags.xml import XMLTags
 from soundforest.database.models import SoundForestDB
 
 script = Script()
-script.add_option('--xml',action='store_true',help='Output XML')
-opts,args = script.parse_args()
+script.add_argument('--xml', action='store_true', help='Output XML')
+script.add_argument('paths', nargs='*', help='Paths to process')
+args = script.parse_args()
 
 metadata = MetaData()
 db = SoundForestDB()
 
-for arg in args:
+for arg in args.paths:
     m = metadata.match(arg)
     if m:
-        script.log.debug('Skip %s file %s' % (m,arg))
+        script.log.debug('Skip %s file %s' % (m, arg))
         continue
     try:
         arg = normalized(os.path.realpath(arg))
@@ -37,19 +38,19 @@ for arg in args:
     try:
         xml = XMLTags()
         file_tags = Tags(arg)
-    except TagError,emsg:
+    except TagError, emsg:
         script.log.debug(emsg)
         continue
 
-    tags = dict((k,' '.join(v)) for k,v in file_tags.items())
+    tags = dict((k, ' '.join(v)) for k, v in file_tags.items())
     dbfile.tags.update_tags(tags)
-    if opts.xml:
+    if args.xml:
         xml.update({'path': arg})
         xml.update(tags)
         print xml.toxml()
     else:
-        for k,v in dbfile.tags.items():
-            print '%16s %s' % (k,v)
+        for k, v in dbfile.tags.items():
+            print '%16s %s' % (k, v)
 
 
 

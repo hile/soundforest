@@ -2,7 +2,10 @@
 Database backends for soundforest
 """
 
-__all__ = ['backend_sqlite','models']
+__all__ = (
+    'backend_sqlite',
+    'models'
+)
 
 
 DEFAULT_DATABASE_BACKEND = 'sqlite'

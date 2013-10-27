@@ -5,9 +5,9 @@ Example script to list changes in soundforest trees after given timestamp.
 If timestamp is not given, all changes are listed.
 """
 
-from systematic.shell import Script,ScriptError
-from soundforest.database.models import SoundForestDB,SoundForestDBError
-from soundforest.database.models import FILE_ADDED,FILE_DELETED,FILE_MODIFIED
+from systematic.shell import Script, ScriptError
+from soundforest.database.models import SoundForestDB, SoundForestDBError
+from soundforest.database.models import FILE_ADDED, FILE_DELETED, FILE_MODIFIED
 
 FILE_MSGS = {
     FILE_ADDED:     'Added',
@@ -24,9 +24,9 @@ This script is intended only as an example how to write watchers, but it still
 works as advertised."""
 
 script = Script(description=USAGE)
-script.add_argument('-s','--timestamp',type=int,help='Event start timestamp')
-script.add_argument('-S','--tree-source',help='Only show trees with this source')
-script.add_argument('-t','--tree-type',help='Tree type, default Songs')
+script.add_argument('-s', '--timestamp', type=int, help='Event start timestamp')
+script.add_argument('-S', '--tree-source', help='Only show trees with this source')
+script.add_argument('-t', '--tree-type', help='Tree type, default Songs')
 args = script.parse_args()
 
 if args.tree_type is not None:
@@ -41,5 +41,5 @@ for tree in sfdb.trees:
         continue
     for event in tree.file_events(opts.timestamp):
         msg = FILE_MSGS[event['event']]
-        script.message('%12d %8s %s' % (event['mtime'],msg,event['path']))
+        script.message('%12d %8s %s' % (event['mtime'], msg, event['path']))
 

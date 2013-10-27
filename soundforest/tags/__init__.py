@@ -4,7 +4,7 @@ Tagging utilities for file formats in soundforest.
 Includes
 """
 
-__all__ = ['albumart','constants','formats','xml']
+__all__ = ['albumart', 'constants', 'formats', 'xml']
 
 class TagError(Exception):
     """

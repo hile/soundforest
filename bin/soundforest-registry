@@ -5,8 +5,8 @@ Script to manage soundforest music tree registrations
 
 import os
 
-from systematic.shell import normalized,Script,ScriptError
-from soundforest.database.models import Tree,SoundForestDB,SoundForestDBError
+from systematic.shell import normalized, Script, ScriptError
+from soundforest.database.models import Tree, SoundForestDB, SoundForestDBError
 from soundforest.tags import TagError
 from soundforest.tags.formats import Tags
 
@@ -30,96 +30,91 @@ Terms used:
   is used as source."""
 
 script = Script()
-script.set_usage(USAGE % {'script': script.name})
-script.add_option('-l','--list',action='store_true',help='List trees')
-script.add_option('-i','--info',action='store_true',help='Show details for registered path')
-script.add_option('-x','--extension',help='File extension to filter with')
-script.add_option('-L','--list-types',action='store_true',help='List tree types')
-script.add_option('-D','--list-directories',action='store_true',help='List directories found in a tree')
-script.add_option('-r','--register',action='store_true',help='Register trees')
-script.add_option('-u','--unregister',action='store_true',help='Unregister trees')
-script.add_option('-s','--scan-updates',action='store_true',help='Scan trees')
-script.add_option('-S','--tree-source',help='Tree source, default is filesystem')
-script.add_option('-e','--verify',action='store_true',help='Verify file types in trees')
-script.add_option('-c','--update-checksums',action='store_true',help='Update file SHA1 checksum while scanning trees')
-script.add_option('-C','--cleanup',action='store_true',help='Remove deleted files from database')
-script.add_option('-t','--tree-type',help='Tree type, default is Songs')
-script.set_defaults(**{'tree_source':'filesystem'})
-(opts,args) = (None,None)
-try:
-    (opts,args) = script.parse_args()
-except ScriptError,emsg:
-    script.exit(1,emsg)
+script.add_argument('-l', '--list', action='store_true', help='List trees')
+script.add_argument('-i', '--info', action='store_true', help='Show details for registered path')
+script.add_argument('-x', '--extension', help='File extension to filter with')
+script.add_argument('-L', '--list-types', action='store_true', help='List tree types')
+script.add_argument('-D', '--list-directories', action='store_true', help='List directories found in a tree')
+script.add_argument('-r', '--register', action='store_true', help='Register trees')
+script.add_argument('-u', '--unregister', action='store_true', help='Unregister trees')
+script.add_argument('-s', '--scan-updates', action='store_true', help='Scan trees')
+script.add_argument('-S', '--tree-source', default='filesystem', help='Tree source')
+script.add_argument('-e', '--verify', action='store_true', help='Verify file types in trees')
+script.add_argument('-c', '--update-checksums', action='store_true', help='Update file SHA1 checksum while scanning trees')
+script.add_argument('-C', '--cleanup', action='store_true', help='Remove deleted files from database')
+script.add_argument('-t', '--tree-type', help='Tree type, default is Songs')
+script.add_argument('paths', nargs='*', help='Paths to process')
+args = script.parse_args()
 
-if opts.register and opts.unregister:
-    script.exit(1,'Flags --register and --unregister conflict.')
+if args.register and args.unregister:
+    script.exit(1, 'Flags --register and --unregister conflict.')
 
 tree_type = None
-if opts.register or opts.unregister:
-    if opts.tree_type is not None:
-        tree_type = opts.tree_type
+if args.register or args.unregister:
+    if args.tree_type is not None:
+        tree_type = args.tree_type
     else:
         tree_type = DEFAULT_TREE_TYPE
 
 try:
-    db = SoundForestDB(message_callback=opts.debug and script.log.debug or None)
-except SoundForestDBError,emsg:
+    db = SoundForestDB(message_callback=args.debug and script.log.debug or None)
+except SoundForestDBError, emsg:
     db = None
-    script.exit(1,emsg)
+    script.exit(1, emsg)
 
-if opts.register:
-    for path in args:
+if args.register:
+    for path in args.paths:
         script.log.debug('Registering: %s' % path)
-        tree = Tree(db,path,opts.tree_source,tree_type)
+        tree = Tree(db, path, args.tree_source, tree_type)
         db.register_tree(tree)
 
-elif opts.unregister:
-    for path in args:
+elif args.unregister:
+    for path in args.paths:
         script.log.debug('Unregistering: %s' % path)
-        tree = Tree(db,path,opts.tree_source,tree_type)
+        tree = Tree(db, path, args.tree_source, tree_type)
         db.unregister_tree(tree)
     script.exit(0)
 
-if not args:
+if not args.paths:
     trees = db.get_trees()
 else:
     trees = []
-    for path in args:
+    for path in args.paths:
         tree = db.match_tree(path)
         if tree is None:
-            script.exit(1,'Unknown tree path: %s' % path)
+            script.exit(1, 'Unknown tree path: %s' % path)
         trees.append(tree)
 
-if opts.scan_updates:
+if args.scan_updates:
     for t in trees:
-        changes = t.update(opts.update_checksums)
-        for path in [os.path.join(t.path,x) for x in changes['added']]: 
+        changes = t.update(args.update_checksums)
+        for path in [os.path.join(t.path, x) for x in changes['added']]:
             print 'Updating tags for new file: %s' % path
             Tags(path).update()
-        for path in [os.path.join(t.path,x) for x in changes['modified']]: 
+        for path in [os.path.join(t.path, x) for x in changes['modified']]:
             print 'Updating tags for modified file: %s' % path
 
-if opts.update_checksums and not opts.scan_updates:
+if args.update_checksums and not args.scan_updates:
     for t in trees:
         for entry in t:
             entry.update_checksum()
 
-if opts.cleanup:
+if args.cleanup:
     for t in trees:
         t.remove_deleted()
 
-if opts.list_types:
-    for name,description in db.tree_types:
-        print '%-16s %s' % (name,description)
+if args.list_types:
+    for name, description in db.tree_types:
+        print '%-16s %s' % (name, description)
 
-if opts.list:
+if args.list:
     for t in trees:
-        print '%-16s %s' % (t.source,t.path)
+        print '%-16s %s' % (t.source, t.path)
 
-if opts.info:
+if args.info:
     for t in trees:
-        if opts.extension:
-            filecount = len(t.match_extension(opts.extension))
+        if args.extension:
+            filecount = len(t.match_extension(args.extension))
         else:
             filecount = len(t.files)
         print INFO_STRING % ({
@@ -130,14 +125,14 @@ if opts.info:
             'file_count': filecount,
         })
 
-if opts.list_directories:
+if args.list_directories:
     for t in trees:
         for relative_path in t.directories:
             print relative_path
-            if opts.verbose:
+            if args.verbose:
                 print '\t%s' % '\n\t'.join(str(f) for f in t.directory_files(relative_path))
 
-if opts.verify:
+if args.verify:
     for t in trees:
         script.log.info('Verifying tree files: %s' % t.path)
         for entry in t:

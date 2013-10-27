@@ -5,23 +5,24 @@ Rename files in given directory based on various criteria
 
 import os
 
-from systematic.shell import normalized,Script,ScriptError
-from soundforest.database.models import Tree,SoundForestDB,SoundForestDBError
+from systematic.shell import normalized, Script, ScriptError
+from soundforest.database.models import Tree, SoundForestDB, SoundForestDBError
 
 USAGE = """Usage: %(script)s [options] <path>
 
 Automatically rename files in given path based on criteria defined by
 arguments.
 
-Tree must be registered to soundforest database.""" 
+Tree must be registered to soundforest database."""
 
 script = Script()
 script.set_usage(USAGE % {'script': script.name})
-script.add_option('-n','--renumber',help='Renumber filenames in current order')
-(opts,args) = script.parse_args()
+script.add_argument('-n', '--renumber', help='Renumber filenames in current order')
+script.add_argument('paths', nargs='*', help='Paths to process')
+args = script.parse_args()
 
-if len(args)!=1:
-    script.exit(1,script.get_usage())
+if len(args.paths)!=1:
+    script.exit(1, script.get_usage())
 
 adb = SoundForestDB()
 tree = adb.match_tree(args[0])
@@ -32,13 +33,13 @@ for f in tree.match_path(relative_path):
 script.exit(0)
 
 all_trees = sfdb.get_trees()
-trees = [] 
-for path in args:
+trees = []
+for path in args.paths:
     path = normalized(os.path.realpath(path))
     try:
         trees.append(filter(lambda t: t.path==path, all_trees)[0])
     except IndexError:
-        script.exit(1,'Unknown tree path: %s' % path)
+        script.exit(1, 'Unknown tree path: %s' % path)
 
 script.log.debug('Comparing directories')
 src_dirs = trees[0].directories
@@ -46,7 +47,7 @@ dst_dirs = trees[1].directories
 missing_dirs = []
 for d in src_dirs:
     if d not in dst_dirs:
-        missing_dirs.append(d)        
+        missing_dirs.append(d)
         print "MISSING DIRECTORY %s" % d
 
 script.log.debug('Comparing files')

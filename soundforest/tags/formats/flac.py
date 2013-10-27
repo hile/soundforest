@@ -4,11 +4,11 @@ Flac file tag parser
 """
 
 from mutagen.flac import FLAC
-from mutagen.flac import Picture,FLACNoHeaderError
+from mutagen.flac import Picture, FLACNoHeaderError
 
 from soundforest.tags import TagError
-from soundforest.tags.formats import TagParser,TrackNumberingTag,TrackAlbumart
-from soundforest.tags.albumart import AlbumArt,AlbumArtError
+from soundforest.tags.formats import TagParser, TrackNumberingTag, TrackAlbumart
+from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 FLAC_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
 
@@ -63,10 +63,10 @@ class FLACAlbumart(TrackAlbumart):
     """
     Encoding of flac albumart to flac Picture tags
     """
-    def __init__(self,track):
-        if not isinstance(track,flac):
+    def __init__(self, track):
+        if not isinstance(track, flac):
             raise TagError('Track is not instance of flac')
-        TrackAlbumart.__init__(self,track)
+        TrackAlbumart.__init__(self, track)
 
         try:
             self.albumart = AlbumArt()
@@ -75,16 +75,16 @@ class FLACAlbumart(TrackAlbumart):
             self.albumart = None
             return
 
-    def import_albumart(self,albumart):
+    def import_albumart(self, albumart):
         """
         Imports albumart object to the file tags.
 
         Sets self.track.modified to True
         """
-        TrackAlbumart.import_albumart(self,albumart)
+        TrackAlbumart.import_albumart(self, albumart)
 
         p = Picture()
-        [setattr(p,k,v) for k,v in self.albumart.info.items()]
+        [setattr(p, k, v) for k, v in self.albumart.info.items()]
         self.track.entry.add_picture(p)
         self.track.modified = True
 
@@ -94,15 +94,15 @@ class FLACNumberingTag(TrackNumberingTag):
     The tag can be either a single number or two numbers separated by /
     If total is given, the value must be integer.
     """
-    def __init__(self,track,tag):
-        TrackNumberingTag.__init__(self,track,tag)
+    def __init__(self, track, tag):
+        TrackNumberingTag.__init__(self, track, tag)
 
         if not self.track.entry.has_key(self.tag):
             return
 
         value = self.track.entry[self.tag]
         try:
-            value,total = value[0].split('/',1)
+            value, total = value[0].split('/', 1)
         except ValueError:
             value = value[0]
             total = None
@@ -121,21 +121,21 @@ class flac(TagParser):
     """
     Class for processing Ogg FLAC file tags
     """
-    def __init__(self,codec,path):
-        TagParser.__init__(self,codec,path,tag_map=FLAC_STANDARD_TAGS)
+    def __init__(self, codec, path):
+        TagParser.__init__(self, codec, path, tag_map=FLAC_STANDARD_TAGS)
 
         try:
             self.entry = FLAC(path)
-        except IOError,e:
-            raise TagError('Error opening %s: %s' % (path,str(e)))
-        except FLACNoHeaderError,e:
-            raise TagError('Error opening %s: %s' % (path,str(e)))
+        except IOError, e:
+            raise TagError('Error opening %s: %s' % (path, str(e)))
+        except FLACNoHeaderError, e:
+            raise TagError('Error opening %s: %s' % (path, str(e)))
 
         self.albumart = None
-        self.track_numbering = FLACNumberingTag(self,'TRACKNUMBER')
-        self.disk_numbering = FLACNumberingTag(self,'DISKNUMBER')
+        self.track_numbering = FLACNumberingTag(self, 'TRACKNUMBER')
+        self.disk_numbering = FLACNumberingTag(self, 'DISKNUMBER')
 
-    def __getitem__(self,item):
+    def __getitem__(self, item):
         if item == 'tracknumber':
             return [unicode('%d' % self.track_numbering.value)]
         if item == 'totaltracks':
@@ -144,10 +144,10 @@ class flac(TagParser):
             return [unicode('%d' % self.disk_numbering.value)]
         if item == 'totaldisks':
             return [unicode('%d' % self.disk_numbering.total)]
-        return TagParser.__getitem__(self,item)
+        return TagParser.__getitem__(self, item)
 
-    def __field2tag__(self,field):
-        return TagParser.__field2tag__(self,field.upper())
+    def __field2tag__(self, field):
+        return TagParser.__field2tag__(self, field.upper())
 
     def keys(self):
         """
@@ -173,9 +173,9 @@ class flac(TagParser):
                     keys.remove(tag)
         return [x.lower() for x in self.sort_keys(keys)]
 
-    def set_tag(self,item,value):
+    def set_tag(self, item, value):
         """
-        All flac tags are unicode strings, and there can be multiple
+        All flac tags are unicode strings,  and there can be multiple
         tags with same name.
         We do special precessing for track and disk numbering.
         """
@@ -192,7 +192,7 @@ class flac(TagParser):
             self.disk_numbering.total = value
             return
 
-        if not isinstance(value,list):
+        if not isinstance(value, list):
             value = [value]
 
         tags = self.__tag2fields__(item)
@@ -206,8 +206,8 @@ class flac(TagParser):
             if FLAC_TAG_FORMATTERS.has_key(item):
                 entries.append(FLAC_TAG_FORMATTERS[item](v))
             else:
-                if not isinstance(v,unicode):
-                    v = unicode(v,'utf-8')
+                if not isinstance(v, unicode):
+                    v = unicode(v, 'utf-8')
                 entries.append(v)
         self.entry[item] = entries
         self.modified = True

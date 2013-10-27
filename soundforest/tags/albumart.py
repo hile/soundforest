@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 """
 Abstraction for album art image format processing
-""" 
+"""
 
-import os,logging,StringIO
+import os
+import logging
+import StringIO
+
 from PIL import ImageFile
 
 PIL_EXTENSION_MAP = {
-    'JPEG':     'jpg',
-    'PNG':      'png',
+    'JPEG': 'jpg',
+    'PNG': 'png',
 }
 
 PIL_MIME_MAP = {
@@ -18,10 +21,10 @@ PIL_MIME_MAP = {
 
 class AlbumArtError(Exception):
     """
-    Exception thrown by errors in file metadata, parameters or 
+    Exception thrown by errors in file metadata, parameters or
     file permissiosns.
     """
-    def __str__(self):  
+    def __str__(self):
         return self.args[0]
 
 class AlbumArt(object):
@@ -103,7 +106,7 @@ class AlbumArt(object):
                 raise AlbumArtError('AlbumArt not yet initialized.')
             if attr == 'image':
                 return self.__image
-            elif attr == 'format': 
+            elif attr == 'format':
                 return self.__image.format
         if attr == 'info':
             if self.__image is None:
