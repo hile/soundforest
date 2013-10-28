@@ -1,14 +1,15 @@
 # coding=utf-8
-"""
+"""vorbis tags
+
 Vorbis file tag parser
+
 """
 
 from mutagen.oggvorbis import OggVorbis, OggVorbisHeaderError
 
 from soundforest.tags import TagError
-from soundforest.tags.formats import TagParser, TrackNumberingTag
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
-from soundforest.tags.db import base64_tag
 
 VORBIS_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
 
@@ -86,8 +87,10 @@ class VorbisNumberingTag(TrackNumberingTag):
         Set new numbering information to vorbis tags, marking file
         dirty to require saving but not saving tags.
         """
-        self.track.entry[self.tag] = '%s' % self.__repr__()
-        self.track.modified = True
+        value = self.__repr__()
+        if value is not None:
+            self.track.entry[self.tag] = '%s' % value
+            self.track.modified = True
 
 class vorbis(TagParser):
     """
@@ -98,12 +101,12 @@ class vorbis(TagParser):
 
         try:
             self.entry = OggVorbis(path)
-        except IOError, e:
-            raise TagError('Error opening %s: %s' % (path, str(e)))
-        except OggVorbisHeaderError, e:
-            raise TagError('Error opening %s: %s' % (path, str(e)))
+        except IOError, emsg:
+            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+        except OggVorbisHeaderError, emsg:
+            raise TagError('Error opening %s: %s' % (path, str(emsg)))
 
-        self.albumart = None
+        self.albumart_obj = None
         self.track_numbering = VorbisNumberingTag(self, 'TRACKNUMBER')
         self.disk_numbering = VorbisNumberingTag(self, 'DISKNUMBER')
 
@@ -144,6 +147,9 @@ class vorbis(TagParser):
                 if tag in keys:
                     keys.remove(tag)
         return [x.lower() for x in self.sort_keys(keys)]
+
+    def has_key(self,  tag):
+        return tag.lower() in self.keys()
 
     def set_tag(self, item, value):
         """

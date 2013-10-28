@@ -1,13 +1,15 @@
 # coding=utf-8
-"""
+"""FLAC tags
+
 Flac file tag parser
+
 """
 
 from mutagen.flac import FLAC
 from mutagen.flac import Picture, FLACNoHeaderError
 
 from soundforest.tags import TagError
-from soundforest.tags.formats import TagParser, TrackNumberingTag, TrackAlbumart
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 FLAC_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
@@ -28,7 +30,7 @@ FLAC_STANDARD_TAGS = {
     'note':                 ['NOTE'],
     'description':          ['DESCRIPTION'],
     'location':             ['LOCATION'],
-    'year':                 ['DATE'],
+    'year':                 ['DATE','YEAR'],
     'bpm':                  ['BPM'],
     'rating':               ['RATING'],
     'label':                ['ORGANIZATION'],
@@ -114,8 +116,10 @@ class FLACNumberingTag(TrackNumberingTag):
         Set new numbering information to vorbis tags, marking file
         dirty to require saving but not saving tags.
         """
-        self.track.entry[self.tag] = '%s' % self.__repr__()
-        self.track.modified = True
+        value = self.__repr__()
+        if value is not None:
+            self.track.entry[self.tag] = '%s' % value
+            self.track.modified = True
 
 class flac(TagParser):
     """
@@ -126,12 +130,12 @@ class flac(TagParser):
 
         try:
             self.entry = FLAC(path)
-        except IOError, e:
-            raise TagError('Error opening %s: %s' % (path, str(e)))
-        except FLACNoHeaderError, e:
-            raise TagError('Error opening %s: %s' % (path, str(e)))
+        except IOError, emsg:
+            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+        except FLACNoHeaderError, emsg:
+            raise TagError('Error opening %s: %s' % (path, str(emsg)))
 
-        self.albumart = None
+        self.albumart_obj = None
         self.track_numbering = FLACNumberingTag(self, 'TRACKNUMBER')
         self.disk_numbering = FLACNumberingTag(self, 'DISKNUMBER')
 
@@ -164,7 +168,6 @@ class flac(TagParser):
         if 'DISKNUMBER' in [x.upper() for x in keys]:
             if self.disk_numbering.total is not None:
                 keys.append('totaldisks')
-
         if FLAC_ALBUMART_TAG in [x.upper() for x in keys]:
             keys.remove(FLAC_ALBUMART_TAG)
         for replaygain_tag_fields in FLAC_REPLAYGAIN_TAGS.values():
@@ -173,9 +176,12 @@ class flac(TagParser):
                     keys.remove(tag)
         return [x.lower() for x in self.sort_keys(keys)]
 
+    def has_key(self, tag):
+        return tag.lower() in self.keys()
+
     def set_tag(self, item, value):
         """
-        All flac tags are unicode strings,  and there can be multiple
+        All flac tags are unicode strings, and there can be multiple
         tags with same name.
         We do special precessing for track and disk numbering.
         """

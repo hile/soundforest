@@ -1,6 +1,8 @@
-"""
-Tag constants, including names and descriptions of
-standard tags
+# coding=utf-8
+"""Tag constants
+
+Tag constants, including names and descriptions of standard tags
+
 """
 
 import time
@@ -172,19 +174,27 @@ DATE_FORMATS = [
     '%Y',
 ]
 
+def sorted_tags(tags):
+    sorted_tags = []
+
+    for tag in STANDARD_TAG_ORDER:
+        if tag in tags:
+            sorted_tags.append(tag)
+
+    for tag in tags:
+        if tag in sorted(tags):
+            if tag not in sorted_tags:
+                sorted_tags.append(tag)
+
+    return sorted_tags
+
 def parsedate(value):
     tval = None
     for fmt in DATE_FORMATS:
         try:
-            tval = time.strptime(value,fmt)
+            tval = time.strptime(value, fmt)
             break
-        except ValueError,emsg:
-            print emsg
+        except ValueError, emsg:
             continue
     return tval
-
-if __name__ == '__main__':
-    import sys
-    for v in sys.argv[1:]:
-        print v, parsedate(v)
 

@@ -1,5 +1,8 @@
-"""
+# coding=utf-8
+"""mp3 tags
+
 mp3 file tag parser
+
 """
 
 from mutagen.mp3 import MP3
@@ -8,7 +11,7 @@ from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from mutagen.id3 import error as ID3Error
 
 from soundforest.tags import TagError
-from soundforest.tags.formats import TagParser, TrackNumberingTag, TrackAlbumart
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 MP3_ALBUMART_TAG = ''
@@ -45,7 +48,7 @@ MP3_TAG_FORMATTERS = {
 
 }
 
-def encode_frame(tag, value):
+def encode_frame(tag,value):
     """
     Return a mp3 frame object matching tag
     """
@@ -55,9 +58,7 @@ def encode_frame(tag, value):
         if tagclass is None:
             raise AttributeError
     except AttributeError, emsg:
-        raise TagError(
-            'Error importing ID3 frame %s: %s' % (tag, emsg)
-        )
+        raise TagError('Error importing ID3 frame %s: %s' % (tag, emsg))
     if not isinstance(value, list):
         value = [value]
     return tagclass(encoding=3, text=value)
@@ -118,8 +119,8 @@ class MP3NumberingTag(TrackNumberingTag):
             self.value = int(self.value)
             self.total = int(self.total)
         except ValueError:
-            raise TagError('Unsupported tag value for %s: %s' %
-                (self.tag, self.track.entry[self.tag].text[0])
+            raise TagError('Unsupported tag value for %s: %s' % (
+                self.tag, self.track.entry[self.tag].text[0])
             )
 
     def save_tag(self):
@@ -155,11 +156,11 @@ class mp3(TagParser):
 
         try:
             self.entry = MP3(self.path, ID3=ID3)
-        except IOError, e:
+        except IOError:
             raise TagError('No ID3 header in %s' % self.path)
-        except ID3NoHeaderError, e:
+        except ID3NoHeaderError:
             raise TagError('No ID3 header in %s' % self.path)
-        except RuntimeError, e:
+        except RuntimeError:
             raise TagError('Runtime error loading %s' % self.path)
 
         try:
@@ -167,7 +168,7 @@ class mp3(TagParser):
         except ID3Error:
             pass
 
-        self.albumart = MP3AlbumArt(self)
+        self.albumart_obj = MP3AlbumArt(self)
         self.track_numbering = MP3NumberingTag(self, 'TRCK')
         self.disk_numbering = MP3NumberingTag(self, 'TPOS')
 
@@ -188,7 +189,7 @@ class mp3(TagParser):
             return [unicode('%d'%self.disk_numbering.total)]
 
         if item[:5] == 'APIC:':
-            return self.albumart
+            return self.albumart_obj
 
         fields = self.__tag2fields__(item)
         for field in fields:
@@ -199,19 +200,30 @@ class mp3(TagParser):
                 tag = [tag]
             values = []
             for value in tag:
-                value = value.text[0]
+                matched = False
+                for field in ['text', 'url']:
+                    if hasattr(value, field):
+                        value = getattr(value, field)
+                        if isinstance(value, list):
+                            value = value[0]
+                        matched = True
+                        break
+
+                if value is None:
+                    continue
+
+                if not matched:
+                    raise TagError('Error parsing %s: %s' % (tag, dir(value)))
+
                 if not isinstance(value, unicode):
                     try:
                         value = '%d' % int(str(value))
-                    except TypeError, emsg:
+                    except ValueError, emsg:
                         pass
                     try:
                         value = unicode(value, 'utf-8')
                     except UnicodeDecodeError, emsg:
-                        raise TagError(
-                            'Error decoding %s tag %s: %s' %
-                            (self.path, field, emsg)
-                        )
+                        raise TagError('Error decoding %s tag %s: %s' % (self.path, field, emsg) )
                 values.append(value)
             return values
         raise KeyError('No such tag: %s' % fields)
@@ -222,6 +234,7 @@ class mp3(TagParser):
         for t in tags:
             if self.entry.tags.has_key(t):
                 del(self.entry.tags[t])
+                self.modified = True
 
     def keys(self):
         """

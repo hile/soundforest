@@ -1,6 +1,8 @@
 # coding=utf-8
-"""
+"""AAC tags
+
 AAC file tag parser
+
 """
 
 import base64
@@ -9,15 +11,14 @@ import struct
 from mutagen.mp4 import MP4, MP4Cover, MP4StreamInfoError, MP4MetadataValueError
 
 from soundforest.tags import TagError
-from soundforest.tags.formats import TagParser, TrackNumberingTag, TrackAlbumart
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
-from soundforest.tags.db import base64_tag
 
 # Albumart filed processing
 AAC_ALBUMART_TAG = 'covr'
 AAC_ALBUMART_PIL_FORMAT_MAP = {
-    'JPEG': MP4Cover.FORMAT_JPEG,
-    'PNG': MP4Cover.FORMAT_PNG
+    'JPEG':     MP4Cover.FORMAT_JPEG,
+    'PNG':      MP4Cover.FORMAT_PNG
 }
 
 AAC_STANDARD_TAGS = {
@@ -25,6 +26,7 @@ AAC_STANDARD_TAGS = {
     'artist':               ['\xa9ART'],
     'composer':             ['\xa9wrt'],
     'conductor':            ['cond'],
+    'discid':               ['disc'],
     'orchestra':            ['orch'],
     'performers':           ['ense'],
     'album':                ['\xa9alb'],
@@ -37,6 +39,8 @@ AAC_STANDARD_TAGS = {
     'year':                 ['\xa9day'],
     'bpm':                  ['tmpo'],
     'rating':               ['rati'],
+    'replaygain':           ['repl'],
+    'mcn':                  ['mcn\x00'],
     'label':                ['labe'],
     'copyright':            ['cprt'],
     'license':              ['lice'],
@@ -84,12 +88,12 @@ AAC_UNOFFICIAL_TAGS = {
     'musicbrainz_id':       ['musi'],
 }
 
-# These values are (value,value) pairs in metadata
+# These values are (value, value) pairs in metadata
 AAC_INTEGER_TUPLE_TYPES = [ 'trkn', 'disk' ]
 
 # Placeholder to write lambda functions to process specific tags if needed
 AAC_TAG_FORMATTERS = {
-
+    'tmpo':    lambda x: int(x),
 }
 
 class AACAlbumArt(TrackAlbumart):
@@ -102,9 +106,9 @@ class AACAlbumArt(TrackAlbumart):
     def __init__(self, track, tag=AAC_ALBUMART_TAG):
         if not isinstance(track, aac):
             raise TagError('Track is not instance of aac')
+
         TrackAlbumart.__init__(self, track)
         self.tag = AAC_ALBUMART_TAG
-
         if not self.track.entry.has_key(self.tag):
             return
         try:
@@ -112,6 +116,7 @@ class AACAlbumArt(TrackAlbumart):
             albumart.import_data(self.track.entry[self.tag][0])
         except AlbumArtError, emsg:
             raise TagError('Error reading AAC albumart tag: %s' % emsg)
+
         self.albumart = albumart
 
     def import_albumart(self, albumart):
@@ -123,20 +128,22 @@ class AACAlbumArt(TrackAlbumart):
         TrackAlbumart.import_albumart(self, albumart)
 
         try:
-            img_format = AAC_ALBUMART_PIL_FORMAT_MAP[self.albumart.out_format]
+            img_format = AAC_ALBUMART_PIL_FORMAT_MAP[self.albumart.get_fileformat()]
         except KeyError:
-            raise TagError(
-                'Unsupported albumart format %s' % self.albumart.out_format
-            )
+            raise TagError('Unsupported albumart format %s' % self.albumart.get_fileformat() )
         try:
             tag = MP4Cover(data=self.albumart.dump(), imageformat=img_format)
         except MP4MetadataValueError, emsg:
             raise TagError('Error encoding albumart: %s' % emsg)
 
         if self.track.entry.has_key(self.tag):
-            del self.track.entry[self.tag]
+            if self.track.entry[self.tag] != [tag]:
+                del self.track.entry[self.tag]
+            else:
+                return False
         self.track.entry[self.tag] = [tag]
         self.track.modified = True
+        return self.track.modified
 
 class AACIntegerTuple(TrackNumberingTag):
     """
@@ -150,6 +157,13 @@ class AACIntegerTuple(TrackNumberingTag):
             return
 
         self.value, self.total = self.track.entry[self.tag][0]
+
+    def delete_tag(self):
+        self.value = None
+        self.total = None
+        if self.tag in self.track.entry.keys():
+            del self.track.entry[self.tag]
+            self.track.modified = True
 
     def save_tag(self):
         """
@@ -180,14 +194,18 @@ class aac(TagParser):
             self.entry = MP4(self.path)
         except IOError, emsg:
             raise TagError('Error opening %s: %s' % (path, str(emsg)))
+
         except MP4StreamInfoError, emsg:
             raise TagError('Error opening %s: %s' % (path, str(emsg)))
+
         except struct.error:
             raise TagError('Invalid tags in %s' % path)
+
         except RuntimeError, emsg:
             raise TagError('Error opening %s: %s' % (path, str(emsg)))
 
-        self.albumart = AACAlbumArt(self)
+        self.supports_albumart = True
+        self.albumart_obj = AACAlbumArt(self)
         self.track_numbering = AACIntegerTuple(self, 'trkn')
         self.disk_numbering = AACIntegerTuple(self, 'disk')
 
@@ -213,6 +231,56 @@ class aac(TagParser):
             return keys
         return TagParser.__getitem__(self, item)
 
+    def __delitem__(self, item):
+        if item in ['tracknumber', 'totaltracks']:
+            return self.track_numbering.delete_tag()
+        if item in ['disknumber', 'totaldisks']:
+            return self.disk_numbering.delete_tag()
+        return TagParser.__delitem__(self, item)
+
+    def set_tag(self, item, value):
+        """
+        Set given tag to correct type of value in tags.
+
+        Normal tag values in AAC tags are always a list
+        and you can pass this function a list to set all values.
+
+        Tracknumber, totaltracks, disknumber and totaldisks
+        attributes must be integers.
+
+        Existing tag value list is replaced.
+        """
+        if item == 'tracknumber':
+            self.track_numbering.value = value
+        elif item == 'totaltracks':
+            self.track_numbering.total = value
+        elif item == 'disknumber':
+            self.disk_numbering.value = value
+        elif item == 'totaldisks':
+            self.disk_numbering.total = value
+        else:
+            if not isinstance(value, list):
+                value = [value]
+
+            tags = self.__tag2fields__(item)
+            item = tags[0]
+            for tag in tags[1:]:
+                if self.entry.has_key(tag):
+                    del self.entry[tag]
+
+            entries =[]
+            for v in value:
+                if AAC_TAG_FORMATTERS.has_key(item):
+                    formatted = AAC_TAG_FORMATTERS[item](v)
+                    entries.append(formatted)
+                else:
+                    if not isinstance(v, unicode):
+                        v = unicode(v, 'utf-8')
+                    entries.append(v)
+            self.entry[item] = entries
+
+        self.modified = True
+
     def keys(self):
         """
         Return tag names sorted with self.sort_keys()
@@ -234,53 +302,20 @@ class aac(TagParser):
                     keys.remove(tag)
         return self.sort_keys(keys)
 
-    def set_tag(self, item, value):
+    def has_key(self, key):
+        """Extended has_key
+
+        Extend has_key with tracknumber info
+
         """
-        Set given tag to correct type of value in tags.
-
-        Normal tag values in AAC tags are always a list
-        and you can pass this function a list to set all values.
-
-        Tracknumber, totaltracks, disknumber and totaldisks
-        attributes must be integers.
-
-        Existing tag value list is replaced.
-        """
-        if item == 'tracknumber':
-            self.track_numbering.value = value
-            return
-        if item == 'totaltracks':
-            self.track_numbering.total = value
-            return
-        if item == 'disknumber':
-            self.disk_numbering.value = value
-            return
-        if item == 'totaldisks':
-            self.disk_numbering.total = value
-            return
-
-        if not isinstance(value, list):
-            value = [value]
-
-        tags = self.__tag2fields__(item)
-        item = tags[0]
-        for tag in tags[1:]:
-            if self.entry.has_key(tag):
-                del self.entry[tag]
-
-        entries =[]
-        for v in value:
-            if AAC_TAG_FORMATTERS.has_key(item):
-                entries.append(AAC_TAG_FORMATTERS[item](v))
-            else:
-                if not isinstance(v, unicode):
-                    v = unicode(v, 'utf-8')
-                entries.append(v)
-        self.entry[item] = entries
-        self.modified = True
+        return key in self.keys()
 
     def save(self):
         """
         Save AAC tags to the file
         """
-        TagParser.save(self)
+        try:
+            TagParser.save(self)
+        except MP4MetadataValueError, emsg:
+            raise TagError(emsg)
+        self.modified = False

@@ -9,7 +9,7 @@ import os
 
 # List of filenames we consider as albumart images. Can't be arsed to store this
 # to database, it's a static list anyway and we can extend the list if needed!
-ALBUMART_FILENAMES = ()
+ALBUMART_FILENAMES = (
     'artwork.jpg',
     'albumart.jpg',
     'coverart.jpg',

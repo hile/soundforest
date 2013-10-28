@@ -68,11 +68,13 @@ class XMLTags(dict):
         for k in XML_EXPORT_FIELDS:
             if not k in self.keys():
                 continue
+
             if k in XML_FIELD_CLASSES.keys():
                 node = XML_FIELD_CLASSES[k](self)
                 if node is not None:
                     tree.append(node)
             else:
                 tree.append(E(k, self[k]))
+
         return ET.tostring(tree, pretty_print=True)
 
