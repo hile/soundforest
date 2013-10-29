@@ -206,6 +206,10 @@ class ScriptCommand(object):
         if debug:
             self.parser.add_argument('--debug', action='store_true', help='Debug messages')
 
+    @property
+    def db(self):
+        return self.script.db
+
     def add_argument(self, *args, **kwargs):
         self.parser.add_argument(*args, **kwargs)
 

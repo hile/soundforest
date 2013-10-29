@@ -66,9 +66,63 @@ class Base64Field(TypeDecorator):
         return base64.decode(value)
 
 
-class Setting(Base):
+class BasePathNamedModel(object):
+    """Base name comparable with name string"""
 
-    """Setting
+    def __cmp__(self, other):
+        if isinstance(other, basestring):
+            return cmp(self.path, other)
+        return cmp(self, other)
+
+    def __eq__(self, other):
+        return self.__cmp__(other) == 0
+
+    def __ne__(self, other):
+        return self.__cmp__(other) != 0
+
+    def __lt__(self, other):
+        return self.__cmp__(other) < 0
+
+    def __lte__(self, other):
+        return self.__cmp__(other) <= 0
+
+    def __gt__(self, other):
+        return self.__cmp__(other) > 0
+
+    def __gte__(self, other):
+        return self.__cmp__(other) >= 0
+
+
+class BaseNamedModel(object):
+    """Base name comparable with name string"""
+
+    def __cmp__(self, other):
+        if isinstance(other, basestring):
+            return cmp(self.name, other)
+        return cmp(self, other)
+
+    def __eq__(self, other):
+        return self.__cmp__(other) == 0
+
+    def __ne__(self, other):
+        return self.__cmp__(other) != 0
+
+    def __lt__(self, other):
+        return self.__cmp__(other) < 0
+
+    def __lte__(self, other):
+        return self.__cmp__(other) <= 0
+
+    def __gt__(self, other):
+        return self.__cmp__(other) > 0
+
+    def __gte__(self, other):
+        return self.__cmp__(other) >= 0
+
+
+class SettingModel(Base):
+
+    """SettingModel
 
     Soundforest internal application preferences
 
@@ -81,9 +135,9 @@ class Setting(Base):
     value = Column(SafeUnicode)
 
 
-class SyncTarget(Base):
+class SyncTargetModel(Base, BaseNamedModel):
 
-    """SyncTarget
+    """SyncTargetModel
 
     Library tree synchronization target entry
 
@@ -109,9 +163,9 @@ class SyncTarget(Base):
             'defaults': self.defaults,
         }
 
-class Codec(Base):
+class CodecModel(Base, BaseNamedModel):
 
-    """Codec
+    """CodecModel
 
     Audio format codecs
 
@@ -127,84 +181,84 @@ class Codec(Base):
         return self.name
 
     def register_extension(self, session, extension):
-        existing = session.query(Extension).filter(
-            Extension.extension == extension
+        existing = session.query(ExtensionModel).filter(
+            ExtensionModel.extension == extension
         ).first()
         if existing:
-            raise SoundforestError('Extension already registered: %s' % extension)
+            raise SoundforestError('ExtensionModel already registered: %s' % extension)
 
-        session.add(Extension(codec=self, extension=extension))
+        session.add(ExtensionModel(codec=self, extension=extension))
         session.commit()
 
     def unregister_extension(self, session, extension):
-        existing = session.query(Extension).filter(
-            Extension.extension == extension
+        existing = session.query(ExtensionModel).filter(
+            ExtensionModel.extension == extension
         ).first()
         if not existing:
-            raise SoundforestError('Extension was not registered: %s' % extension)
+            raise SoundforestError('ExtensionModel was not registered: %s' % extension)
 
         session.delete(existing)
         session.commit()
 
     def register_decoder(self, session, command):
-        existing = session.query(Decoder).filter(
-            Decoder.codec == self,
-            Decoder.command == command
+        existing = session.query(DecoderModel).filter(
+            DecoderModel.codec == self,
+            DecoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('Decoder already registered: %s' % command)
+            raise SoundforestError('DecoderModel already registered: %s' % command)
 
-        session.add(Decoder(codec=self, command=command))
+        session.add(DecoderModel(codec=self, command=command))
         session.commit()
 
     def unregister_decoder(self, session, command):
-        existing = session.query(Decoder).filter(
-            Decoder.codec == self,
-            Decoder.command == command
+        existing = session.query(DecoderModel).filter(
+            DecoderModel.codec == self,
+            DecoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('Decoder was not registered: %s' % command)
+            raise SoundforestError('DecoderModel was not registered: %s' % command)
 
         session.delete(existing)
         session.commit()
 
     def register_encoder(self, session, command):
-        existing = session.query(Encoder).filter(
-            Encoder.codec == self,
-            Encoder.command == command
+        existing = session.query(EncoderModel).filter(
+            EncoderModel.codec == self,
+            EncoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('Encoder already registered: %s' % command)
+            raise SoundforestError('EncoderModel already registered: %s' % command)
 
-        session.add(Encoder(codec=self, command=command))
+        session.add(EncoderModel(codec=self, command=command))
         session.commit()
 
     def unregister_encoder(self, session, command):
-        existing = session.query(Encoder).filter(
-            Encoder.codec == self,
-            Encoder.command == command
+        existing = session.query(EncoderModel).filter(
+            EncoderModel.codec == self,
+            EncoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('Encoder was not registered: %s' % command)
+            raise SoundforestError('EncoderModel was not registered: %s' % command)
 
         session.delete(existing)
         session.commit()
 
     def register_formattester(self, session, command):
-        existing = session.query(FormatTester).filter(
-            FormatTester.codec == self,
-            FormatTester.command == command
+        existing = session.query(TesterModel).filter(
+            TesterModel.codec == self,
+            TesterModel.command == command
         ).first()
         if existing:
             raise SoundforestError('Format tester already registered: %s' % command)
 
-        session.add(FormatTester(codec=self, command=command))
+        session.add(TesterModel(codec=self, command=command))
         session.commit()
 
     def unregister_formattester(self, session, command):
-        existing = session.query(FormatTester).filter(
-            FormatTester.codec == self,
-            FormatTester.command == command
+        existing = session.query(TesterModel).filter(
+            TesterModel.codec == self,
+            TesterModel.command == command
         ).first()
         if not existing:
             raise SoundforestError('Format tester was not registered: %s' % command)
@@ -212,9 +266,9 @@ class Codec(Base):
         session.delete(existing)
         session.commit()
 
-class Extension(Base):
+class ExtensionModel(Base):
 
-    """Extension
+    """ExtensionModel
 
     Filename extensions associated with audio format codecs
 
@@ -225,7 +279,7 @@ class Extension(Base):
     id = Column(Integer, primary_key=True)
     extension = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codecs.id'), nullable=False)
-    codec = relationship('Codec',
+    codec = relationship('CodecModel',
         single_parent=False,
         backref=backref('extensions',
             order_by=extension,
@@ -237,8 +291,8 @@ class Extension(Base):
         return self.extension
 
 
-class FormatTester(Base):
-    """FormatTester
+class TesterModel(Base):
+    """TesterModel
 
     Command to test audio files with given codec
 
@@ -249,7 +303,7 @@ class FormatTester(Base):
     command = Column(SafeUnicode)
 
     codec_id = Column(Integer, ForeignKey('codecs.id'), nullable=False)
-    codec = relationship('Codec',
+    codec = relationship('CodecModel',
         single_parent=False,
         backref=backref('formattesters',
             order_by=command,
@@ -264,9 +318,9 @@ class FormatTester(Base):
         )
 
 
-class Decoder(Base):
+class DecoderModel(Base):
 
-    """Decoder
+    """DecoderModel
 
     Audio format codec decoder commands
 
@@ -278,7 +332,7 @@ class Decoder(Base):
     priority = Column(Integer)
     command = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codecs.id'), nullable=False)
-    codec = relationship('Codec',
+    codec = relationship('CodecModel',
         single_parent=False,
         backref=backref('decoders',
             order_by=priority,
@@ -293,9 +347,9 @@ class Decoder(Base):
         )
 
 
-class Encoder(Base):
+class EncoderModel(Base):
 
-    """Encoder
+    """EncoderModel
 
     Audio format codec encoder commands
 
@@ -307,7 +361,7 @@ class Encoder(Base):
     priority = Column(Integer)
     command = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codecs.id'), nullable=False)
-    codec = relationship('Codec',
+    codec = relationship('CodecModel',
         single_parent=False,
         backref=backref('encoders',
             order_by=priority,
@@ -322,11 +376,11 @@ class Encoder(Base):
         )
 
 
-class DBPlaylistSource(Base):
+class PlaylistSourceModel(Base, BaseNamedModel):
 
-    """DBPlaylistSource
+    """PlaylistSourceModel
 
-    DBPlaylist parent folders
+    PlaylistSourceModel parent folders
 
     """
 
@@ -343,15 +397,15 @@ class DBPlaylistSource(Base):
         for playlist in source:
 
             directory = os.path.realpath(playlist.directory)
-            db_playlist = session.query(DBPlaylist).filter(
-                DBPlaylist.parent == self,
-                DBPlaylist.folder == directory,
-                DBPlaylist.name == playlist.name,
-                DBPlaylist.extension == playlist.extension
+            db_playlist = session.query(PlaylistModel).filter(
+                PlaylistModel.parent == self,
+                PlaylistModel.folder == directory,
+                PlaylistModel.name == playlist.name,
+                PlaylistModel.extension == playlist.extension
             ).first()
 
             if db_playlist is None:
-                db_playlist = DBPlaylist(
+                db_playlist = PlaylistModel(
                     parent=self,
                     folder=directory,
                     name=playlist.name,
@@ -366,7 +420,7 @@ class DBPlaylistSource(Base):
             tracks = []
             for index, path in enumerate(playlist):
                 position = index+1
-                tracks.append(DBPlaylistTrack(
+                tracks.append(PlaylistTrackModel(
                     playlist=db_playlist,
                     path=path,
                     position=position
@@ -376,11 +430,11 @@ class DBPlaylistSource(Base):
             session.commit()
 
 
-class DBPlaylist(Base):
+class PlaylistModel(Base, BaseNamedModel):
 
-    """DBPlaylist
+    """PlaylistModel
 
-    DBPlaylist file of audio tracks
+    PlaylistModel file of audio tracks
 
     """
 
@@ -395,7 +449,7 @@ class DBPlaylist(Base):
     description = Column(SafeUnicode)
 
     parent_id = Column(Integer, ForeignKey('playlist_sources.id'), nullable=False)
-    parent = relationship('DBPlaylistSource',
+    parent = relationship('PlaylistSourceModel',
         single_parent=False,
         backref=backref('playlists',
             order_by=[folder, name],
@@ -412,9 +466,9 @@ class DBPlaylist(Base):
     def __len__(self):
         return len(self.tracks)
 
-class DBPlaylistTrack(Base):
+class PlaylistTrackModel(Base, BasePathNamedModel):
 
-    """DBPlaylistTrack
+    """PlaylistTrackModel
 
     Audio track in a playlist
 
@@ -428,7 +482,7 @@ class DBPlaylistTrack(Base):
     path = Column(SafeUnicode)
 
     playlist_id = Column(Integer, ForeignKey('playlists.id'), nullable=False)
-    playlist = relationship('DBPlaylist',
+    playlist = relationship('PlaylistModel',
         single_parent=False,
         backref=backref('tracks',
             order_by=position,
@@ -440,9 +494,9 @@ class DBPlaylistTrack(Base):
         return '%d %s' % (self.position, self.path)
 
 
-class DBTreeType(Base):
+class TreeTypeModel(Base, BaseNamedModel):
 
-    """DBTreeType
+    """TreeTypeModel
 
     Audio file tree types (music, samples, loops etc.)
 
@@ -458,9 +512,9 @@ class DBTreeType(Base):
         return self.name
 
 
-class DBTree(Base):
+class TreeModel(Base, BasePathNamedModel):
 
-    """DBTree
+    """TreeModel
 
     Audio file tree
 
@@ -473,7 +527,7 @@ class DBTree(Base):
     description = Column(SafeUnicode)
 
     type_id = Column(Integer, ForeignKey('treetypes.id'), nullable=True)
-    type = relationship('DBTreeType',
+    type = relationship('TreeTypeModel',
         single_parent=True,
         backref=backref('trees',
             order_by=path,
@@ -485,19 +539,19 @@ class DBTree(Base):
         return self.path
 
     def album_count(self, session):
-        return session.query(DBAlbum).filter(
-            DBAlbum.tree == self
+        return session.query(AlbumModel).filter(
+            AlbumModel.tree == self
         ).count()
 
     def song_count(self, session):
-        return session.query(DBTrack).filter(
-            DBTrack.tree == self
+        return session.query(TrackModel).filter(
+            TrackModel.tree == self
         ).count()
 
     def tag_count(self, session):
-        return session.query(DBTag)\
-            .filter(DBTrack.tree == self)\
-            .filter(DBTag.track_id == DBTrack.id)\
+        return session.query(TagModel)\
+            .filter(TrackModel.tree == self)\
+            .filter(TagModel.track_id == TrackModel.id)\
             .count()
 
     def update(self, session, update_checksum=True):
@@ -514,14 +568,14 @@ class DBTree(Base):
         logger.debug('Updating existing tree tracks')
         for album in albums:
 
-            db_album = session.query(DBAlbum).filter(
-                DBAlbum.tree == self,
-                DBAlbum.directory == album.path
+            db_album = session.query(AlbumModel).filter(
+                AlbumModel.tree == self,
+                AlbumModel.directory == album.path
             ).first()
 
             if db_album is None:
                 logger.debug('Added album: %s' % album.path)
-                db_album = DBAlbum(
+                db_album = AlbumModel(
                     tree=self,
                     directory=album.path,
                     mtime=album.mtime
@@ -533,14 +587,14 @@ class DBTree(Base):
                 db_album.mtime = album.mtime
 
             for track in album:
-                db_track = session.query(DBTrack).filter(
-                    DBTrack.directory == track.path.directory,
-                    DBTrack.filename == track.path.filename
+                db_track = session.query(TrackModel).filter(
+                    TrackModel.directory == track.path.directory,
+                    TrackModel.filename == track.path.filename
                 ).first()
 
                 if db_track is None:
                     logger.debug('Added track: %s' % track.path)
-                    db_track = DBTrack(
+                    db_track = TrackModel(
                         tree=self,
                         album=db_album,
                         directory=track.directory,
@@ -595,10 +649,10 @@ class DBTree(Base):
         Return tracks matching given tag value.
 
         """
-        return session.query(DBTrack)\
-            .filter(DBTrack.tree == self)\
-            .filter(DBTag.track_id == DBTrack.id)\
-            .filter(DBTag.value.like('%%%s%%' % match))\
+        return session.query(TrackModel)\
+            .filter(TrackModel.tree == self)\
+            .filter(TagModel.track_id == TrackModel.id)\
+            .filter(TagModel.value.like('%%%s%%' % match))\
             .all()
 
     def to_json(self):
@@ -618,11 +672,11 @@ class DBTree(Base):
             'total_songs': len(self.songs),
         })
 
-class DBAlbum(Base):
+class AlbumModel(Base, BasePathNamedModel):
 
-    """DBAlbum
+    """AlbumModel
 
-    DBAlbum of music tracks in tree database.
+    AlbumModel of music tracks in tree database.
 
     """
 
@@ -633,7 +687,7 @@ class DBAlbum(Base):
     directory = Column(SafeUnicode)
     mtime = Column(Integer)
     tree_id = Column(Integer, ForeignKey('trees.id'), nullable=True)
-    tree = relationship('DBTree',
+    tree = relationship('TreeModel',
         single_parent=False,
         backref=backref('albums',
             order_by=directory,
@@ -688,11 +742,11 @@ class DBAlbum(Base):
             'tracks': track_info
         })
 
-class DBAlbumArt(Base):
+class AlbumArtModel(Base):
 
-    """DBAlbum
+    """AlbumArtModel
 
-    DBAlbumart files for music albums in tree database.
+    AlbumArtModel files for music albums in tree database.
 
     """
 
@@ -703,7 +757,7 @@ class DBAlbumArt(Base):
     albumart = Column(Base64Field)
 
     album_id = Column(Integer, ForeignKey('albums.id'), nullable=True)
-    album = relationship('DBAlbum',
+    album = relationship('AlbumModel',
         single_parent=False,
         backref=backref('albumarts',
             cascade='all, delete, delete-orphan'
@@ -711,12 +765,12 @@ class DBAlbumArt(Base):
     )
 
     def __repr__(self):
-        return 'DBAlbumart for %s' % self.album.path
+        return 'AlbumArtModel for %s' % self.album.path
 
 
-class DBTrack(Base):
+class TrackModel(Base, BasePathNamedModel):
 
-    """DBTrack
+    """TrackModel
 
     Audio file. Optionally associated with a audio file tree
 
@@ -734,7 +788,7 @@ class DBTrack(Base):
     deleted = Column(Boolean)
 
     tree_id = Column(Integer, ForeignKey('trees.id'), nullable=True)
-    tree = relationship('DBTree',
+    tree = relationship('TreeModel',
         single_parent=False,
         backref=backref('tracks',
             order_by=[directory, filename],
@@ -742,7 +796,7 @@ class DBTrack(Base):
         )
     )
     album_id = Column(Integer, ForeignKey('albums.id'), nullable=True)
-    album = relationship('DBAlbum',
+    album = relationship('AlbumModel',
         single_parent=False,
         backref=backref('tracks',
             order_by=[directory, filename],
@@ -785,11 +839,11 @@ class DBTrack(Base):
 
     def update(self, session, track, update_checksum=True):
         self.mtime = track.mtime
-        for tag in session.query(DBTag).filter(DBTag.track == self):
+        for tag in session.query(TagModel).filter(TagModel.track == self):
             session.delete(tag)
 
         for tag, value in track.tags.items():
-            session.add(DBTag(track=self, tag=tag, value=value))
+            session.add(TagModel(track=self, tag=tag, value=value))
 
         if update_checksum:
             self.update_checksum(session)
@@ -811,8 +865,8 @@ class DBTrack(Base):
         })
 
 
-class DBTag(Base):
-    """DBTag
+class TagModel(Base):
+    """TagModel
 
     Metadata tag for an audio file
 
@@ -826,7 +880,7 @@ class DBTag(Base):
     base64_encoded=Column(Boolean)
 
     track_id=Column(Integer, ForeignKey('tracks.id'), nullable = False)
-    track=relationship('DBTrack',
+    track=relationship('TrackModel',
         single_parent = False,
         backref = backref('tags',
             order_by=tag,
@@ -915,48 +969,52 @@ class SoundforestDB(object):
         self.session.commit()
 
     @property
-    def sync_targets(self):
-        return self.query(SyncTarget).all()
+    def registered_sync_targets(self):
+        return self.query(SyncTargetModel).all()
 
     @property
     def registered_codecs(self):
-        return self.query(Codec).all()
+        return self.query(CodecModel).order_by(CodecModel.name).all()
 
     @property
-    def playlist_sources(self):
-        """Return registered DBPlaylistSource objects from database"""
-        return self.query(DBPlaylistSource).all()
+    def registered_tree_types(self):
+        return self.query(TreeTypeModel).order_by(TreeTypeModel.name).all()
 
     @property
-    def playlist(self):
-        """Return registered DBPlaylist objects from database"""
-        return self.query(DBPlaylist).all()
+    def registered_playlist_sources(self):
+        """Return registered PlaylistSourceModel objects from database"""
+        return self.query(PlaylistSourceModel).order_by(PlaylistSourceModel.name).all()
+
+    @property
+    def playlists(self):
+        """Return registered PlaylistModel objects from database"""
+        return self.query(PlaylistModel).all()
 
     @property
     def trees(self):
-        """Return registered DBTree objects from database"""
-        return self.query(DBTree).all()
+        """Return registered TreeModel objects from database"""
+        return self.query(TreeModel).all()
 
     @property
     def albums(self):
-        """Return registered DBAlbum objects from database"""
-        return self.query(DBAlbum).all()
+        """Return registered AlbumModel objects from database"""
+        return self.query(AlbumModel).all()
 
     @property
     def tracks(self):
-        """Return registered DBTrack objects from database"""
-        return self.query(DBTrack).all()
+        """Return registered TrackModel objects from database"""
+        return self.query(TrackModel).all()
 
     def register_sync_target(self, name, type, src, dst, flags=None, defaults=False):
         """Register a sync target"""
 
-        existing = self.query(SyncTarget).filter(
-            SyncTarget.name == name
+        existing = self.query(SyncTargetModel).filter(
+            SyncTargetModel.name == name
         ).first()
         if existing:
             raise SoundforestError('Sync target was already registerd: %s' % name)
 
-        target = SyncTarget(
+        target = SyncTargetModel(
             name=name,
             type=synctype,
             src=src,
@@ -969,8 +1027,8 @@ class SoundforestDB(object):
         return target.as_dict()
 
     def unregister_sync_target(self, name):
-        existing = self.query(SyncTarget).filter(
-            SyncTarget.name == name
+        existing = self.query(SyncTargetModel).filter(
+            SyncTargetModel.name == name
         ).first()
         if not existing:
             raise SoundforestError('Sync target was not registered: %s' % name)
@@ -981,35 +1039,35 @@ class SoundforestDB(object):
         """
         Register codec with given parameters
         """
-        codec = Codec(name=name, description=description)
+        codec = CodecModel(name=name, description=description)
 
         extension_instances = []
         for ext in extensions:
-            extension_instances.append(Extension(codec=codec, extension=ext))
+            extension_instances.append(ExtensionModel(codec=codec, extension=ext))
 
         decoder_instances = []
         for priority, command in enumerate(decoders):
-            decoder_instances.append(Decoder(codec=codec, priority=priority, command=command))
+            decoder_instances.append(DecoderModel(codec=codec, priority=priority, command=command))
 
         encoder_instances = []
         for priority, command in enumerate(encoders):
-            encoder_instances.append(Encoder(codec=codec, priority=priority, command=command))
+            encoder_instances.append(EncoderModel(codec=codec, priority=priority, command=command))
 
         self.add([codec] + extension_instances + decoder_instances + encoder_instances)
         return codec
 
     def register_tree_type(self, name, description=''):
-        existing = self.query(DBTreeType).filter(
-            DBTreeType.name == name
+        existing = self.query(TreeTypeModel).filter(
+            TreeTypeModel.name == name
         ).first()
         if existing:
             raise SoundforestError('Tree type was already registered: %s' % name)
 
-        self.add(DBTreeType(name=name, description=description))
+        self.add(TreeTypeModel(name=name, description=description))
 
     def unregister_tree_type(self, name, description=''):
-        existing = self.query(DBTreeType).filter(
-            DBTreeType.name == name
+        existing = self.query(TreeTypeModel).filter(
+            TreeTypeModel.name == name
         ).first()
         if not existing:
             raise SoundforestError('Tree type was not registered: %s' % name)
@@ -1017,17 +1075,17 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def register_playlist_source(self, path, name='Playlists'):
-        existing = self.query(DBPlaylistSource).filter(
-            DBPlaylistSource.path == path
+        existing = self.query(PlaylistSourceModel).filter(
+            PlaylistSourceModel.path == path
         ).first()
         if existing:
             raise SoundforestError('Playlist source is already registered: %s' % path)
 
-        self.add(DBPlaylistSource(path=path, name=name))
+        self.add(PlaylistSourceModel(path=path, name=name))
 
     def unregister_playlist_source(self, path):
-        existing = self.query(DBPlaylistSource).filter(
-            DBPlaylistSource.path == path
+        existing = self.query(PlaylistSourceModel).filter(
+            PlaylistSourceModel.path == path
         ).first()
         if not existing:
             raise SoundforestError('Playlist source is not registered: %s' % path)
@@ -1039,19 +1097,19 @@ class SoundforestDB(object):
         if isinstance(path, str):
             path = unicode(path, 'utf-8')
 
-        existing = self.query(DBTree).filter(
-            DBTree.path == path
+        existing = self.query(TreeModel).filter(
+            TreeModel.path == path
         ).first()
         if existing:
             raise SoundforestError('Tree was already registered: %s' % path)
 
         tt = self.get_tree_type(tree_type)
-        self.add(DBTree(path=path, description=description, type=tt))
+        self.add(TreeModel(path=path, description=description, type=tt))
 
     def unregister_tree(self, path, description=''):
         """Unregister tree"""
-        existing = self.query(DBTree).filter(
-            DBTree.path == path
+        existing = self.query(TreeModel).filter(
+            TreeModel.path == path
         ).first()
         if not existing:
             raise SoundforestError('Tree was not registered: %s' % path)
@@ -1060,42 +1118,42 @@ class SoundforestDB(object):
 
     def get_codec(self, name):
         """Return codec matching name"""
-        return self.query(Codec).filter(
-            Codec.name == name
+        return self.query(CodecModel).filter(
+            CodecModel.name == name
         ).first()
 
     def get_tree_type(self, name):
         """Return tree type matching name"""
-        return self.query(DBTreeType).filter(
-            DBTreeType.name == name
+        return self.query(TreeTypeModel).filter(
+            TreeTypeModel.name == name
         ).first()
 
     def get_tree(self, path, tree_type='songs'):
         """Return tree matching path"""
-        return self.query(DBTree).filter(
-            DBTree.path == path
+        return self.query(TreeModel).filter(
+            TreeModel.path == path
         ).first()
 
     def get_album(self, path):
         """Return album matching path"""
-        return self.query(DBAlbum).filter(
-            DBAlbum.directory == path
+        return self.query(AlbumModel).filter(
+            AlbumModel.directory == path
         ).first()
 
     def get_track(self, path):
         """Return trach matching path"""
-        return self.query(DBTrack).filter(
-            DBTrack.directory == os.path.dirname(path),
-            DBTrack.filename == os.path.basename(path),
+        return self.query(TrackModel).filter(
+            TrackModel.directory == os.path.dirname(path),
+            TrackModel.filename == os.path.basename(path),
         ).first()
 
     def get_playlist_source(self, path):
-        return self.query(DBPlaylistSource).filter(
-            DBPlaylistSource.path == path
+        return self.query(PlaylistSourceModel).filter(
+            PlaylistSourceModel.path == path
         ).first()
 
     def get_playlist(self, path):
         """Get playlist by path"""
-        return self.query(DBPlaylist).filter(
-            DBPlaylist.path == path
+        return self.query(PlaylistModel).filter(
+            PlaylistModel.path == path
         ).first()

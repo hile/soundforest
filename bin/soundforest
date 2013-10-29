@@ -26,7 +26,7 @@ class CodecsCommand(ScriptCommand):
         ScriptCommand.parse_args(self, args)
 
         if args.list:
-            for name, codec in self.script.db.codecs.items():
+            for name, codec in self.db.codecs.items():
                 print '%s (%s)' % (codec, codec.description)
                 print 'Extensions'
                 print '  %s' %  ','.join(x.extension for x in codec.extensions)
@@ -51,9 +51,9 @@ class TagsCommand(ScriptCommand):
 
         if args.list:
             if args.tree:
-                trees = [self.script.db.get_tree(args.tree)]
+                trees = [self.db.get_tree(args.tree)]
             else:
-                trees = self.script.db.trees
+                trees = self.db.trees
 
             for tree in trees:
                 for track in tree.tracks:
@@ -76,9 +76,9 @@ class TracksCommand(ScriptCommand):
 
         if args.list:
             if args.tree:
-                trees = [self.script.db.get_tree(args.tree)]
+                trees = [self.db.get_tree(args.tree)]
             else:
-                trees = self.script.db.trees
+                trees = self.db.trees
 
             for tree in trees:
                 print tree
@@ -96,34 +96,72 @@ class TreeCommand(ScriptCommand):
         self.parser.add_argument('-d', '--deregister', action='store_true', help='UnRegister trees')
         self.parser.add_argument('-l', '--list', action='store_true', help='List trees in database')
         self.parser.add_argument('-u', '--update', action='store_true', help='Update trees')
+        self.parser.add_argument('--tree-type', help='Type of audio files in tree')
         self.parser.add_argument('paths', nargs='*', help='Paths to trees to process')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
+        if args.paths:
+            args.paths = [x.rstrip(os.sep) for x in args.paths]
+
+        if args.tree_type and args.tree_type not in script.db.registered_tree_types:
+            self.script.exit(1, 'Unsupported tree type: %s' % args.tree_type)
+
         if args.register:
             for path in args.paths:
-                self.script.db.register_tree(path)
+                self.db.register_tree(path, tree_type=args.tree_type)
 
         if args.deregister:
             for path in args.paths:
-                self.script.db.unregister_tree(path)
+                self.db.unregister_tree(path)
 
         if args.update:
-            for tree in self.script.db.trees:
+            for tree in self.db.trees:
                 if args.paths and tree.path not in args.paths:
                     continue
-                tree.update(self.script.db)
+                tree.update(self.db)
 
         if args.list:
-            for tree in self.script.db.trees:
+            for tree in self.db.trees:
+                if args.tree_type and tree.type != args.tree_type:
+                    continue
+
                 print tree
+
+
+class TreeTypesCommand(ScriptCommand):
+    def __init__(self, script):
+        name = 'tree-types'
+        description = 'Tree type database manipulations'
+        mode_flags = []
+        ScriptCommand.__init__(self, script, name, description, mode_flags)
+        self.parser.add_argument('-r', '--register', action='store_true', help='Register tree type')
+        self.parser.add_argument('-d', '--deregister', action='store_true', help='UnRegister tree type')
+        self.parser.add_argument('-l', '--list', action='store_true', help='List tree types in database')
+        self.parser.add_argument('types', nargs='*', help='Tree type names to process')
+
+    def parse_args(self, args):
+        ScriptCommand.parse_args(self, args)
+
+        if args.list:
+            for tt in self.db.registered_tree_types:
+                print '%14s %s' % (tt.name, tt.description)
+
+        if args.register:
+            for tt in args.types:
+                self.db.register_tree_type(tt)
+
+        if args.deregister:
+            for tt in args.types:
+                self.db.unregister_tree_type(tt)
 
 script = Script()
 CodecsCommand(script)
 TagsCommand(script)
 TracksCommand(script)
 TreeCommand(script)
+TreeTypesCommand(script)
 args = script.parse_args()
 
 command = script.commands[args.command]

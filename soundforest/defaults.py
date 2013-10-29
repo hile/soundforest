@@ -18,6 +18,8 @@ else:
 DEFAULT_TREE_TYPES = {
   'songs': 'Full song audio files',
   'loops': 'Audio loops',
+  'crates': 'Folders of exported audio files',
+  'playlists': 'Playlists',
   'samples': 'Audio samples',
   'scratch': 'Scratch samples',
   'ringtones': 'Phone Ringtones',

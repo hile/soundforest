@@ -8,11 +8,9 @@ classes in soundforest.models for cli scripts.
 
 import os
 
-from soundforest import SoundforestError
+from soundforest import models, SoundforestError
 from soundforest.log import SoundforestLogger
 from soundforest.defaults import DEFAULT_CODECS, DEFAULT_TREE_TYPES
-from soundforest.models import SoundforestDB, Setting, SyncTarget, \
-                               Codec, Extension, Decoder, Encoder, DBTreeType
 
 FIELD_CONVERT_MAP = {
     'threads': lambda x: int(x)
@@ -34,7 +32,7 @@ class ConfigDB(object):
     def __getattr__(self, attr):
         return getattr(self.__db_instance, attr)
 
-    class ConfigInstance(SoundforestDB):
+    class ConfigInstance(models.SoundforestDB):
         """Configuration database instance
 
         Singleton instance of configuration database
@@ -42,13 +40,13 @@ class ConfigDB(object):
         """
         def __init__(self, path):
             self.log = SoundforestLogger().default_stream
-            SoundforestDB.__init__(self, path=path)
+            models.SoundforestDB.__init__(self, path=path)
 
-            treetypes = self.session.query(DBTreeType).all()
+            treetypes = self.session.query(models.TreeTypeModel).all()
             if not treetypes:
                 treetypes = []
                 for name,description in DEFAULT_TREE_TYPES.items():
-                    treetypes.append(DBTreeType(
+                    treetypes.append(models.TreeTypeModel(
                         name=name,
                         description=description
                     ))
@@ -59,20 +57,20 @@ class ConfigDB(object):
             self.sync = SyncConfiguration(db=self)
 
         def get(self, key):
-            entry = self.session.query(Setting).filter(
-                Setting.key==key
+            entry = self.session.query(models.SettingModel).filter(
+                models.SettingModel.key==key
             ).first()
 
             return entry is not None and entry.value or None
 
         def set(self, key, value):
-            existing = self.session.query(Setting).filter(
-                Setting.key==key
+            existing = self.session.query(models.SettingModel).filter(
+                models.SettingModel.key==key
             ).first()
             if existing:
                 self.session.delete(existing)
 
-            self.session.add(Setting(
+            self.session.add(models.SettingModel(
                 key=key,
                 value=value
             ))
@@ -100,13 +98,13 @@ class ConfigDB(object):
             return self.get(key) is not None
 
         def keys(self):
-            return [s.key for s in self.session.query(Setting).all()]
+            return [s.key for s in self.session.query(models.SettingModel).all()]
 
         def items(self):
-            return [(s.key, s.value) for s in self.session.query(Setting).all()]
+            return [(s.key, s.value) for s in self.session.query(models.SettingModel).all()]
 
         def values(self):
-            return [s.value for s in self.session.query(Setting).all()]
+            return [s.value for s in self.session.query(models.SettingModel).all()]
 
 class ConfigDBDictionary(dict):
     """Configuration database dictionary
@@ -137,7 +135,7 @@ class SyncConfiguration(ConfigDBDictionary):
     def __init__(self, db):
         ConfigDBDictionary.__init__(self, db)
 
-        for target in self.db.sync_targets:
+        for target in self.db.registered_sync_targets:
             self[target.name] = target.as_dict()
 
     @property
