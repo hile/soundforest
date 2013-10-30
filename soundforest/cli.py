@@ -7,6 +7,7 @@ Command line utilities for soundforest
 
 import sys
 import os
+import fnmatch
 import time
 import logging
 import argparse
@@ -233,3 +234,18 @@ class ScriptCommand(object):
         )
         return args
 
+    def match_path(self, path, matches=[]):
+        for m in matches:
+            m_realpath = os.path.realpath(m)
+            t_realpath = os.path.realpath(path)
+
+            if fnmatch.fnmatch(path, m):
+                return True
+
+            if path[:len(m)] == m:
+                return True
+
+            if t_realpath[:len(m_realpath)] == m_realpath:
+                return True
+
+        return False
