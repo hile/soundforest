@@ -40,7 +40,7 @@ package: clean
 	git log --pretty=format:'%ai %an%n%n%B' > CHANGELOG.txt
 	rsync -a . --exclude='*.swp' --exclude=.DS_Store --exclude=.idea --exclude=.git --exclude=.gitignore ./ $(PACKAGE)-$(VERSION)/
 	rm CHANGELOG.txt
-	tar -zcf ../../Releases/$(PACKAGE)/$(PACKAGE)-$(VERSION).tar.gz --exclude=.git --exclude=.gitignore --exclude=*.swp --exclude=*.pyc $(PACKAGE)-$(VERSION) 
+	tar -zcf ../releases/$(PACKAGE)/$(PACKAGE)-$(VERSION).tar.gz --exclude=.git --exclude=.gitignore --exclude=*.swp --exclude=*.pyc $(PACKAGE)-$(VERSION) 
 	rm -rf $(PACKAGE)-$(VERSION)
 
 register:
