@@ -36,7 +36,7 @@ def xterm_title(value, max_length=74, bypass_term_check=False):
 class ScriptError(Exception):
     pass
 
-class CLIThread(threading.Thread):
+class ScriptThread(threading.Thread):
     """
     Common script thread base class
     """
@@ -51,36 +51,23 @@ class CLIThread(threading.Thread):
         p = subprocess.Popen(command, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)
         return p.wait()
 
-class CLIThreadManager(list):
+class ScriptThreadManager(list):
     def __init__(self, name, threads=None):
         self.log = SoundforestLogger().default_stream
         self.db = ConfigDB()
-        self.threads = threads is not None and threads or self.db.get('threads')
-
-    def enqueue(self, item):
-        self.append((src, dst))
+        if threads is None:
+            threads = self.db.get('threads')
+            if threads is None:
+                threads = 1
+        else:
+            threads = int(threads)
+        self.threads = threads 
 
     def get_entry_handler(self, entry):
         raise NotImplementedError('Must be implemented in child class')
 
     def run(self):
-        if len(self)==0:
-            return
-
-        total = len(self)
-        while len(self)>0:
-            active = threading.active_count()
-            if active > self.threads:
-                time.sleep(0.5)
-                continue
-            index = '%d/%d' % (total-len(self)+1, total)
-            t = self.get_entry_handler(index, self.pop(0))
-            t.start()
-
-        active = threading.active_count()
-        while active > 1:
-            time.sleep(0.5)
-            active = threading.active_count()
+        raise NotImplementedError('Must be implemented in child class')
 
 
 class Script(object):

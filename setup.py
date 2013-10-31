@@ -6,7 +6,7 @@ Setup for soundforest package for setuptools
 import os,glob
 from setuptools import setup,find_packages
 
-VERSION='2.0.0'
+VERSION='3.0'
 README = open(os.path.join(os.path.dirname(__file__),'README.txt'),'r').read()
 
 setup(
@@ -20,7 +20,16 @@ setup(
     license = 'PSF',
     url = 'http://tuohela.net/packages/soundforest',
     zip_safe = False,
-    packages = ['soundforest']+ ['soundforest.%s' % p for p in find_packages('soundforest')],
-    install_requires = ['musa>=2.0.1','sqlalchemy'],
+    packages = ['soundforest'] + 
+        ['soundforest.%s' % p for p in find_packages('soundforest')],
     scripts = glob.glob('bin/*'),
+    install_requires = ( 
+        'setproctitle',
+        'sqlalchemy', 
+        'requests',
+        'lxml',
+        'pytz',
+        'mutagen', 
+        'pillow',
+    ),
 )

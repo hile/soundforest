@@ -25,7 +25,7 @@ OSX_SYSTEM_FILES = [
     '.DS_Store',
 ]
 
-class MetaDataFileType(object):
+class MetadataFileType(object):
     """
     Parent class for metadata file description classes.
 
@@ -63,21 +63,21 @@ class MetaDataFileType(object):
         return False
 
 
-class OSXSystemFile(MetaDataFileType):
+class OSXSystemFile(MetadataFileType):
     """
     OS/X system metadata files not relevant for audio trees.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self, 'OS/X System file', filenames=OSX_SYSTEM_FILES)
+        MetadataFileType.__init__(self, 'OS/X System file', filenames=OSX_SYSTEM_FILES)
 
-class AbletonAnalysisFile(MetaDataFileType):
+class AbletonAnalysisFile(MetadataFileType):
     """
     Ableton track metadata files.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self, 'Ableton Live Track Metadata', extensions=['asd'])
+        MetadataFileType.__init__(self, 'Ableton Live Track Metadata', extensions=['asd'])
 
-class PDFBooklet(MetaDataFileType):
+class PDFBooklet(MetadataFileType):
     """
     PDF format album booklet, as received from itunes.
 
@@ -85,31 +85,31 @@ class PDFBooklet(MetaDataFileType):
     as the album. Someone else may add parser for PDF files in general if needed.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self, 'Album Cover Booklet', filenames=BOOKLET_FILENAMES)
+        MetadataFileType.__init__(self, 'Album Cover Booklet', filenames=BOOKLET_FILENAMES)
 
-class CoverArt(MetaDataFileType):
+class CoverArt(MetadataFileType):
     """
     Coverart files stored to the album directory with music files.
 
     Static list of albumart filenames we process are defined in module sources.
     """
     def __init__(self):
-        MetaDataFileType.__init__(self, 'Album Artwork', filenames=ALBUMART_FILENAMES)
+        MetadataFileType.__init__(self, 'Album Artwork', filenames=ALBUMART_FILENAMES)
 
-class m3uPlaylist(MetaDataFileType):
+class m3uPlaylist(MetadataFileType):
     """
     Playlist files in m3u format
     """
     def __init__(self):
-        MetaDataFileType.__init__(self, 'm3u playlist', extensions=['m3u'])
+        MetadataFileType.__init__(self, 'm3u playlist', extensions=['m3u'])
 
-class MetaData(list):
+class Metadata(list):
     """
     Load metadata parsers and match filenames to the parsers
     """
     def __init__(self):
         """
-        Register instances of the MetaDataFileType classes in the module
+        Register instances of the MetadataFileType classes in the module
         """
         #noinspection PyTypeChecker
         list.__init__(self)
@@ -121,10 +121,10 @@ class MetaData(list):
 
     def register_metadata(self, metadata_class):
         """
-        Register instance of a MetaDataFileType class
+        Register instance of a MetadataFileType class
         """
-        if not isinstance(metadata_class, MetaDataFileType):
-            raise ValueError('Not a MetaDataFileType instance')
+        if not isinstance(metadata_class, MetadataFileType):
+            raise ValueError('Not a MetadataFileType instance')
         self.append(metadata_class)
 
     def match(self, path):

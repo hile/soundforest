@@ -109,7 +109,6 @@ class AudioFileFormat(object):
     """
 
     def __init__(self, path):
-        self.db = ConfigDB()
         self.log =  SoundforestLogger().default_stream
         self.path = path_string(path)
         self.codec = None

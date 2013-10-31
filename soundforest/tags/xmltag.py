@@ -78,3 +78,18 @@ class XMLTags(dict):
 
         return ET.tostring(tree, pretty_print=True)
 
+
+class XMLTrackTree(object):
+    def __init__(self):
+        self.tracks =  E('tracks')
+        self.tree = E('soundforest', self.tracks)
+
+    def append(self, xmltags):
+        if not isinstance(xmltags, XMLTags):
+            raise XMLTagError('xmltags must be XMLTags instance')
+        self.tracks.append(xmltags.tree)
+
+    def tostring(self):
+        self.tracks.set('total', '%d' % len(self.tracks))
+        return ET.tostring(self.tree, pretty_print=True)
+

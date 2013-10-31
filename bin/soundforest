@@ -12,20 +12,21 @@ import argparse
 
 from soundforest import SoundforestError
 from soundforest.cli import Script, ScriptCommand, ScriptError
+from soundforest.tree import Tree, Track, Album
 
 class CodecsCommand(ScriptCommand):
     def __init__(self, script):
-        name = 'codecs'
+        name = 'codec'
         description = 'Codec database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-l', '--list', action='store_true', help='List codecs in database')
         self.parser.add_argument('-v', '--verbose', action='store_true', help='Verbose details')
+        self.parser.add_argument('action', choices=('list'), help='List trees in database')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
-        if args.list:
+        if args.action == 'list':
             for name, codec in self.db.codecs.items():
                 print '%s (%s)' % (codec, codec.description)
                 print 'Extensions'
@@ -36,37 +37,53 @@ class CodecsCommand(ScriptCommand):
                 for encoder in codec.encoders: print '  ', encoder.command
                 print
 
+class ConfigCommand(ScriptCommand):
+    def __init__(self, script):
+        name = 'config'
+        description = 'Configuration database manipulations'
+        mode_flags = []
+        ScriptCommand.__init__(self, script, name, description, mode_flags)
+        self.parser.add_argument('action', choices=('list'), help='List trees in database')
+        self.parser.add_argument('-v', '--verbose', action='store_true', help='Verbose details')
+
+    def parse_args(self, args):
+        ScriptCommand.parse_args(self, args)
+
+        if args.action == 'list':
+            for setting in self.db.registered_settings:
+                print '%16s %s' % (setting.key, setting.value)
+
 class PlaylistsCommand(ScriptCommand):
     def __init__(self, script):
-        name = 'playlists'
+        name = 'playlist'
         description = 'Playlist database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-l', '--list', action='store_true', help='List trees in database')
         self.parser.add_argument('-t', '--tree', help='Tree to match')
+        self.parser.add_argument('action', choices=('list'), help='List trees in database')
         self.parser.add_argument('paths', nargs='*', help='Paths to trees to process')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
-        if args.list:
+        if args.action == 'list':
             for playlist in self.db.playlists:
                 print playlist
 
 class TagsCommand(ScriptCommand):
     def __init__(self, script):
-        name = 'tags'
+        name = 'tag'
         description = 'Track tag database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-l', '--list', action='store_true', help='List trees in database')
         self.parser.add_argument('-t', '--tree', help='Tree to match')
+        self.parser.add_argument('action', choices=('list'), help='List trees in database')
         self.parser.add_argument('paths', nargs='*', help='Paths to trees to process')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
-        if args.list:
+        if args.action == 'list':
             if args.tree:
                 trees = [self.db.get_tree(args.tree)]
             else:
@@ -83,18 +100,18 @@ class TagsCommand(ScriptCommand):
 
 class TracksCommand(ScriptCommand):
     def __init__(self, script):
-        name = 'tracks'
+        name = 'track'
         description = 'Tree database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-l', '--list', action='store_true', help='List trees in database')
         self.parser.add_argument('-t', '--tree', help='Tree to match')
+        self.parser.add_argument('action', choices=('list',), help='List trees in database')
         self.parser.add_argument('paths', nargs='*', help='Paths to trees to process')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
-        if args.list:
+        if args.action == 'list':
             if args.tree:
                 trees = [self.db.get_tree(args.tree)]
             else:
@@ -115,11 +132,8 @@ class TreeCommand(ScriptCommand):
         description = 'Tree database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-r', '--register', action='store_true', help='Register trees')
-        self.parser.add_argument('-d', '--deregister', action='store_true', help='UnRegister trees')
-        self.parser.add_argument('-l', '--list', action='store_true', help='List trees in database')
-        self.parser.add_argument('-u', '--update', action='store_true', help='Update trees')
         self.parser.add_argument('-t', '--tree-type', help='Type of audio files in tree')
+        self.parser.add_argument('action', choices=('list', 'update', 'register', 'unregister'), help='List trees in database')
         self.parser.add_argument('paths', nargs='*', help='Paths to trees to process')
 
     def parse_args(self, args):
@@ -131,21 +145,21 @@ class TreeCommand(ScriptCommand):
         if args.tree_type and args.tree_type not in script.db.registered_tree_types:
             self.script.exit(1, 'Unsupported tree type: %s' % args.tree_type)
 
-        if args.register:
+        if args.action == 'register':
             for path in args.paths:
                 self.db.register_tree(path, tree_type=args.tree_type)
 
-        if args.deregister:
+        if args.action == 'unregister':
             for path in args.paths:
                 self.db.unregister_tree(path)
 
-        if args.update:
+        if args.action == 'update':
             for tree in self.db.trees:
                 if args.paths and tree.path not in args.paths:
                     continue
-                tree.update(self.db)
+                self.db.update_tree(Tree(tree.path))
 
-        if args.list:
+        if args.action == 'list':
             for tree in self.db.trees:
                 if args.tree_type and tree.type != args.tree_type:
                     continue
@@ -158,27 +172,25 @@ class TreeCommand(ScriptCommand):
 
 class TreeTypesCommand(ScriptCommand):
     def __init__(self, script):
-        name = 'tree-types'
+        name = 'tree-type'
         description = 'Tree type database manipulations'
         mode_flags = []
         ScriptCommand.__init__(self, script, name, description, mode_flags)
-        self.parser.add_argument('-r', '--register', action='store_true', help='Register tree type')
-        self.parser.add_argument('-d', '--deregister', action='store_true', help='UnRegister tree type')
-        self.parser.add_argument('-l', '--list', action='store_true', help='List tree types in database')
+        self.parser.add_argument('action', choices=('list, register, unregister'), help='List tree types in database')
         self.parser.add_argument('types', nargs='*', help='Tree type names to process')
 
     def parse_args(self, args):
         ScriptCommand.parse_args(self, args)
 
-        if args.list:
+        if args.action == 'list':
             for tt in self.db.registered_tree_types:
                 print '%14s %s' % (tt.name, tt.description)
 
-        if args.register:
+        if args.action == 'register':
             for tt in args.types:
                 self.db.register_tree_type(tt)
 
-        if args.deregister:
+        if args.action == 'unregister':
             for tt in args.types:
                 self.db.unregister_tree_type(tt)
 
@@ -186,6 +198,7 @@ class TreeTypesCommand(ScriptCommand):
 # Register parser and sub commands
 script = Script()
 CodecsCommand(script)
+ConfigCommand(script)
 PlaylistsCommand(script)
 TagsCommand(script)
 TracksCommand(script)

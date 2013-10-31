@@ -7,6 +7,7 @@ classes in soundforest.models for cli scripts.
 """
 
 import os
+import hashlib
 
 from soundforest import models, SoundforestError
 from soundforest.log import SoundforestLogger
@@ -106,6 +107,120 @@ class ConfigDB(object):
         def values(self):
             return [s.value for s in self.session.query(models.SettingModel).all()]
 
+
+    def update_tree(self, tree, update_checksum=True):
+        """
+        Update tracks in database from loaded tree instance
+        """
+        added, updated, deleted = 0, 0, 0
+
+        db_tree = self.get_tree(tree.path)
+        albums = tree.as_albums()
+        album_paths = [a.path for a in albums]
+        track_paths = tree.realpaths
+
+        self.log.debug('Updating existing tree tracks')
+        for album in albums:
+
+            db_album = self.query(models.AlbumModel).filter(
+                models.AlbumModel.tree == db_tree,
+                models.AlbumModel.directory == album.path
+            ).first()
+
+            if db_album is None:
+                db_album = models.AlbumModel(
+                    tree=db_tree,
+                    directory=album.path,
+                    mtime=album.mtime
+                )
+                self.add(db_album)
+
+            elif db_album.mtime!=album.mtime:
+                db_album.mtime = album.mtime
+
+            for track in album:
+                db_track = self.query(models.TrackModel).filter(
+                    models.TrackModel.directory == track.path.directory,
+                    models.TrackModel.filename == track.path.filename
+                ).first()
+
+                if db_track is None:
+                    db_track = models.TrackModel(
+                        tree=db_tree,
+                        album=db_album,
+                        directory=track.directory,
+                        filename=track.filename,
+                        extension=track.extension,
+                        mtime=track.mtime,
+                        deleted=False,
+                    )
+                    self.update_track(track)
+                    added +=1
+
+                elif db_track.mtime != track.mtime:
+                    self.update_track(track)
+                    updated += 1
+
+                elif not db_track.checksum and update_checksum:
+                    self.update_track_checksum(track)
+                    updated += 1
+
+            self.commit()
+
+        self.log.debug('Checking for removed albums')
+        for album in db_tree.albums:
+            if album.path in album_paths:
+                continue
+            if album.exists:
+                continue
+
+            self.log.debug('Removing album: %s' % album.path)
+            self.delete(album)
+
+        self.log.debug('Checking for removed tracks')
+        for track in db_tree.tracks:
+            if track.path in track_paths:
+                continue
+            if track.exists:
+                continue
+
+            self.log.debug('Removing track: %s' % track.path)
+            self.delete(track)
+            deleted += 1
+
+        self.commit()
+
+        return added, updated, deleted
+
+    def update_track(self, track, update_checksum=True):
+        db_track = self.get_track(track.path)
+        db_track.mtime = track.mtime
+        for tag in self.query(models.TrackModel).filter(
+                models.TagModel.track == db_track
+            ):
+
+            self.delete(tag)
+
+        for tag, value in track.tags.items():
+            self.add(models.TagModel(
+                track=db_track,
+                tag=tag,
+                value=value
+            ))
+        self.commit()
+
+        if update_checksum:
+            self.update_track_checksum(track)
+
+    def update_track_checksum(self, track):
+        db_track = self.get_track(track.path)
+        with open(track.path, 'rb') as fd:
+            m = hashlib.md5()
+            m.update(fd.read())
+            db_track.checksum = m.hexdigest()
+            self.commit()
+
+
 class ConfigDBDictionary(dict):
     """Configuration database dictionary
 
@@ -178,3 +293,18 @@ class CodecConfiguration(ConfigDBDictionary):
         if codec in self.keys():
             return [codec] + [e.extension for e in self[codec].extensions]
         return []
+
+    def match(self, path):
+        ext = os.path.splitext(path)[1][1:]
+
+        if ext == '':
+            ext = path
+
+        if ext in self.keys():
+            return self[ext]
+
+        for codec in self.values():
+            if ext in [e.extension for e in codec.extensions]:
+                return codec
+
+        return None

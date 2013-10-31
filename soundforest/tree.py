@@ -10,15 +10,14 @@ import re
 import shutil
 import time
 
-from musa import normalized
-from musa.log import MusaLogger
-from musa.config import MusaConfigDB
-from musa.formats import MusaFileFormat, path_string, match_codec, match_metadata
-from musa.prefixes import TreePrefixes, PrefixError
-from musa.tags import TagError
-from musa.tags.albumart import AlbumArt, AlbumArtError
-from musa.metadata import CoverArt
-from musa.tags.tagparser import Tags
+from soundforest import normalized, SoundforestError
+from soundforest.log import SoundforestLogger
+from soundforest.formats import AudioFileFormat, path_string, match_codec, match_metadata
+from soundforest.prefixes import TreePrefixes, PrefixError
+from soundforest.metadata import CoverArt
+from soundforest.tags import TagError
+from soundforest.tags.albumart import AlbumArt, AlbumArtError
+from soundforest.tags.tagparser import Tags
 
 
 class TreeError(Exception):
@@ -35,8 +34,7 @@ class IterableTrackFolder(object):
     """
 
     def __init__(self, path, iterable):
-        self.config = MusaConfigDB()
-        self.log = MusaLogger('musa').default_stream
+        self.log = SoundforestLogger().default_stream
         self.__next = None
         self.__iterable = iterable
         if path in ['.', '']:
@@ -280,6 +278,7 @@ class Album(IterableTrackFolder):
         for m in self.metadata:
             if isinstance(m, CoverArt):
                 return AlbumArt(m.path)
+
         return None
 
     def copy_metadata(self, target):
@@ -322,7 +321,6 @@ class MetaDataFile(object):
     """
 
     def __init__(self, path, metadata=None):
-        self.config = MusaConfigDB()
         if metadata is None:
             metadata = match_metadata(path)
             if metadata is None:
@@ -338,7 +336,7 @@ class MetaDataFile(object):
         return self.extension is not None and self.extension or 'metadata'
 
 
-class Track(MusaFileFormat):
+class Track(AudioFileFormat):
     """Track
 
     Audio file track
@@ -346,7 +344,7 @@ class Track(MusaFileFormat):
     """
 
     def __init__(self, path):
-        MusaFileFormat.__init__(self, path)
+        AudioFileFormat.__init__(self, path)
         self.prefixes = TreePrefixes()
         if self.codec is None:
             raise TreeError('Not a music file: %s' % self.path)

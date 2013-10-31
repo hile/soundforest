@@ -80,6 +80,6 @@ if not os.path.isdir(SOUNDFOREST_USER_DIR):
     try:
         os.makedirs(SOUNDFOREST_USER_DIR)
     except OSError, (ecode, emsg):
-        raise MusaError(
+        raise SoundforestError(
              'Error creating directory %s: %s' % (dst_dir, emsg)
         )

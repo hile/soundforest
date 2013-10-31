@@ -22,7 +22,6 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from soundforest import SoundforestError, SOUNDFOREST_USER_DIR
 from soundforest.log import SoundforestLogger
-from soundforest.tree import Tree, Track, Album
 
 logger = SoundforestLogger().default_stream
 
@@ -131,7 +130,7 @@ class SettingModel(Base):
     __tablename__ = 'settings'
 
     id = Column(Integer, primary_key=True)
-    key = Column(SafeUnicode)
+    key = Column(SafeUnicode, unique=True)
     value = Column(SafeUnicode)
 
 
@@ -376,15 +375,15 @@ class EncoderModel(Base):
         )
 
 
-class PlaylistSourceModel(Base, BaseNamedModel):
+class PlaylistTreeModel(Base, BaseNamedModel):
 
-    """PlaylistSourceModel
+    """PlaylistTreeModel
 
-    PlaylistSourceModel parent folders
+    PlaylistTreeModel parent folders
 
     """
 
-    __tablename__ = 'playlist_sources'
+    __tablename__ = 'playlist_trees'
 
     id = Column(Integer, primary_key=True)
     name = Column(SafeUnicode)
@@ -393,7 +392,22 @@ class PlaylistSourceModel(Base, BaseNamedModel):
     def __repr__(self):
         return '%s: %s' % (self.name, self.path)
 
+    @property
+    def exists(self):
+        """Check if path exists
+
+        Return true if registered path exists
+
+        """
+        return os.path.isdir(os.path.realpath(self.path))
+
     def update(self, session, source):
+        """Read playlists to database from source
+
+        Source must be iterable playlist object, for example
+        soundforest.playlist.m3uPlaylistDirectory
+
+        """
         for playlist in source:
 
             directory = os.path.realpath(playlist.directory)
@@ -416,7 +430,12 @@ class PlaylistSourceModel(Base, BaseNamedModel):
             for existing_track in db_playlist.tracks:
                 session.delete(existing_track)
 
-            playlist.read()
+            try:
+                playlist.read()
+            except PlaylistError, emsg:
+                logger.debug('Error reading playlist %s: %s' % (playlist, emsg))
+                continue
+
             tracks = []
             for index, path in enumerate(playlist):
                 position = index+1
@@ -448,8 +467,8 @@ class PlaylistModel(Base, BaseNamedModel):
     extension = Column(SafeUnicode)
     description = Column(SafeUnicode)
 
-    parent_id = Column(Integer, ForeignKey('playlist_sources.id'), nullable=False)
-    parent = relationship('PlaylistSourceModel',
+    parent_id = Column(Integer, ForeignKey('playlist_trees.id'), nullable=False)
+    parent = relationship('PlaylistTreeModel',
         single_parent=False,
         backref=backref('playlists',
             order_by=[folder, name],
@@ -524,6 +543,7 @@ class TreeModel(Base, BasePathNamedModel):
 
     id = Column(Integer, primary_key=True)
     path = Column(SafeUnicode, unique=True)
+    source = Column(SafeUnicode, default=u'filesystem')
     description = Column(SafeUnicode)
 
     type_id = Column(Integer, ForeignKey('treetypes.id'), nullable=True)
@@ -553,95 +573,6 @@ class TreeModel(Base, BasePathNamedModel):
             .filter(TrackModel.tree == self)\
             .filter(TagModel.track_id == TrackModel.id)\
             .count()
-
-    def update(self, session, update_checksum=True):
-        """
-        Update tracks in database from loaded tree instance
-        """
-        added, updated, deleted = 0, 0, 0
-
-        tree = Tree(self.path)
-        albums = tree.as_albums()
-        album_paths = [a.path for a in albums]
-        track_paths = tree.realpaths
-
-        logger.debug('Updating existing tree tracks')
-        for album in albums:
-
-            db_album = session.query(AlbumModel).filter(
-                AlbumModel.tree == self,
-                AlbumModel.directory == album.path
-            ).first()
-
-            if db_album is None:
-                logger.debug('Added album: %s' % album.path)
-                db_album = AlbumModel(
-                    tree=self,
-                    directory=album.path,
-                    mtime=album.mtime
-                )
-                session.add(db_album)
-
-            elif db_album.mtime!=album.mtime:
-                logger.debug('Updated album: %s' % album.path)
-                db_album.mtime = album.mtime
-
-            for track in album:
-                db_track = session.query(TrackModel).filter(
-                    TrackModel.directory == track.path.directory,
-                    TrackModel.filename == track.path.filename
-                ).first()
-
-                if db_track is None:
-                    logger.debug('Added track: %s' % track.path)
-                    db_track = TrackModel(
-                        tree=self,
-                        album=db_album,
-                        directory=track.directory,
-                        filename=track.filename,
-                        extension=track.extension,
-                        mtime=track.mtime,
-                        deleted=False,
-                    )
-                    db_track.update(session, track)
-                    added +=1
-
-                elif db_track.mtime != track.mtime:
-                    logger.debug('Updated track: %s' % track.path)
-                    db_track.update(session, track)
-                    updated += 1
-
-                elif not db_track.checksum and update_checksum:
-                    logger.debug('Updated track checksum: %s' % track.path)
-                    db_track.update_checksum(session)
-                    updated += 1
-
-            session.commit()
-
-        logger.debug('Checking for removed albums')
-        for album in self.albums:
-            if album.path in album_paths:
-                continue
-            if album.exists:
-                continue
-
-            logger.debug('Removing album: %s' % album.path)
-            session.delete(album)
-
-        logger.debug('Checking for removed tracks')
-        for track in self.tracks:
-            if track.path in track_paths:
-                continue
-            if track.exists:
-                continue
-
-            logger.debug('Removing track: %s' % track.path)
-            session.delete(track)
-            deleted += 1
-
-        session.commit()
-
-        return added, updated, deleted
 
     def match(self, session, match):
         """Match database tracks
@@ -837,24 +768,6 @@ class TrackModel(Base, BasePathNamedModel):
 
         return tval.isoformat()
 
-    def update(self, session, track, update_checksum=True):
-        self.mtime = track.mtime
-        for tag in session.query(TagModel).filter(TagModel.track == self):
-            session.delete(tag)
-
-        for tag, value in track.tags.items():
-            session.add(TagModel(track=self, tag=tag, value=value))
-
-        if update_checksum:
-            self.update_checksum(session)
-
-    def update_checksum(self, session):
-        with open(self.path, 'rb') as fd:
-            m = hashlib.md5()
-            m.update(fd.read())
-            self.checksum = m.hexdigest()
-            session.commit()
-
     def to_json(self):
         return json.dumps({
             'id': self.id,
@@ -981,9 +894,9 @@ class SoundforestDB(object):
         return self.query(TreeTypeModel).order_by(TreeTypeModel.name).all()
 
     @property
-    def registered_playlist_sources(self):
-        """Return registered PlaylistSourceModel objects from database"""
-        return self.query(PlaylistSourceModel).order_by(PlaylistSourceModel.name).all()
+    def registered_playlist_trees(self):
+        """Return registered PlaylistTreeModel objects from database"""
+        return self.query(PlaylistTreeModel).order_by(PlaylistTreeModel.name).all()
 
     @property
     def playlists(self):
@@ -1004,6 +917,31 @@ class SoundforestDB(object):
     def tracks(self):
         """Return registered TrackModel objects from database"""
         return self.query(TrackModel).all()
+
+    @property
+    def registered_settings(self):
+        """Return registered SettingModel objects from database"""
+        return self.query(SettingModel).order_by(SettingModel.key).all()
+
+    def update_setting(self, key, value):
+        setting = self.query(SettingModel).filter(
+            SettingModel.key == key
+        ).first()
+
+        if setting:
+            existing.value = value
+            self.update(existing)
+        else:
+            self.add(SettingModel(key=key, value=value))
+
+    def get_setting(self, key):
+        setting = self.query(SettingModel).filter(
+            SettingModel.key == key
+        ).first()
+        if setting:
+            return setting.value
+        else:
+            return None
 
     def register_sync_target(self, name, type, src, dst, flags=None, defaults=False):
         """Register a sync target"""
@@ -1074,18 +1012,18 @@ class SoundforestDB(object):
 
         self.delete(existing)
 
-    def register_playlist_source(self, path, name='Playlists'):
-        existing = self.query(PlaylistSourceModel).filter(
-            PlaylistSourceModel.path == path
+    def register_playlist_tree(self, path, name='Playlists'):
+        existing = self.query(PlaylistTreeModel).filter(
+            PlaylistTreeModel.path == path
         ).first()
         if existing:
             raise SoundforestError('Playlist source is already registered: %s' % path)
 
-        self.add(PlaylistSourceModel(path=path, name=name))
+        self.add(PlaylistTreeModel(path=path, name=name))
 
-    def unregister_playlist_source(self, path):
-        existing = self.query(PlaylistSourceModel).filter(
-            PlaylistSourceModel.path == path
+    def unregister_playlist_tree(self, path):
+        existing = self.query(PlaylistTreeModel).filter(
+            PlaylistTreeModel.path == path
         ).first()
         if not existing:
             raise SoundforestError('Playlist source is not registered: %s' % path)
@@ -1147,9 +1085,9 @@ class SoundforestDB(object):
             TrackModel.filename == os.path.basename(path),
         ).first()
 
-    def get_playlist_source(self, path):
-        return self.query(PlaylistSourceModel).filter(
-            PlaylistSourceModel.path == path
+    def get_playlist_tree(self, path):
+        return self.query(PlaylistTreeModel).filter(
+            PlaylistTreeModel.path == path
         ).first()
 
     def get_playlist(self, path):

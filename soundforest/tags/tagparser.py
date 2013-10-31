@@ -532,10 +532,10 @@ def Tags(path, fileformat=None):
     path = normalized(os.path.realpath(path))
 
     if fileformat is None:
-        fileformat = MusaFileFormat(path)
+        fileformat = AudioFileFormat(path)
 
-    if not isinstance(fileformat, MusaFileFormat):
-        raise TagError('File format must be MusaFileFormat instance')
+    if not isinstance(fileformat, AudioFileFormat):
+        raise TagError('File format must be AudioFileFormat instance')
 
     fileformat = fileformat
     if fileformat.is_metadata:
