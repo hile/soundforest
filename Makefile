@@ -36,7 +36,7 @@ install: install_modules
 endif
 
 package: clean
-	mkdir -p ../../Releases/$(PACKAGE)
+	mkdir -p ../releases/$(PACKAGE)
 	git log --pretty=format:'%ai %an%n%n%B' > CHANGELOG.txt
 	rsync -a . --exclude='*.swp' --exclude=.DS_Store --exclude=.idea --exclude=.git --exclude=.gitignore ./ $(PACKAGE)-$(VERSION)/
 	rm CHANGELOG.txt
