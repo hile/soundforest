@@ -152,6 +152,11 @@ class SyncTargetModel(Base, BaseNamedModel):
     flags = Column(SafeUnicode)
     defaults = Column(Boolean)
 
+    def __repr__(self):
+        return '%s %s from %s to %s (flags %s)' % (
+            self.name, self.type, self.src, self.dst, self.flags
+        )
+
     def as_dict(self):
         return {
             'name': self.name,
@@ -943,7 +948,7 @@ class SoundforestDB(object):
         else:
             return None
 
-    def register_sync_target(self, name, type, src, dst, flags=None, defaults=False):
+    def register_sync_target(self, name, synctype, src, dst, flags=None, defaults=False):
         """Register a sync target"""
 
         existing = self.query(SyncTargetModel).filter(
