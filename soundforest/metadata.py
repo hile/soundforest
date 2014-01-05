@@ -56,10 +56,12 @@ class MetadataFileType(object):
         if self.filenames:
             if os.path.basename(path) in self.filenames:
                 return True
+
         if self.extensions:
             ext = os.path.splitext(path)[1][1:].lower()
             if ext in self.extensions:
                 return True
+
         return False
 
 
@@ -70,12 +72,14 @@ class OSXSystemFile(MetadataFileType):
     def __init__(self):
         MetadataFileType.__init__(self, 'OS/X System file', filenames=OSX_SYSTEM_FILES)
 
+
 class AbletonAnalysisFile(MetadataFileType):
     """
     Ableton track metadata files.
     """
     def __init__(self):
         MetadataFileType.__init__(self, 'Ableton Live Track Metadata', extensions=['asd'])
+
 
 class PDFBooklet(MetadataFileType):
     """
@@ -87,6 +91,7 @@ class PDFBooklet(MetadataFileType):
     def __init__(self):
         MetadataFileType.__init__(self, 'Album Cover Booklet', filenames=BOOKLET_FILENAMES)
 
+
 class CoverArt(MetadataFileType):
     """
     Coverart files stored to the album directory with music files.
@@ -96,12 +101,14 @@ class CoverArt(MetadataFileType):
     def __init__(self):
         MetadataFileType.__init__(self, 'Album Artwork', filenames=ALBUMART_FILENAMES)
 
+
 class m3uPlaylist(MetadataFileType):
     """
     Playlist files in m3u format
     """
     def __init__(self):
         MetadataFileType.__init__(self, 'm3u playlist', extensions=['m3u'])
+
 
 class Metadata(list):
     """
@@ -111,7 +118,6 @@ class Metadata(list):
         """
         Register instances of the MetadataFileType classes in the module
         """
-        #noinspection PyTypeChecker
         list.__init__(self)
         self.register_metadata(CoverArt())
         self.register_metadata(m3uPlaylist())
@@ -135,5 +141,6 @@ class Metadata(list):
         for m in self:
             if m.match(path):
                 return m
+
         return None
 

@@ -243,12 +243,8 @@ class Album(IterableTrackFolder):
 
             else:
                 metadata = match_metadata(f)
-                if not metadata:
-                    continue
-
-                self.metadata_files.append(
-                    metadata.__class__(os.path.join(self.path, f))
-                )
+                if metadata is not None:
+                    self.metadata_files.append(os.path.join(self.path, f))
 
         self.files.sort()
 
