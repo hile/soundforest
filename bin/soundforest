@@ -26,7 +26,7 @@ class CodecsCommand(ScriptCommand):
         )
         self.parser.add_argument('action',
             choices=('list',),
-            help='List trees in database'
+            help='Codec database action'
         )
 
     def parse_args(self, args):

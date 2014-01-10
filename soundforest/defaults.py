@@ -42,10 +42,11 @@ DEFAULT_CODECS = {
     'description': 'Advanced Audio Coding',
     'extensions': ['m4a', 'aac', 'mp4'],
     'encoders': [
-        'neroAacEnc -if FILE -of OUTFILE -br 256000 -2pass',
         'afconvert -b 256000 --soundcheck-generate -f m4af -d aac FILE OUTFILE',
+        'neroAacEnc -if FILE -of OUTFILE -br 256000 -2pass',
     ],
     'decoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
         'neroAacDec -if OUTFILE -of FILE',
         'faad -q -o OUTFILE FILE -b1',
     ],
@@ -59,6 +60,17 @@ DEFAULT_CODECS = {
     ],
     'decoders': [
         'oggdec --quiet -o OUTFILE FILE',
+    ],
+  },
+
+  'alac': {
+    'description': 'Apple Lossless Codec',
+    'extensions': ['alac', 'm4a'],
+    'encoders': [
+        'afconvert -d alac FILE OUTFILE',
+    ],
+    'decoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
     ],
   },
 
@@ -106,7 +118,9 @@ DEFAULT_CODECS = {
   'wav': {
       'description': 'RIFF Wave Audio',
       'extensions':   ['wav'],
-      'encoders': [],
+      'encoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
+      ],
       'decoders': [
         'cp FILE OUTFILE',
       ],
