@@ -61,7 +61,7 @@ class ScriptThreadManager(list):
                 threads = 1
         else:
             threads = int(threads)
-        self.threads = threads 
+        self.threads = threads
 
     def get_entry_handler(self, entry):
         raise NotImplementedError('Must be implemented in child class')
@@ -74,7 +74,7 @@ class Script(object):
     """
     Common CLI tool setup class
     """
-    def __init__(self, name=None, description=None, epilog=None, debug_flag=True, subcommands=True):
+    def __init__(self, name=None, description=None, epilog=None, debug_flag=True):
         self.db = ConfigDB()
         self.name = os.path.basename(sys.argv[0])
 
@@ -97,16 +97,11 @@ class Script(object):
             add_help=True,
             conflict_handler='resolve',
         )
+        self.subcommand_parser = None
+        self.subcommands = None
+
         if debug_flag:
             self.parser.add_argument('--debug', action='store_true', help='Show debug messages')
-
-        if subcommands:
-            self.commands = {}
-            self.command_parsers = self.parser.add_subparsers(
-                dest='command',
-                help='Please select one command mode below',
-                title='Command modes'
-            )
 
     def SIGINT(self, signum, frame):
         """
@@ -148,16 +143,28 @@ class Script(object):
     def error(self, message):
         sys.stderr.write('%s\n' % message)
 
-    def register_subcommand(self, command, name, description, epilog=None):
-        if name in self.commands:
-            raise ScriptError('Duplicate sub command name: %s' % name)
-        self.commands[name] = command
-        return self.command_parsers.add_parser(
-            name,
-            help=description,
-            description=description,
-            epilog=epilog
+    def add_subcommand(self, command):
+        if self.subcommand_parser is None:
+            self.subcommand_parser = self.parser.add_subparsers(
+                dest='command',
+                help='Please select one command mode below',
+                title='Command modes'
+            )
+            self.subcommands = {}
+
+        if not isinstance(command, ScriptCommand):
+            raise ScriptError('Subcommand must be a ScriptCommand instance')
+
+        parser = self.subcommand_parser.add_parser(
+            command.name,
+            help=command.description,
+            description=command.description,
+            epilog=command.epilog
         )
+        self.subcommands[command.name] = command
+        command.script = self
+
+        return parser
 
     def add_argument(self, *args, **kwargs):
         """
@@ -174,32 +181,33 @@ class Script(object):
             self.logger.set_level('DEBUG')
         return args
 
-class ScriptCommand(object):
+    def run(self):
+        args = self.parser.parse_args()
+        if self.subcommand_parser is not None:
+            self.subcommands[args.command].run(args)
+
+class ScriptCommand(argparse.ArgumentParser):
     """
     Parent class for cli subcommands
     """
-    def __init__(self, script, name, description, mode_flags=[], epilog=None, debug=True):
+    def __init__(self, name, description='', epilog='', mode_flags=[]):
+        self.script =  None
         self.name = name
-        self.script = script
+        self.description = description
+        self.epilog = epilog
 
         self.logger = SoundforestLogger()
         self.log = self.logger.default_stream
 
         if not isinstance(mode_flags, list):
             raise ScriptError('Mode flags must be a list')
+
         self.mode_flags = mode_flags
         self.selected_mode_flags = []
-
-        self.parser = script.register_subcommand(self, name, description, epilog)
-        if debug:
-            self.parser.add_argument('--debug', action='store_true', help='Debug messages')
 
     @property
     def db(self):
         return self.script.db
-
-    def add_argument(self, *args, **kwargs):
-        self.parser.add_argument(*args, **kwargs)
 
     def exit(self, *args, **kwargs):
         self.script.exit(*args, **kwargs)
@@ -207,11 +215,9 @@ class ScriptCommand(object):
     def message(self, *args, **kwargs):
         self.script.message(*args, **kwargs)
 
-    def parse_args(self, args):
-        """
-        Common argument parsing
-        """
+    def run(self, args):
         xterm_title('soundforest %s' % (self.name))
+
         if hasattr(args, 'debug') and getattr(args, 'debug'):
             self.logger.set_level('DEBUG')
 
