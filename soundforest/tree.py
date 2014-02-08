@@ -231,12 +231,17 @@ class Album(IterableTrackFolder):
         IterableTrackFolder.__init__(self, path, 'files')
         self.metadata_files = []
 
+    def __repr__(self):
+        return 'album %s' % self.path
+
     def __getitem__(self, item):
         item = IterableTrackFolder.__getitem__(self, item)
         return Track(os.path.join(*item))
 
     def load(self):
         IterableTrackFolder.load(self)
+
+        self.metadata_files = []
         for f in os.listdir(self.path):
             if match_codec(f) is not None:
                 self.files.append((self.path, f))
@@ -244,7 +249,7 @@ class Album(IterableTrackFolder):
             else:
                 metadata = match_metadata(f)
                 if metadata is not None:
-                    self.metadata_files.append(os.path.join(self.path, f))
+                    self.metadata_files.append(MetaDataFile(os.path.join(self.path, f), metadata))
 
         self.files.sort()
 
@@ -272,7 +277,9 @@ class Album(IterableTrackFolder):
             return None
 
         for m in self.metadata:
-            if isinstance(m, CoverArt):
+            if not hasattr(m, 'metadata'):
+                raise TreeError('Invalid object types in self.metadata: %s' % m)
+            if isinstance(m.metadata, CoverArt):
                 return AlbumArt(m.path)
 
         return None
@@ -323,14 +330,22 @@ class MetaDataFile(object):
                 raise TreeError('Not a metadata file: %s' % path)
 
         self.path = path_string(path)
+
         self.extension = os.path.splitext(self.path)[1][1:].lower()
         if self.extension == '':
             self.extension = None
+
         self.metadata = metadata
 
     def __repr__(self):
-        return self.extension is not None and self.extension or 'metadata'
+        return '%s %s' % (
+            self.metadata.description,
+            self.filename
+        )
 
+    @property
+    def filename(self):
+        return os.path.basename(self.path)
 
 class Track(AudioFileFormat):
     """Track
