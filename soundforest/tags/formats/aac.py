@@ -26,6 +26,7 @@ AAC_STANDARD_TAGS = {
     'artist':               ['\xa9ART'],
     'composer':             ['\xa9wrt'],
     'conductor':            ['cond'],
+    'description':          ['desc'],
     'discid':               ['disc'],
     'orchestra':            ['orch'],
     'performers':           ['ense'],
@@ -33,6 +34,7 @@ AAC_STANDARD_TAGS = {
     'title':                ['\xa9nam'],
     'genre':                ['\xa9gen'],
     'comment':              ['\xa9cmt'],
+    'lyrics':               ['\xa9lyr'],
     'note':                 ['note'],
     'description':          ['desc'],
     'location':             ['loca'],
@@ -44,6 +46,10 @@ AAC_STANDARD_TAGS = {
     'label':                ['labe'],
     'copyright':            ['cprt'],
     'license':              ['lice'],
+    'podcast_url':          ['purl'],
+    'podcast_episode_guid': ['egid'],
+    'podcast_category':     ['catg'],
+    'podcast_keywords':     ['keyw'],
     'sort_album_artist':    ['soaa'],
     'sort_artist':          ['soar'],
     'sort_composer':        ['soco'],
@@ -51,15 +57,15 @@ AAC_STANDARD_TAGS = {
     'sort_show':            ['sosn'],
     'sort_album':           ['soal'],
     'sort_title':           ['sonm'],
+
 }
 
 # Internal program tags for itunes. Ignored by current code
 ITUNES_TAG_MAP = {
-
-    # Boolean flag indicating if track is part of compilation, useful
-    # but buggy even with iTunes 10.x, I don't recommend using this:
-    # set album_artist to 'Various Artists' instead.
+    # Booleans
     'compilation':          ['cpil'],
+    'gapless_album':        ['pgap'],
+    'podcast':              ['pcst'],
     # iTunes grouping flag
     'grouping':             ['\xa9grp'],
     # Indicates the encoder command used to encode track
