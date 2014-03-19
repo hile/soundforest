@@ -16,6 +16,7 @@ logger = SoundforestLogger().default_stream
 
 TAG_PARSERS = {
     'm4a':      'soundforest.tags.formats.aac.aac',
+    'm4r':      'soundforest.tags.formats.aac.aac',
     'mp3':      'soundforest.tags.formats.mp3.mp3',
     'flac':     'soundforest.tags.formats.flac.flac',
     'vorbis':   'soundforest.tags.formats.vorbis.vorbis',

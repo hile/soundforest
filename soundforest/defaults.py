@@ -52,6 +52,20 @@ DEFAULT_CODECS = {
     ],
   },
 
+  'm4r': {
+    'description': 'AAC Alert/Ringtone for iOS',
+    'extensions': ['m4r'],
+    'encoders': [
+        'afconvert -b 256000 --soundcheck-generate -f m4af -d aac FILE OUTFILE',
+        'neroAacEnc -if FILE -of OUTFILE -br 256000 -2pass',
+    ],
+    'decoders': [
+        'afconvert -f WAVE -d LEI16 FILE OUTFILE',
+        'neroAacDec -if OUTFILE -of FILE',
+        'faad -q -o OUTFILE FILE -b1',
+    ],
+  },
+
   'vorbis': {
     'description': 'Ogg Vorbis',
     'extensions': ['vorbis', 'ogg'],
