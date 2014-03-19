@@ -182,7 +182,7 @@ class Script(object):
         return args
 
     def run(self):
-        args = self.parser.parse_args()
+        args = self.parse_args()
         if self.subcommand_parser is not None:
             self.subcommands[args.command].run(args)
 
