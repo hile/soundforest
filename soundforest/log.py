@@ -184,6 +184,7 @@ class SoundforestLogger(object):
 
         def register_file_handler(self, name, directory,
                          logformat=None,
+                         timeformat=None,
                          maxBytes=DEFAULT_LOGSIZE_LIMIT,
                          backupCount=DEFAULT_LOG_BACKUPS):
             """
@@ -192,6 +193,8 @@ class SoundforestLogger(object):
 
             if logformat is None:
                 logformat = DEFAULT_LOGFILEFORMAT
+            if timeformat is None:
+                timeformat = DEFAULT_TIME_FORMAT
 
             if not os.path.isdir(directory):
                 try:
@@ -208,7 +211,7 @@ class SoundforestLogger(object):
                 backupCount=backupCount
             )
             if not self.__match_handlers__(logger.handlers, handler):
-                handler.setFormatter(logging.Formatter(logformat, self.timeformat))
+                handler.setFormatter(logging.Formatter(logformat, timeformat))
                 logger.addHandler(handler)
                 logger.setLevel(self.loglevel)
 
