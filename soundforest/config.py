@@ -120,6 +120,7 @@ class ConfigDB(object):
         track_paths = tree.realpaths
 
         self.log.debug('Updating existing tree tracks')
+        processed = 0
         for album in albums:
 
             db_album = self.query(models.AlbumModel).filter(
@@ -164,6 +165,10 @@ class ConfigDB(object):
                 elif not db_track.checksum and update_checksum:
                     self.update_track_checksum(track)
                     updated += 1
+
+                processed += 1
+                if processed % 1000 == 0:
+                    self.log.debug('Processed: %d tracks' % processed)
 
             self.commit()
 
