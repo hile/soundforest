@@ -9,7 +9,7 @@ classes in soundforest.models for cli scripts.
 import os
 import hashlib
 
-from soundforest import models, SoundforestError
+from soundforest import models, TreeError, SoundforestError
 from soundforest.log import SoundforestLogger
 from soundforest.defaults import DEFAULT_CODECS, DEFAULT_TREE_TYPES
 
@@ -108,11 +108,11 @@ class ConfigDB(object):
             return [s.value for s in self.session.query(models.SettingModel).all()]
 
 
-    def update_tree(self, tree, update_checksum=True):
+    def update_tree(self, tree, update_checksum=True, progresslog=False):
         """
         Update tracks in database from loaded tree instance
         """
-        added, updated, deleted = 0, 0, 0
+        added, updated, deleted, errors = 0, 0, 0, 0
 
         db_tree = self.get_tree(tree.path)
         albums = tree.as_albums()
@@ -136,7 +136,7 @@ class ConfigDB(object):
                 )
                 self.add(db_album)
 
-            elif db_album.mtime!=album.mtime:
+            elif db_album.mtime != album.mtime:
                 db_album.mtime = album.mtime
 
             for track in album:
@@ -155,19 +155,25 @@ class ConfigDB(object):
                         mtime=track.mtime,
                         deleted=False,
                     )
-                    self.update_track(track)
-                    added +=1
+                    if self.update_track(track):
+                        added +=1
+                    else:
+                        errors +=1
 
                 elif db_track.mtime != track.mtime:
-                    self.update_track(track)
-                    updated += 1
+                    if self.update_track(track):
+                        updated += 1
+                    else:
+                        errors +=1
 
                 elif not db_track.checksum and update_checksum:
-                    self.update_track_checksum(track)
-                    updated += 1
+                    if self.update_track_checksum(track):
+                        updated += 1
+                    else:
+                        errors +=1
 
                 processed += 1
-                if processed % 1000 == 0:
+                if progresslog and processed % 1000 == 0:
                     self.log.debug('Processed: %d tracks' % processed)
 
             self.commit()
@@ -195,18 +201,25 @@ class ConfigDB(object):
 
         self.commit()
 
-        return added, updated, deleted
+        if errors > 0:
+            self.log.debug('Total %d errors updating tree' % errors)
+        return added, updated, deleted, processed, errors
 
     def update_track(self, track, update_checksum=True):
         db_track = self.get_track(track.path)
         db_track.mtime = track.mtime
-        for tag in self.query(models.TrackModel).filter(
-                models.TagModel.track == db_track
-            ):
 
+        oldtags = self.query(models.TrackModel).filter(models.TagModel.track == db_track)
+        for tag in oldtags:
             self.delete(tag)
 
-        for tag, value in track.tags.items():
+        try:
+            tags = track.tags
+        except TreeError, emsg:
+            self.log.debug('ERROR loading %s: %s' % (track.path, emsg))
+            return False
+
+        for tag, value in tags.items():
             self.add(models.TagModel(
                 track=db_track,
                 tag=tag,
@@ -215,7 +228,10 @@ class ConfigDB(object):
         self.commit()
 
         if update_checksum:
-            self.update_track_checksum(track)
+            if not self.update_track_checksum(track):
+                return False
+
+        return True
 
     def update_track_checksum(self, track):
         db_track = self.get_track(track.path)
@@ -225,6 +241,7 @@ class ConfigDB(object):
             db_track.checksum = m.hexdigest()
             self.commit()
 
+        return True
 
 class ConfigDBDictionary(dict):
     """Configuration database dictionary

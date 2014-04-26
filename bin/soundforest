@@ -72,12 +72,10 @@ class TagsCommand(ScriptCommand):
                 trees = self.db.trees
 
             for tree in trees:
-                for track in tree.tracks:
-                    if not self.match_path(track.path, args.paths):
-                        continue
-                    print track.path
-                    for entry in track.tags:
-                        print '  %s = %s' % (entry.tag, entry.value)
+                for path in args.paths:
+                    for track in tree.filter_tracks(self.db.session, path):
+                        for entry in track.tags:
+                            print '  %s = %s' % (entry.tag, entry.value)
 
 
 class TracksCommand(ScriptCommand):
@@ -91,12 +89,9 @@ class TracksCommand(ScriptCommand):
                 trees = self.db.trees
 
             for tree in trees:
-                if not self.match_path(tree.path, args.paths):
-                    continue
-
-                print tree
-                for track in tree.tracks:
-                    print '  %s' % track.relative_path
+                for path in args.paths:
+                    for track in tree.filter_tracks(self.db.session, path):
+                        print track.relative_path
 
 
 class TreeCommand(ScriptCommand):

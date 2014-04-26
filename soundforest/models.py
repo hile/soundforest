@@ -579,10 +579,10 @@ class TreeModel(Base, BasePathNamedModel):
             .filter(TagModel.track_id == TrackModel.id)\
             .count()
 
-    def match(self, session, match):
-        """Match database tracks
+    def match_tag(self, session, match):
+        """Match database track tags
 
-        Return tracks matching given tag value.
+        Return tracks matching given tag value
 
         """
         return session.query(TrackModel)\
@@ -590,6 +590,13 @@ class TreeModel(Base, BasePathNamedModel):
             .filter(TagModel.track_id == TrackModel.id)\
             .filter(TagModel.value.like('%%%s%%' % match))\
             .all()
+
+    def filter_tracks(self, session, path):
+        res = session.query(TrackModel).filter(TrackModel.tree == self)
+        return res.filter(
+            TrackModel.directory.like('%%%s%%' % path) |
+            TrackModel.filename.like('%%%s%%' % path)
+        ).all()
 
     def to_json(self):
         """Return tree as JSON
@@ -772,6 +779,13 @@ class TrackModel(Base, BasePathNamedModel):
                 tval = tval.astimezone(tz)
 
         return tval.isoformat()
+
+    def update(self, session, track):
+        for tag in session.query(TagModel).filter(TagModel.track==self):
+            session.delete(tag)
+        for tag, value in track.tags.items():
+            session.add(TagModel(track=self, tag=tag, value=value))
+        session.commit()
 
     def to_json(self):
         return json.dumps({

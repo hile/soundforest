@@ -15,6 +15,10 @@ class SoundforestError(Exception):
     pass
 
 
+class TreeError(Exception):
+    pass
+
+
 def normalized(path, normalization='NFC'):
     """
     Return given path value as normalized unicode string on OS/X,

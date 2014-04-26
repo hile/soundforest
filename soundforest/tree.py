@@ -10,7 +10,7 @@ import re
 import shutil
 import time
 
-from soundforest import normalized, SoundforestError
+from soundforest import normalized, SoundforestError, TreeError
 from soundforest.log import SoundforestLogger
 from soundforest.formats import AudioFileFormat, path_string, match_codec, match_metadata
 from soundforest.prefixes import TreePrefixes, PrefixError
@@ -18,12 +18,6 @@ from soundforest.metadata import CoverArt
 from soundforest.tags import TagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 from soundforest.tags.tagparser import Tags
-
-
-class TreeError(Exception):
-
-    def __str__(self):
-        return self.args[0]
 
 
 class IterableTrackFolder(object):
