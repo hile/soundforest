@@ -17,12 +17,18 @@ VORBIS_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
 VORBIS_STANDARD_TAGS = {
     'album_artist':         ['ALBUM_ARTIST'],
     'artist':               ['ARTIST'],
+    'arranger':             ['ARRANGER'],
+    'author':               ['AUTHOR'],
     'composer':             ['COMPOSER'],
     'conductor':            ['CONDUCTOR'],
+    'ensemble':             ['ENSEMBLE'],
     'orchestra':            ['ORCHESTRA'],
-    'performers':           ['PERFORMER'],
+    'performer':            ['PERFORMER'],
+    'publisher':            ['PUBLISHER'],
+    'lyricist':             ['LYRICIST'],
     'album':                ['ALBUM'],
     'title':                ['TITLE'],
+    'partnumber':           ['PARTNUMBER'],
     'tracknumber':          ['TRACKNUMBER'],
     'disknumber':           ['DISKNUMBER'],
     'genre':                ['GENRE'],
@@ -33,13 +39,22 @@ VORBIS_STANDARD_TAGS = {
     'year':                 ['DATE'],
     'bpm':                  ['BPM'],
     'rating':               ['RATING'],
-    'label':                ['ORGANIZATION'],
+    'label':                ['LABEL'],
+    'labelno':              ['LABELNO'],
+    'opus':                 ['OPUS'],
+    'isrc':                 ['ISRC'],
+    'ean':                  ['EAN/UPN'],
+    'lyrics':               ['LYRICS'],
+    'website':              ['WEBSITE'],
     'copyright':            ['COPYRIGHT'],
-    'license':              ['LICENSE'],
+    'version':              ['VERSION'],
+    'sourcemedia':          ['SOURCEMEDIA'],
+    'encoding':             ['ENCODING'],
+    'encoded_by':           ['ENCODED-BY'],
     'sort_album_artist':    ['SORT_ALBUM_ARTIST'],
     'sort_artist':          ['SORT_ARTIST'],
     'sort_composer':        ['SORT_COMPOSER'],
-    'sort_performers':      ['SORT_PERFORMERS'],
+    'sort_performer':       ['SORT_PERFORMER'],
     'sort_show':            ['SORT_SHOW'],
     'sort_album':           ['SORT_ALBUM'],
     'sort_title':           ['SORT_TITLE'],
@@ -57,8 +72,6 @@ VORBIS_TAG_FORMATTERS = {
 }
 
 VORBIS_EXTRA_TAGS = {
-    'isrc':                 ['ISRC'],
-
 }
 
 class VorbisNumberingTag(TrackNumberingTag):
