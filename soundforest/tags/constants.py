@@ -83,7 +83,7 @@ STANDARD_TAG_MAP = {
         'label': 'Orchestra',
         'description': 'Orchestra performing the track',
     },
-    'performers': {
+    'performer': {
         'label': 'Performers',
         'description': 'Artists performing the track',
     },

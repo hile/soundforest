@@ -15,7 +15,7 @@ from soundforest import normalized
 from soundforest.log import SoundforestLogger
 from soundforest.formats import AudioFileFormat
 from soundforest.tags import TagError
-from soundforest.tags.constants import STANDARD_TAG_ORDER
+from soundforest.tags.constants import STANDARD_TAG_ORDER, STANDARD_TAG_MAP
 from soundforest.tags.xmltag import XMLTags, XMLTagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
@@ -170,6 +170,11 @@ class TagParser(dict):
 
         return formatted
 
+    def __tagname__(self, tag):
+        if tag in STANDARD_TAG_MAP:
+            return STANDARD_TAG_MAP[tag]['label']
+        return tag
+
     def __repr__(self):
         return '%s: %s' % (self.codec, self.path)
 
@@ -322,7 +327,7 @@ class TagParser(dict):
                 'filename': self.path,
                 'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 'size': stat.st_size,
-                'tags': [{'tag':k, 'values':v} for k, v in self.items()]
+                'tags': [{'tag': k, 'name': self.__tagname__(k), 'values': v} for k, v in self.items()]
             },
             ensure_ascii=False,
             indent=indent,
