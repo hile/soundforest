@@ -212,19 +212,17 @@ class vorbis(TagParser):
         if not isinstance(value, list):
             value = [value]
 
+        value = [x for x in set(value)]
+
         tags = self.__tag2fields__(item)
         item = tags[0]
 
         for tag in tags:
-            print 'CHECK', tag
-            if self.has_key(tag):
-                print 'EXISTING', self.entry[tag]
+            if self.entry.has_key(tag):
                 if tag.lower() in OGG_MULTIPLE_VALUES_TAGS:
                     value = set(self.entry[tag] + value)
 
                 del self.entry[tag]
-
-        print 'VALUE TO SET', value
 
         entries =[]
         for v in value:

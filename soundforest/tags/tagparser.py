@@ -370,9 +370,7 @@ class TagParser(dict):
         """
         Remove all tags from file
         """
-        for tag in self.keys():
-            del self[tag]
-
+        self.entry.clear()
         self.save()
 
     def remove_unknown_tags(self):
