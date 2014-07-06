@@ -8,6 +8,7 @@ Vorbis file tag parser
 from mutagen.oggvorbis import OggVorbis, OggVorbisHeaderError
 
 from soundforest.tags import TagError
+from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
@@ -121,6 +122,30 @@ class vorbis(TagParser):
             return [unicode('%d' % self.disk_numbering.total)]
         return TagParser.__getitem__(self, item)
 
+    def __delitem__(self, item):
+        try:
+            item, value = item.split('=', 1)
+        except ValueError:
+            value = None
+
+        fields = self.__tag2fields__(item)
+        for tag in fields:
+            tag = self.__field2tag__(tag)
+            if not self.has_key(tag):
+                continue
+
+            if value is None:
+                del self.entry[tag]
+                self.modified = True
+
+            elif value in self.entry[tag]:
+                self.entry[tag] = [x for x in self.entry[tag] if x != value]
+
+                if not self.entry[tag]:
+                    del self.entry[tag]
+
+                self.modified = True
+
     def __field2tag__(self, field):
         return TagParser.__field2tag__(self, field.upper())
 
@@ -128,25 +153,31 @@ class vorbis(TagParser):
         """
         Return tag names sorted with self.sort_keys()
         """
+
         keys = TagParser.keys(self)
         if 'TOTALTRACKS' in keys:
             keys.remove('TOTALTRACKS')
+
         if 'TOTALDISKS' in keys:
             keys.remove('TOTALDISKS')
+
         if 'TRACKNUMBER' in [x.upper() for x in keys]:
             if self.track_numbering.total is not None:
                 keys.append('totaltracks')
+
         if 'DISKNUMBER' in [x.upper() for x in keys]:
             if self.disk_numbering.total is not None:
                 keys.append('totaldisks')
 
         if VORBIS_ALBUMART_TAG in [x.upper() for x in keys]:
             keys.remove(VORBIS_ALBUMART_TAG)
+
         for replaygain_tag_fields in VORBIS_REPLAYGAIN_TAGS.values():
             for tag in replaygain_tag_fields:
                 if tag in keys:
                     keys.remove(tag)
-        return [x.lower() for x in self.sort_keys(keys)]
+
+        return [x for x in self.sort_keys(keys)]
 
     def has_key(self,  tag):
         return tag.lower() in self.keys()
@@ -155,19 +186,27 @@ class vorbis(TagParser):
         """
         All vorbis tags are unicode strings, and there can be multiple
         tags with same name.
+
         We do special precessing for track and disk numbering.
         """
         if item == 'tracknumber':
             self.track_numbering.value = value
+            self.modified = True
             return
+
         if item == 'totaltracks':
             self.track_numbering.total = value
+            self.modified = True
             return
+
         if item == 'disknumber':
             self.disk_numbering.value = value
+            self.modified = True
             return
+
         if item == 'totaldisks':
             self.disk_numbering.total = value
+            self.modified = True
             return
 
         if not isinstance(value, list):
@@ -175,17 +214,27 @@ class vorbis(TagParser):
 
         tags = self.__tag2fields__(item)
         item = tags[0]
-        for tag in tags[1:]:
-            if self.entry.has_key(tag):
+
+        for tag in tags:
+            print 'CHECK', tag
+            if self.has_key(tag):
+                print 'EXISTING', self.entry[tag]
+                if tag.lower() in OGG_MULTIPLE_VALUES_TAGS:
+                    value = set(self.entry[tag] + value)
+
                 del self.entry[tag]
+
+        print 'VALUE TO SET', value
 
         entries =[]
         for v in value:
             if VORBIS_TAG_FORMATTERS.has_key(item):
                 entries.append(VORBIS_TAG_FORMATTERS[item](v))
+
             else:
                 if not isinstance(v, unicode):
                     v = unicode(v, 'utf-8')
                 entries.append(v)
+
         self.entry[item] = entries
         self.modified = True

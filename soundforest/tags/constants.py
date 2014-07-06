@@ -7,6 +7,24 @@ Tag constants, including names and descriptions of standard tags
 
 import time
 
+# These tags allow setting multiple valus in flac/vorbis
+OGG_MULTIPLE_VALUES_TAGS = (
+    'composer',
+    'arranger',
+    'lyricist',
+    'author',
+    'conductor',
+    'performer',
+    'ensemble',
+    'part',
+    'partnumber',
+    'genre',
+    'date',
+    'location',
+    'comment',
+)
+
+
 # Used for formatting output nicely
 STANDARD_TAG_ORDER = [
     'album_artist',

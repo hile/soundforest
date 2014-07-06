@@ -102,7 +102,7 @@ class TagParser(dict):
     def __delitem__(self, item):
         fields = self.__tag2fields__(item)
         for tag in fields:
-            if tag not in self.entry.keys():
+            if tag not in self.keys():
                 continue
 
             del self.entry[tag]
@@ -132,34 +132,43 @@ class TagParser(dict):
 
         return field
 
-    def __flatten_tag__(self, tag):
+    def __normalized_tag__(self, tag):
         """
-        Flatten and mangle tag values to standard formats
+        Return list of values for tag, mangling to standard formats
+
+        Returns None for non-string (coverart etc.) tags
         """
+        formatted = []
         try:
-            value = self[tag]
+            tags = self[tag]
         except KeyError:
             return None
 
-        if isinstance(value, list):
-            if len(value) == 0:
-                return None
-            if isinstance(value[0], basestring):
-                value = value[0]
+        if not isinstance(tags, list):
+            tags = [tags]
 
-        # Skip non-string tags
-        if not isinstance(value, basestring):
+        if len(tags) == 0:
             return None
 
-        if tag=='year':
-            # Try to clear extra date details from year
-            for fmt in YEAR_FORMATTERS:
-                try:
-                    return fmt(value)
-                except ValueError, emsg:
-                    pass
+        for value in tags:
+            if not isinstance(value, basestring):
+                continue
 
-        return value
+            if tag=='year':
+                # Try to clear extra date details from year
+                for fmt in YEAR_FORMATTERS:
+                    try:
+                        value = fmt(value)
+                        break
+                    except ValueError, emsg:
+                        pass
+
+            formatted.append(value)
+
+        if not formatted:
+            return None
+
+        return formatted
 
     def __repr__(self):
         return '%s: %s' % (self.codec, self.path)
@@ -194,13 +203,12 @@ class TagParser(dict):
 
     def get_tag(self, item):
         """
-        Return tag from file. Raises TagError if tag is not found
-        If tag has multiple values, only first one is returned.
+        Return tag from file. Raises TagError if tag is not found.
         """
         if not self.has_key(item):
             raise TagError('No such tag: %s' % item)
 
-        value = self.__flatten_tag__(item)
+        value = self.__normalized_tag__(item)
         if value is None:
             raise TagError('No such string tag: %s' % item)
 
@@ -247,7 +255,7 @@ class TagParser(dict):
         """
         keys = self.__tag2fields__(key)
         for k in keys:
-            if k in self.entry.keys():
+            if k in self.keys():
                 return True
 
         return False
@@ -263,28 +271,32 @@ class TagParser(dict):
     def items(self):
         """
         Return tag, value pairs using tag_map keys.
-        If tag has multiple values, only first one is returned.
         """
         tags = []
         for tag in self.keys():
-            value = self.__flatten_tag__(tag)
-            if value is None:
+            values = self.__normalized_tag__(tag)
+
+            if values is None:
                 continue
-            tags.append((tag, value))
+
+            tags.append((tag, values))
+
         return tags
 
     def values(self):
         """
         Return tag values from entry.
-        If tag has multiple values, only first one is returned.
         """
-        values = []
+        tags = []
         for tag in self.keys():
-            value = self.__flatten_tag__(tag)
-            if value is None:
+            values = self.__normalized_tag__(tag)
+
+            if values is None:
                 continue
-            values.append(value)
-        return values
+
+            tags.append(value)
+
+        return tags
 
         return [self[k] for k, v in self.keys()]
 
@@ -310,7 +322,7 @@ class TagParser(dict):
                 'filename': self.path,
                 'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 'size': stat.st_size,
-                'tags': [{'tag':k, 'value':v} for k, v in self.items()]
+                'tags': [{'tag':k, 'values':v} for k, v in self.items()]
             },
             ensure_ascii=False,
             indent=indent,
@@ -333,12 +345,14 @@ class TagParser(dict):
         return self.modified
 
     def replace_tags(self, data):
+        """Replace tags
+
+        Set tags given in data dictionary, removing any existing tags.
+        """
         if not isinstance(data, dict):
             raise TagError('Updated tags must be a dictionary instance')
 
-        for k, v in self.items():
-            if k not in data.keys():
-                self.remove_tag(k)
+        self.clear_tags()
 
         return self.update_tags(data)
 
@@ -347,8 +361,6 @@ class TagParser(dict):
         Remove given list of tags from file
         """
         for tag in tags:
-            if tag not in self.keys():
-                continue
             del self[tag]
 
         if self.modified:
@@ -361,9 +373,7 @@ class TagParser(dict):
         for tag in self.keys():
             del self[tag]
 
-        if self.modified:
-            logger.debug('Cleared all tags from file')
-            self.save()
+        self.save()
 
     def remove_unknown_tags(self):
         """
@@ -388,10 +398,8 @@ class TagParser(dict):
                     logger.debug('Error processing %s: %s' % (attr, emsg))
 
             if not self.modified:
-                logger.debug('tags not modified')
                 return
 
-            # TODO - replace with copying of file to new inode
             self.entry.save()
 
         except OSError, (ecode, emsg):

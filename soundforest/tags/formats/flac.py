@@ -150,6 +150,20 @@ class flac(TagParser):
             return [unicode('%d' % self.disk_numbering.total)]
         return TagParser.__getitem__(self, item)
 
+    def __delitem__(self, item):
+        try:
+            item, value = item.split('=', 1)
+        except ValueError:
+            value = None
+
+        fields = self.__tag2fields__(item)
+        for tag in fields:
+            if tag not in self.entry.keys():
+                continue
+
+            del self.entry[tag]
+            self.modified = True
+
     def __field2tag__(self, field):
         return TagParser.__field2tag__(self, field.upper())
 
@@ -203,8 +217,12 @@ class flac(TagParser):
 
         tags = self.__tag2fields__(item)
         item = tags[0]
-        for tag in tags[1:]:
+
+        for tag in tags:
             if self.entry.has_key(tag):
+                if tag in OGG_MULTIPLE_VALUES_TAGS and value not in self.entry[tag]:
+                    value = self.entry[tag] + value
+
                 del self.entry[tag]
 
         entries =[]

@@ -68,7 +68,7 @@ DEFAULT_CODECS = {
 
   'vorbis': {
     'description': 'Ogg Vorbis',
-    'extensions': ['vorbis', 'ogg'],
+    'extensions': ['ogg', 'oga'],
     'encoders': [
         'oggenc --quiet -q 7 -o OUTFILE FILE',
     ],
