@@ -9,8 +9,9 @@ from mutagen.flac import FLAC
 from mutagen.flac import Picture, FLACNoHeaderError
 
 from soundforest.tags import TagError
-from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
+from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 
 FLAC_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
 
