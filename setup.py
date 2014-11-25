@@ -6,7 +6,7 @@ Setup for soundforest package for setuptools
 import os,glob
 from setuptools import setup,find_packages
 
-VERSION='3.2'
+VERSION='3.3'
 README = open(os.path.join(os.path.dirname(__file__),'README.txt'),'r').read()
 
 setup(
