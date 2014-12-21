@@ -44,5 +44,5 @@ package: clean
 	rm -rf $(PACKAGE)-$(VERSION)
 
 register:
-	python setup.py register
+	python setup.py register sdist upload
 

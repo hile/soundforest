@@ -53,7 +53,7 @@ class AlbumArt(object):
 
         if not self.is_loaded():
             return unicode('Uninitialized AlbumArt object')
-        return unicode('%s file %d bytes' % (self.get_fileformat(), len(self)))
+        return unicode('%(mime)s %(width)dx%(height)dpx' % self.get_info())
 
     def __len__(self):
         """
