@@ -291,6 +291,9 @@ class Album(IterableTrackFolder):
         for m in self.metadata:
             dst_path = os.path.join(target.path, os.path.basename(m.path))
 
+            if os.path.realpath(m.path) == os.path.realpath(dst_path):
+                continue
+
             try:
                 shutil.copyfile(m.path, dst_path)
             except OSError, (ecode, emsg):
@@ -301,9 +304,13 @@ class Album(IterableTrackFolder):
         if target.albumart:
             for track in target:
                 tags = track.tags
+                if tags is None:
+                    continue
+
                 if not tags.supports_albumart:
                     self.log.debug('no albumart support: %s' % track.path)
                     continue
+
                 if tags.set_albumart(albumart):
                     self.log.debug('albumart: %s' % track)
                     tags.save()
