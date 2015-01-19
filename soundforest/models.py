@@ -536,6 +536,23 @@ class TreeTypeModel(Base, BaseNamedModel):
         return self.name
 
 
+class PrefixModel(Base, BasePathNamedModel):
+
+    """PrefixModel
+
+    Audio tree prefix paths
+
+    """
+
+    __tablename__ = 'prefixes'
+
+    id = Column(Integer, primary_key=True)
+    path = Column(SafeUnicode, unique=True)
+
+    def __repr__(self):
+        return self.path
+
+
 class TreeModel(Base, BasePathNamedModel):
 
     """TreeModel
@@ -923,6 +940,11 @@ class SoundforestDB(object):
         return self.query(PlaylistModel).all()
 
     @property
+    def prefixes(self):
+        """Return registered PrefixModel objects from database"""
+        return self.query(PrefixModel).all()
+
+    @property
     def trees(self):
         """Return registered TreeModel objects from database"""
         return self.query(TreeModel).all()
@@ -1046,6 +1068,29 @@ class SoundforestDB(object):
         ).first()
         if not existing:
             raise SoundforestError('Playlist source is not registered: %s' % path)
+
+        self.delete(existing)
+
+    def register_prefix(self, path):
+        """Register a prefix"""
+        if isinstance(path, str):
+            path = unicode(path, 'utf-8')
+
+        existing = self.query(PrefixModel).filter(
+            PrefixModel.path == path
+        ).first()
+        if existing:
+            raise SoundforestError('Prefix was already registered: %s' % path)
+
+        self.add(PrefixModel(path=path))
+
+    def unregister_prefix(self, path):
+        """Unregister a prefix"""
+        existing = self.query(PrefixModel).filter(
+            PrefixModel.path == path
+        ).first()
+        if not existing:
+            raise SoundforestError('Prefix was not registered: %s' % path)
 
         self.delete(existing)
 

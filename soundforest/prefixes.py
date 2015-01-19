@@ -121,7 +121,9 @@ class TreePrefixes(object):
             list.__init__(self)
             self.db = ConfigDB()
 
-            for path in DEFAULT_PATHS:
+            common_prefixes = set(DEFAULT_PATHS + [prefix.path for prefix in self.db.prefixes])
+
+            for path in common_prefixes:
                 for name, codec in self.db.codecs.items():
                     prefix_path = os.path.join(path, name)
                     prefix = MusicTreePrefix(prefix_path, [codec.name] + codec.extensions)
@@ -219,7 +221,6 @@ class TreePrefixes(object):
                 if prefix.match(path):
                     return prefix
 
-            self.log.debug('no match for %s' % path)
             return None
 
         def relative_path(self, path):
