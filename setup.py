@@ -6,7 +6,7 @@ Setup for soundforest package for setuptools
 import os,glob
 from setuptools import setup,find_packages
 
-VERSION='3.3.2'
+VERSION='3.3.3'
 
 setup(
     name = 'soundforest',
