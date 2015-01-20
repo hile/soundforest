@@ -1,16 +1,14 @@
+#
 # vim: noexpandtab, tabstop=4
 #
-# Install the scrips, configs and python modules
-#
 
-PACKAGE= $(shell basename ${PWD})
 VERSION= $(shell awk -F\' '/^VERSION/ {print $$2}' setup.py)
-SYSTEM= $(shell uname -s)
 
+SYSTEM= $(shell uname -s)
 ifeq ($(SYSTEM),Darwin)
-PREFIX_INSTALL_FLAGS='--no-user-cfg'
+INSTALL_FLAGS='--no-user-cfg'
 else
-PREFIX_INSTALL_FLAGS=
+INSTALL_FLAGS=
 endif
 
 all: build
@@ -24,24 +22,12 @@ build:
 	python setup.py build
 
 ifdef PREFIX
-install_modules: build
-	python setup.py $(PREFIX_INSTALL_FLAGS) install --prefix=${PREFIX}
-install: install_modules 
-	install -m 0755 -d $(PREFIX)/bin
-	for f in bin/*; do echo " $(PREFIX)/$$f";install -m 755 $$f $(PREFIX)/bin/;done;
+install: build
+	python setup.py $(INSTALL_FLAGS) install --prefix=${PREFIX}
 else
-install_modules: build 
+install: build
 	python setup.py install
-install: install_modules 
 endif
-
-package: clean
-	mkdir -p ../releases/$(PACKAGE)
-	git log --pretty=format:'%ai %an%n%n%B' > CHANGELOG.txt
-	rsync -a . --exclude='*.swp' --exclude=.DS_Store --exclude=.idea --exclude=.git --exclude=.gitignore ./ $(PACKAGE)-$(VERSION)/
-	rm CHANGELOG.txt
-	tar -zcf ../releases/$(PACKAGE)/$(PACKAGE)-$(VERSION).tar.gz --exclude=.git --exclude=.gitignore --exclude=*.swp --exclude=*.pyc $(PACKAGE)-$(VERSION) 
-	rm -rf $(PACKAGE)-$(VERSION)
 
 register:
 	python setup.py register sdist upload

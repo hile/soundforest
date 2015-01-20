@@ -16,14 +16,18 @@ ALBUMART_FILENAMES = (
     'front.jpg',
     'back.jpg',
 )
+
 # Same for cover booklet filenames: rename these consistently in your library!
-BOOKLET_FILENAMES = [ 'booklet.pdf' ]
+BOOKLET_FILENAMES = (
+    'booklet.pdf',
+)
 
 # Apple OS/X system files we wish to ignore
 OSX_SYSTEM_FILES = [
     '.com.apple.timemachine.supported',
     '.DS_Store',
 ]
+
 
 class MetadataFileType(object):
     """
@@ -131,6 +135,7 @@ class Metadata(list):
         """
         if not isinstance(metadata_class, MetadataFileType):
             raise ValueError('Not a MetadataFileType instance')
+
         self.append(metadata_class)
 
     def match(self, path):

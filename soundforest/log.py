@@ -29,7 +29,7 @@ DEFAULT_SYSLOG_LEVEL =  logging.handlers.SysLogHandler.LOG_WARNING
 DEFAULT_SYSLOG_FACILITY = logging.handlers.SysLogHandler.LOG_USER
 
 # Mapping to set syslog handler levels via same classes as normal handlers
-LOGGING_LEVEL_NAMES = ( 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
+LOGGING_LEVEL_NAMES = ( 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL' )
 SYSLOG_LEVEL_MAP = {
     logging.handlers.SysLogHandler.LOG_DEBUG:   logging.DEBUG,
     logging.handlers.SysLogHandler.LOG_NOTICE:  logging.INFO,

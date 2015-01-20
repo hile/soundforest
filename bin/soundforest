@@ -15,43 +15,79 @@ from soundforest.cli import Script, ScriptCommand, ScriptError
 from soundforest.prefixes import TreePrefixes
 from soundforest.tree import Tree, Track, Album
 
-class CodecsCommand(ScriptCommand):
+
+class SoundforestCommand(ScriptCommand):
+    def parse_args(self, args):
+        args = ScriptCommand.parse_args(self, args)
+
+        if 'paths' in args and args.paths:
+            paths = []
+            for v in args.paths:
+                if v == '-':
+                    for line in [x.rstrip() for x in sys.stdin.readlines()]:
+                        if line not in paths:
+                            paths.append(line)
+
+                else:
+                    stripped = v.rstrip()
+                    # Root path / gets empty here
+                    if stripped == '':
+                        stripped = v
+                    if stripped not in paths:
+                        paths.append(stripped)
+
+            args.paths = paths
+
+        return args
+
+
+class CodecsCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             for name, codec in self.db.codecs.items():
                 print '%s (%s)' % (codec, codec.description)
                 print 'Extensions'
                 print '  %s' %  ','.join(x.extension for x in codec.extensions)
+
                 print 'Decoders'
-                for decoder in codec.decoders: print '  ', decoder.command
+                for decoder in codec.decoders:
+                    print '  ', decoder.command
+
                 print 'Encoders'
-                for encoder in codec.encoders: print '  ', encoder.command
+                for encoder in codec.encoders:
+                    print '  ', encoder.command
+
+                if codec.testers:
+                    print 'Testers'
+                    for tester in codec.testers:
+                        print '  ', tester.command
+
                 print
 
 
-class ConfigCommand(ScriptCommand):
+class ConfigCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             for setting in self.db.registered_settings:
                 print '%16s %s' % (setting.key, setting.value)
 
 
-class PlaylistsCommand(ScriptCommand):
+class PlaylistsCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             for playlist in self.db.playlists:
                 print playlist
 
 
-class SyncConfigCommand(ScriptCommand):
+class SyncConfigCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             for s in self.db.registered_sync_targets:
@@ -62,9 +98,9 @@ class SyncConfigCommand(ScriptCommand):
             self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
 
 
-class TagsCommand(ScriptCommand):
+class TagsCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             if args.tree:
@@ -79,9 +115,9 @@ class TagsCommand(ScriptCommand):
                             print '  %s = %s' % (entry.tag, entry.value)
 
 
-class TracksCommand(ScriptCommand):
+class TracksCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             if args.tree:
@@ -95,19 +131,9 @@ class TracksCommand(ScriptCommand):
                         print track.relative_path
 
 
-class PrefixCommand(ScriptCommand):
+class PrefixCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
-
-        if args.paths:
-            paths = []
-            for path in args.paths:
-                stripped = path.rstrip(os.sep)
-                if stripped:
-                    paths.append(stripped)
-                else:
-                    paths.append(path)
-            args.paths = paths
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'match':
             prefixes = TreePrefixes()
@@ -135,12 +161,9 @@ class PrefixCommand(ScriptCommand):
                 print prefix
 
 
-class TreeCommand(ScriptCommand):
+class TreeCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
-
-        if args.paths:
-            args.paths = [x.rstrip(os.sep) for x in args.paths]
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.tree_type and args.tree_type not in script.db.registered_tree_types:
             self.script.exit(1, 'Unsupported tree type: %s' % args.tree_type)
@@ -170,9 +193,9 @@ class TreeCommand(ScriptCommand):
                 print tree
 
 
-class TreeTypesCommand(ScriptCommand):
+class TreeTypesCommand(SoundforestCommand):
     def run(self, args):
-        ScriptCommand.run(self, args)
+        args = SoundforestCommand.parse_args(self, args)
 
         if args.action == 'list':
             for tt in self.db.registered_tree_types:
@@ -185,6 +208,23 @@ class TreeTypesCommand(ScriptCommand):
         if args.action == 'unregister':
             for tt in args.types:
                 self.db.unregister_tree_type(tt)
+
+
+class TesterCommand(SoundforestCommand):
+    def testresult(self, track, result, errors='', stdout=None, stderr=None):
+        if not result:
+            print '%s %s%s' % ('NOK', track.path, errors and ': %s' % errors or '')
+
+    def run(self, args):
+        args = SoundforestCommand.parse_args(self, args)
+
+        for path in args.paths:
+            realpath = os.path.realpath(path)
+            if os.path.isdir(realpath):
+                Tree(path).test(callback=self.testresult)
+
+            elif os.path.isfile(realpath):
+                Track(path).test(callback=self.testresult)
 
 
 # Register parser and sub commands
@@ -232,6 +272,9 @@ c.add_argument('paths', nargs='*', help='Paths to trees to process')
 c = script.add_subcommand(TreeTypesCommand('tree-type', description = 'Tree type database manipulations'))
 c.add_argument('action', choices=('list', 'register', 'unregister'), help='List tree types in database')
 c.add_argument('types', nargs='*', help='Tree type names to process')
+
+c = script.add_subcommand(TesterCommand('test', 'Test file integrity'))
+c.add_argument('paths', nargs='*', help='Paths to test')
 
 script.run()
 

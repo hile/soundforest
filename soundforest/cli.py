@@ -186,6 +186,7 @@ class Script(object):
         if self.subcommand_parser is not None:
             self.subcommands[args.command].run(args)
 
+
 class ScriptCommand(argparse.ArgumentParser):
     """
     Parent class for cli subcommands
@@ -215,16 +216,20 @@ class ScriptCommand(argparse.ArgumentParser):
     def message(self, *args, **kwargs):
         self.script.message(*args, **kwargs)
 
-    def run(self, args):
-        xterm_title('soundforest %s' % (self.name))
-
+    def parse_args(self, args):
         if hasattr(args, 'debug') and getattr(args, 'debug'):
             self.logger.set_level('DEBUG')
 
-        self.selected_mode_flags = filter(lambda x:
-            getattr(args, x) not in [None, False, []],
-            self.mode_flags
-        )
+        self.selected_mode_flags = []
+        for flag in self.mode_flags:
+            if not hasattr(args, flag):
+                continue
+
+            if getattr(self, flag) not in ( None, False, [], ):
+                self.selected_mode_flags.append(flag)
+
+        xterm_title('soundforest %s' % (self.name))
+
         return args
 
     def match_path(self, path, matches=[]):

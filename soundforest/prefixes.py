@@ -21,11 +21,9 @@ DEFAULT_PATHS = [
     os.path.join(os.getenv('HOME'), 'Music')
 ]
 
-ITUNES_MUSIC = os.path.join(
-    os.getenv('HOME'), 'Music', 'iTunes', 'iTunes Media', 'Music'
-)
+ITUNES_MUSIC = os.path.join(os.getenv('HOME'), 'Music', 'iTunes', 'iTunes Media', 'Music')
 ITUNES_PARTS = ITUNES_MUSIC.split(os.sep)
-for i in range(0, len(ITUNES_PARTS)+1):
+for i in range(0, len(ITUNES_PARTS) + 1):
     if os.path.islink(os.sep.join(ITUNES_PARTS[:i])):
         ITUNES_MUSIC = os.path.realpath(ITUNES_MUSIC)
         break
@@ -44,6 +42,7 @@ class MusicTreePrefix(object):
     def __init__(self, path, extensions=[]):
         self.log = SoundforestLogger().default_stream
         self.path = path.rstrip(os.sep)
+
         if not isinstance(extensions, list):
             raise PrefixError('Extensions must be a list')
 
@@ -51,6 +50,7 @@ class MusicTreePrefix(object):
         for ext in extensions:
             if hasattr(ext, 'extension'):
                 ext = ext.extension
+
             elif not isinstance(ext, basestring):
                 raise PrefixError('Extensions must be a list of strings')
 
@@ -142,35 +142,44 @@ class TreePrefixes(object):
             if not os.path.isfile(USER_PATH_CONFIG):
                 return
 
-            with open(USER_PATH_CONFIG, 'r') as config:
+            try:
+                with open(USER_PATH_CONFIG, 'r') as config:
 
-                user_codecs = {}
-                for line in config:
-                    try:
-                        if line.strip() == '' or line[:1] == '#':
+                    user_codecs = {}
+                    for line in config:
+
+                        try:
+                            if line.strip() == '' or line[:1] == '#':
+                                continue
+                            (codec_name, paths) = [x.strip() for x in line.split('=', 1)]
+                            paths = [x.strip() for x in paths.split(',')]
+                        except ValueError:
+                            self.log.debug('Error parsing line: %s' % line)
                             continue
-                        (codec_name, paths) = [x.strip() for x in line.split('=', 1)]
-                        paths = [x.strip() for x in paths.split(',')]
-                    except ValueError:
-                        self.log.debug('Error parsing line: %s' % line)
-                        continue
-                    user_codecs[codec_name] = paths
 
-                for codec_name in reversed(sorted(user_codecs.keys())):
-                    paths = user_codecs[codec_name]
-                    if codec_name == 'itunes':
-                        codec = match_codec('m4a')
-                    else:
-                        codec = match_codec(codec_name)
-                    if not codec:
-                        continue
+                        user_codecs[codec_name] = paths
 
-                    for path in reversed(paths):
-                        prefix = MusicTreePrefix(path, self.db.codecs.extensions('aac'))
+                    for codec_name in reversed(sorted(user_codecs.keys())):
+                        paths = user_codecs[codec_name]
+
                         if codec_name == 'itunes':
-                            self.register_prefix(prefix, prepend=False)
+                            codec = match_codec('m4a')
                         else:
-                            self.register_prefix(prefix, prepend=True)
+                            codec = match_codec(codec_name)
+
+                        if not codec:
+                            continue
+
+                        for path in reversed(paths):
+                            prefix = MusicTreePrefix(path, self.db.codecs.extensions('aac'))
+
+                            if codec_name == 'itunes':
+                                self.register_prefix(prefix, prepend=False)
+                            else:
+                                self.register_prefix(prefix, prepend=True)
+
+            except IOError, (ecode, emsg):
+                raise PrefixError('Error reading %s: %s' % (USER_PATH_CONFIG, emsg))
 
         def index(self, prefix):
             if not isinstance(prefix, MusicTreePrefix):
@@ -194,6 +203,7 @@ class TreePrefixes(object):
                 if prepend and index != 0:
                     prefix = self.pop(index)
                     self.insert(0, prefix)
+
             except IndexError:
                 if prepend:
                     self.insert(0, prefix)

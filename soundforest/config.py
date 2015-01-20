@@ -46,11 +46,10 @@ class ConfigDB(object):
             treetypes = self.session.query(models.TreeTypeModel).all()
             if not treetypes:
                 treetypes = []
+
                 for name,description in DEFAULT_TREE_TYPES.items():
-                    treetypes.append(models.TreeTypeModel(
-                        name=name,
-                        description=description
-                    ))
+                    treetypes.append(models.TreeTypeModel(name=name, description=description))
+
                 self.add(treetypes)
                 self.commit()
 
@@ -58,29 +57,23 @@ class ConfigDB(object):
             self.sync = SyncConfiguration(db=self)
 
         def get(self, key):
-            entry = self.session.query(models.SettingModel).filter(
-                models.SettingModel.key==key
-            ).first()
+            entry = self.session.query(models.SettingModel).filter(models.SettingModel.key==key).first()
 
             return entry is not None and entry.value or None
 
         def set(self, key, value):
-            existing = self.session.query(models.SettingModel).filter(
-                models.SettingModel.key==key
-            ).first()
+            existing = self.session.query(models.SettingModel).filter(models.SettingModel.key==key).first()
             if existing:
                 self.session.delete(existing)
 
-            self.session.add(models.SettingModel(
-                key=key,
-                value=value
-            ))
+            self.session.add(models.SettingModel(key=key, value=value))
             self.session.commit()
 
         def __getitem__(self, key):
             value = self.get(key)
             if value is None:
                 raise KeyError
+
             return value
 
         def __setitem__(self, key, value):
@@ -121,6 +114,7 @@ class ConfigDB(object):
 
         self.log.debug('Updating existing tree tracks')
         processed = 0
+
         for album in albums:
 
             db_album = self.query(models.AlbumModel).filter(
@@ -180,9 +174,7 @@ class ConfigDB(object):
 
         self.log.debug('Checking for removed albums')
         for album in db_tree.albums:
-            if album.path in album_paths:
-                continue
-            if album.exists:
+            if album.path in album_paths or album.exists:
                 continue
 
             self.log.debug('Removing album: %s' % album.path)
@@ -190,9 +182,7 @@ class ConfigDB(object):
 
         self.log.debug('Checking for removed tracks')
         for track in db_tree.tracks:
-            if track.path in track_paths:
-                continue
-            if track.exists:
+            if track.path in track_paths or track.exists:
                 continue
 
             self.log.debug('Removing track: %s' % track.path)
@@ -203,6 +193,7 @@ class ConfigDB(object):
 
         if errors > 0:
             self.log.debug('Total %d errors updating tree' % errors)
+
         return added, updated, deleted, processed, errors
 
     def update_track(self, track, update_checksum=True):
@@ -220,11 +211,7 @@ class ConfigDB(object):
             return False
 
         for tag, value in tags.items():
-            self.add(models.TagModel(
-                track=db_track,
-                tag=tag,
-                value=value
-            ))
+            self.add(models.TagModel(track=db_track, tag=tag, value=value))
         self.commit()
 
         if update_checksum:
@@ -242,6 +229,7 @@ class ConfigDB(object):
             self.commit()
 
         return True
+
 
 class ConfigDBDictionary(dict):
     """Configuration database dictionary
@@ -261,6 +249,7 @@ class ConfigDBDictionary(dict):
 
     def values(self):
         return [self[k] for k in self.keys()]
+
 
 class SyncConfiguration(ConfigDBDictionary):
     """SyncConfiguration

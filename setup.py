@@ -3,10 +3,11 @@
 Setup for soundforest package for setuptools
 """
 
-import os,glob
-from setuptools import setup,find_packages
+import os
+import glob
+from setuptools import setup, find_packages
 
-VERSION='3.3.4'
+VERSION ='3.3.4'
 
 setup(
     name = 'soundforest',
@@ -17,17 +18,15 @@ setup(
     author_email = 'hile@iki.fi',
     license = 'PSF',
     url = 'http://tuohela.net/packages/soundforest',
-    zip_safe = False,
-    packages = ['soundforest'] + 
-        ['soundforest.%s' % p for p in find_packages('soundforest')],
+    packages = find_packages(),
     scripts = glob.glob('bin/*'),
-    install_requires = ( 
+    install_requires = (
         'setproctitle',
-        'sqlalchemy', 
+        'sqlalchemy',
         'requests',
         'lxml',
         'pytz',
-        'mutagen', 
+        'mutagen',
         'pillow',
     ),
 )

@@ -28,6 +28,7 @@ logger = SoundforestLogger().default_stream
 DEFAULT_DATABASE = os.path.join(SOUNDFOREST_USER_DIR, 'soundforest.sqlite')
 Base = declarative_base()
 
+
 class SafeUnicode(TypeDecorator):
 
     """SafeUnicode columns
@@ -167,6 +168,7 @@ class SyncTargetModel(Base, BaseNamedModel):
             'defaults': self.defaults,
         }
 
+
 class CodecModel(Base, BaseNamedModel):
 
     """CodecModel
@@ -248,27 +250,28 @@ class CodecModel(Base, BaseNamedModel):
         session.delete(existing)
         session.commit()
 
-    def register_formattester(self, session, command):
+    def register_tester(self, session, command):
         existing = session.query(TesterModel).filter(
             TesterModel.codec == self,
             TesterModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('Format tester already registered: %s' % command)
+            raise SoundforestError('File tester already registered: %s' % command)
 
         session.add(TesterModel(codec=self, command=command))
         session.commit()
 
-    def unregister_formattester(self, session, command):
+    def unregister_tester(self, session, command):
         existing = session.query(TesterModel).filter(
             TesterModel.codec == self,
             TesterModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('Format tester was not registered: %s' % command)
+            raise SoundforestError('File tester was not registered: %s' % command)
 
         session.delete(existing)
         session.commit()
+
 
 class ExtensionModel(Base):
 
@@ -304,12 +307,13 @@ class TesterModel(Base):
     __tablename__ = 'formattester'
 
     id = Column(Integer, primary_key=True)
+    priority = Column(Integer)
     command = Column(SafeUnicode)
 
     codec_id = Column(Integer, ForeignKey('codecs.id'), nullable=False)
     codec = relationship('CodecModel',
         single_parent=False,
-        backref=backref('formattesters',
+        backref=backref('testers',
             order_by=command,
             cascade='all, delete, delete-orphan'
         )
@@ -490,6 +494,7 @@ class PlaylistModel(Base, BaseNamedModel):
     def __len__(self):
         return len(self.tracks)
 
+
 class PlaylistTrackModel(Base, BasePathNamedModel):
 
     """PlaylistTrackModel
@@ -632,6 +637,7 @@ class TreeModel(Base, BasePathNamedModel):
             'total_songs': len(self.songs),
         })
 
+
 class AlbumModel(Base, BasePathNamedModel):
 
     """AlbumModel
@@ -701,6 +707,7 @@ class AlbumModel(Base, BasePathNamedModel):
             'modified': self.modified_isoformat,
             'tracks': track_info
         })
+
 
 class AlbumArtModel(Base):
 
@@ -1014,7 +1021,7 @@ class SoundforestDB(object):
 
         self.delete(existing)
 
-    def register_codec(self, name, extensions, description='', decoders=[], encoders=[]):
+    def register_codec(self, name, extensions, description='', decoders=[], encoders=[], testers=[]):
         """
         Register codec with given parameters
         """
@@ -1032,7 +1039,11 @@ class SoundforestDB(object):
         for priority, command in enumerate(encoders):
             encoder_instances.append(EncoderModel(codec=codec, priority=priority, command=command))
 
-        self.add([codec] + extension_instances + decoder_instances + encoder_instances)
+        tester_instances = []
+        for priority, command in enumerate(testers):
+            tester_instances.append(TesterModel(codec=codec, priority=priority, command=command))
+
+        self.add([codec] + extension_instances + decoder_instances + encoder_instances + tester_instances)
         return codec
 
     def register_tree_type(self, name, description=''):

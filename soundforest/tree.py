@@ -218,6 +218,10 @@ class Tree(IterableTrackFolder):
         if not os.path.dirname(relative_path) in self.relative_dirs:
             return None
 
+    def test(self, callback):
+        for track in self:
+            track.test(callback)
+
 
 class Album(IterableTrackFolder):
 
@@ -441,3 +445,29 @@ class Track(AudioFileFormat):
         encoder[encoder.index('OUTFILE')] = self.path
         encoder[encoder.index('FILE')] = wav_path
         return encoder
+
+    def get_tester_command(self, tempfile_path):
+        try:
+            tester = self.get_available_testers()[0]
+        except IndexError:
+            raise TreeError('No available testers for %s' % self.path)
+
+        tester = tester.split()
+        tester[tester.index('FILE')] = self.path
+        if tester.count('OUTFILE') == 1:
+            tester[tester.index('OUTFILE')] = tempfile_path
+
+        return tester
+
+    def test(self, callback):
+        try:
+            cmd = self.get_tester_command(self.get_temporary_file(prefix='test', suffix='.wav'))
+        except TreeError, emsg:
+            callback(self, False, errors='No tester available for %s' % self.extension)
+            return
+
+        rv, stdout, stderr = self.execute(cmd)
+        if rv == 0:
+            callback(self, True, stdout=stdout, stderr=stderr)
+        else:
+            callback(self, False, stdout=stdout, stderr=stderr)

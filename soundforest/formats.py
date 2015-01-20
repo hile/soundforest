@@ -6,9 +6,13 @@ Guessing of supported file formats and codecs based on extensions
 """
 
 import os
+import tempfile
+
+from subprocess import Popen, PIPE
 
 from soundforest import normalized, SoundforestError, CommandPathCache
 from soundforest.config import ConfigDB
+from soundforest.defaults import SOUNDFOREST_CACHE_DIR
 from soundforest.log import SoundforestLogger
 from soundforest.metadata import Metadata
 
@@ -165,6 +169,17 @@ class AudioFileFormat(object):
             return None
         return os.stat(self.path).st_mtime
 
+    def get_temporary_file(self, dir=SOUNDFOREST_CACHE_DIR, prefix='tmp', suffix=''):
+        if not os.path.isdir(dir):
+            try:
+                os.makedirs(dir)
+            except IOError, (ecode, emsg):
+                raise SoundforestError('Error creating directory %s: %s' % (SOUNDFOREST_CACHE_DIR, emsg))
+            except OSError, (ecode, emsg):
+                raise SoundforestError('Error creating directory %s: %s' % (SOUNDFOREST_CACHE_DIR, emsg))
+
+        return tempfile.mktemp(dir=dir, prefix=prefix, suffix=suffix)
+
     def get_tag_parser(self):
         if self.codec is None or self.codec.name not in TAG_PARSERS.keys():
             return None
@@ -191,3 +206,21 @@ class AudioFileFormat(object):
             return []
 
         return filter_available_command_list(self.codec.decoders)
+
+    def get_available_testers(self):
+        if self.codec is None or not self.codec.testers:
+            return []
+
+        return filter_available_command_list(self.codec.testers)
+
+    def execute(self, args):
+        self.log.debug('running: %s' % ' '.join(args))
+        p = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        (stdout, stderr) = p.communicate()
+
+        if stdout:
+            self.log.debug('output:\n%s' % stdout)
+        if stderr:
+            self.log.debug('errors:\n%s' % stderr)
+
+        return p.returncode, stdout, stderr

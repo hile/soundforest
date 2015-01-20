@@ -11,6 +11,7 @@ import unicodedata
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 
+
 class SoundforestError(Exception):
     pass
 
@@ -27,8 +28,10 @@ def normalized(path, normalization='NFC'):
     if sys.platform != 'darwin':
         if not isinstance(path, unicode):
             return unicode(path, 'utf-8')
+
     if not isinstance(path, unicode):
         path = unicode(path, 'utf-8')
+
     return unicodedata.normalize(normalization, path)
 
 
@@ -48,15 +51,19 @@ class CommandPathCache(list):
         """
         self.paths = []
         self.__delslice__(0, len(self))
+
         for path in os.getenv('PATH').split(os.pathsep):
             if not self.paths.count(path):
                 self.paths.append(path)
+
         for path in self.paths:
             if not os.path.isdir(path):
                 continue
+
             for cmd in [os.path.join(path, f) for f in os.listdir(path)]:
                 if os.path.isdir(cmd) or not os.access(cmd, os.X_OK):
                     continue
+
                 self.append(cmd)
 
     def versions(self, name):
@@ -66,24 +73,16 @@ class CommandPathCache(list):
         """
         if not len(self):
             self.update()
-        return filter(lambda x: os.path.basename(x) == name, self)
+
+        return [cmd for cmd in self if os.path.basename(cmd) == name]
 
     def which(self, name):
         """
         Return first matching path to command given with name, or None if
         command is not on path
         """
-        if not len(self):
-            self.update()
-        try:
-            return filter(lambda x: os.path.basename(x) == name, self)[0]
-        except IndexError:
+        versions = self.versions(name)
+        if versions:
+            return versions[0]
+        else:
             return None
-
-if not os.path.isdir(SOUNDFOREST_USER_DIR):
-    try:
-        os.makedirs(SOUNDFOREST_USER_DIR)
-    except OSError, (ecode, emsg):
-        raise SoundforestError(
-             'Error creating directory %s: %s' % (dst_dir, emsg)
-        )

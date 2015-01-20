@@ -39,7 +39,7 @@ class Playlist(list):
         raise NotImplementedError('You must implement writing in subclass')
 
     def __insert(self, path, position=None):
-        if self.unique and self.count(path)>0:
+        if self.unique and self.count(path) > 0:
             return
 
         self.modified = True
@@ -51,6 +51,7 @@ class Playlist(list):
                 position = int(position)
                 if position < 0:
                     raise ValueError
+
                 if position > list.__len__(self):
                     position = list.__len__(self)
 
@@ -67,6 +68,7 @@ class Playlist(list):
         elif os.path.isdir(path):
             for f in ['%s' % os.path.join(path, x) for x in os.listdir(path)]:
                 f = normalized(os.path.realpath(f))
+
                 if not recursive and os.path.isdir(f):
                     continue
 
@@ -98,21 +100,24 @@ class m3uPlaylist(Playlist):
         if not self.exists:
             return
 
-        self.__delslice__(0, list.__len__(self))
-        with open(self.path, 'r') as lines:
-            for l in lines:
-                l = l.strip()
-                if l.startswith('#'):
-                    continue
+        try:
+            with open(self.path, 'r') as lines:
+                self.__delslice__(0, list.__len__(self))
+                for l in lines:
+                    l = l.strip()
+                    if l.startswith('#'):
+                        continue
 
-                filepath = normalized(os.path.realpath(l))
-                if not os.path.isfile(filepath):
-                    continue
+                    filepath = normalized(os.path.realpath(l))
+                    if not os.path.isfile(filepath):
+                        continue
 
-                if self.unique and self.count(filepath)>0:
-                    continue
+                    if self.unique and self.count(filepath)>0:
+                        continue
 
-                self.append(filepath)
+                    self.append(filepath)
+        except IOError, (ecode, emsg):
+            raise PlaylistError('Error reading %s: %s' % (self.path, emsg))
 
     def write(self):
         pl_dir = os.path.dirname(self.path)
@@ -134,6 +139,10 @@ class m3uPlaylist(Playlist):
             fd = open(self.path, 'w')
             for f in self: fd.write('%s\n' % f)
             fd.close()
+
+        except IOError, (ecode, emsg):
+            raise PlaylistError('Error writing playlist %s: %s' % (self.path, emsg))
+
         except OSError, (ecode, emsg):
             raise PlaylistError('Error writing playlist %s: %s' % (self.path, emsg))
 
@@ -143,8 +152,13 @@ class m3uPlaylist(Playlist):
 
         try:
             os.unlink(self.path)
+
         except OSError, (ecode, emsg):
             raise PlaylistError('Error removing playlist %s: %s' % (self.path, emsg))
+
+        except oError, (ecode, emsg):
+            raise PlaylistError('Error removing playlist %s: %s' % (self.path, emsg))
+
 
 class m3uPlaylistDirectory(list):
     def __init__(self, path=None):
@@ -177,13 +191,14 @@ class m3uPlaylistDirectory(list):
             item += '.m3u'
 
         try:
-            return filter(lambda pl: item.lower() == pl.filename.lower(), self)[0]
+            name_lower = pl.filename.lower()
+            return [item for item in self if item.lower() == name_lower][0]
         except IndexError:
             pass
 
         try:
             path = os.path.realpath(item)
-            return filter(lambda pl: path == pl.path, self)[0]
+            return [pl for pl in self if pl.path == path][0]
         except IndexError:
             pass
 
