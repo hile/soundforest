@@ -97,6 +97,10 @@ class SyncConfigCommand(SoundforestCommand):
             print 'Registering sync target %s' % args.name
             self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
 
+        if args.action == 'unregister':
+            print 'Unregistering sync target %s' % args.name
+            self.db.unregister_sync_target(args.name)
+
 
 class TagsCommand(SoundforestCommand):
     def run(self, args):

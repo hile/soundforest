@@ -1013,9 +1013,7 @@ class SoundforestDB(object):
         return target.as_dict()
 
     def unregister_sync_target(self, name):
-        existing = self.query(SyncTargetModel).filter(
-            SyncTargetModel.name == name
-        ).first()
+        existing = self.query(SyncTargetModel).filter(SyncTargetModel.name == name).first()
         if not existing:
             raise SoundforestError('Sync target was not registered: %s' % name)
 
