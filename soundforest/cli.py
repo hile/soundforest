@@ -139,9 +139,11 @@ class Script(object):
 
     def message(self, message):
         sys.stdout.write('%s\n' % message)
+        sys.stdout.flush()
 
     def error(self, message):
         sys.stderr.write('%s\n' % message)
+        sys.stdout.flush()
 
     def add_subcommand(self, command):
         if self.subcommand_parser is None:

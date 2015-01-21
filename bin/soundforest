@@ -47,24 +47,24 @@ class CodecsCommand(SoundforestCommand):
 
         if args.action == 'list':
             for name, codec in self.db.codecs.items():
-                print '%s (%s)' % (codec, codec.description)
-                print 'Extensions'
-                print '  %s' %  ','.join(x.extension for x in codec.extensions)
+                self.message('%s (%s)' % (codec, codec.description))
+                self.message('Extensions')
+                self.message('  %s' %  ','.join(x.extension for x in codec.extensions))
 
-                print 'Decoders'
+                self.message('Decoders')
                 for decoder in codec.decoders:
-                    print '  ', decoder.command
+                    self.message('  ', decoder.command)
 
-                print 'Encoders'
+                self.message('Encoders')
                 for encoder in codec.encoders:
-                    print '  ', encoder.command
+                    self.message('  ', encoder.command)
 
                 if codec.testers:
-                    print 'Testers'
+                    self.message('Testers')
                     for tester in codec.testers:
-                        print '  ', tester.command
+                        self.message('  ', tester.command)
 
-                print
+                self.message('')
 
 
 class ConfigCommand(SoundforestCommand):
@@ -73,7 +73,7 @@ class ConfigCommand(SoundforestCommand):
 
         if args.action == 'list':
             for setting in self.db.registered_settings:
-                print '%16s %s' % (setting.key, setting.value)
+                self.message('%16s %s' % (setting.key, setting.value))
 
 
 class PlaylistsCommand(SoundforestCommand):
@@ -82,7 +82,7 @@ class PlaylistsCommand(SoundforestCommand):
 
         if args.action == 'list':
             for playlist in self.db.playlists:
-                print playlist
+                self.message(playlist)
 
 
 class SyncConfigCommand(SoundforestCommand):
@@ -91,14 +91,14 @@ class SyncConfigCommand(SoundforestCommand):
 
         if args.action == 'list':
             for s in self.db.registered_sync_targets:
-                print s
+                self.message(s)
 
         if args.action == 'register':
-            print 'Registering sync target %s' % args.name
+            self.message('Registering sync target %s' % args.name)
             self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
 
         if args.action == 'unregister':
-            print 'Unregistering sync target %s' % args.name
+            self.message('Unregistering sync target %s' % args.name)
             self.db.unregister_sync_target(args.name)
 
 
@@ -116,7 +116,7 @@ class TagsCommand(SoundforestCommand):
                 for path in args.paths:
                     for track in tree.filter_tracks(self.db.session, path):
                         for entry in track.tags:
-                            print '  %s = %s' % (entry.tag, entry.value)
+                            self.message('  %s = %s' % (entry.tag, entry.value))
 
 
 class TracksCommand(SoundforestCommand):
@@ -132,7 +132,7 @@ class TracksCommand(SoundforestCommand):
             for tree in trees:
                 for path in args.paths:
                     for track in tree.filter_tracks(self.db.session, path):
-                        print track.relative_path
+                        self.message(track.relative_path)
 
 
 class PrefixCommand(SoundforestCommand):
@@ -144,7 +144,7 @@ class PrefixCommand(SoundforestCommand):
             for path in args.paths:
                 m = prefixes.match(path)
                 if m:
-                    print m
+                    self.message(m)
 
         if args.action == 'register':
             for path in args.paths:
@@ -155,14 +155,14 @@ class PrefixCommand(SoundforestCommand):
                 try:
                     self.db.unregister_prefix(path)
                 except SoundforestError, emsg:
-                    print emsg
+                    self.message(emsg)
 
         if args.action == 'list':
             for prefix in self.db.prefixes:
                 if args.paths and not self.match_prefix(prefix.path, args.paths):
                     continue
 
-                print prefix
+                self.message(prefix)
 
 
 class TreeCommand(SoundforestCommand):
@@ -194,7 +194,7 @@ class TreeCommand(SoundforestCommand):
                 if args.paths and not self.match_path(tree.path, args.paths):
                     continue
 
-                print tree
+                self.message( tree)
 
 
 class TreeTypesCommand(SoundforestCommand):
@@ -203,7 +203,7 @@ class TreeTypesCommand(SoundforestCommand):
 
         if args.action == 'list':
             for tt in self.db.registered_tree_types:
-                print '%14s %s' % (tt.name, tt.description)
+                self.message( '%14s %s' % (tt.name, tt.description))
 
         if args.action == 'register':
             for tt in args.types:
@@ -217,7 +217,7 @@ class TreeTypesCommand(SoundforestCommand):
 class TesterCommand(SoundforestCommand):
     def testresult(self, track, result, errors='', stdout=None, stderr=None):
         if not result:
-            print '%s %s%s' % ('NOK', track.path, errors and ': %s' % errors or '')
+            self.message( '%s %s%s' % ('NOK', track.path, errors and ': %s' % errors or ''))
 
     def run(self, args):
         args = SoundforestCommand.parse_args(self, args)
