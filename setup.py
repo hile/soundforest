@@ -7,7 +7,7 @@ import os
 import glob
 from setuptools import setup, find_packages
 
-VERSION ='3.4.2'
+VERSION ='3.4.3'
 
 setup(
     name = 'soundforest',

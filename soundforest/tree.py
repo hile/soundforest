@@ -219,8 +219,14 @@ class Tree(IterableTrackFolder):
             return None
 
     def test(self, callback):
+        errors = False
         for track in self:
-            track.test(callback)
+            if track.test(callback) != 0:
+                errors = True
+        if errors:
+            return 1
+        else:
+            return 0
 
 
 class Album(IterableTrackFolder):
@@ -471,3 +477,5 @@ class Track(AudioFileFormat):
             callback(self, True, stdout=stdout, stderr=stderr)
         else:
             callback(self, False, stdout=stdout, stderr=stderr)
+
+        return rv

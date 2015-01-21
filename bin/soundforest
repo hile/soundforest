@@ -222,13 +222,22 @@ class TesterCommand(SoundforestCommand):
     def run(self, args):
         args = SoundforestCommand.parse_args(self, args)
 
+        errors = False
         for path in args.paths:
             realpath = os.path.realpath(path)
             if os.path.isdir(realpath):
-                Tree(path).test(callback=self.testresult)
+                if Tree(path).test(callback=self.testresult) != 0:
+                    errors = True
 
             elif os.path.isfile(realpath):
-                Track(path).test(callback=self.testresult)
+                if Track(path).test(callback=self.testresult) != 0:
+                    errors = True
+
+        if errors:
+            sys.exit(1)
+
+        else:
+            sys.exit(0)
 
 
 # Register parser and sub commands
@@ -281,6 +290,4 @@ c = script.add_subcommand(TesterCommand('test', 'Test file integrity'))
 c.add_argument('paths', nargs='*', help='Paths to test')
 
 script.run()
-
-
 
