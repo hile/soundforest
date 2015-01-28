@@ -466,8 +466,9 @@ class Track(AudioFileFormat):
         return tester
 
     def test(self, callback):
+        tempfile_path = self.get_temporary_file(prefix='test', suffix='.wav')
         try:
-            cmd = self.get_tester_command(self.get_temporary_file(prefix='test', suffix='.wav'))
+            cmd = self.get_tester_command(tempfile_path)
         except TreeError, emsg:
             callback(self, False, errors='No tester available for %s' % self.extension)
             return
@@ -477,5 +478,11 @@ class Track(AudioFileFormat):
             callback(self, True, stdout=stdout, stderr=stderr)
         else:
             callback(self, False, stdout=stdout, stderr=stderr)
+
+        if os.path.isfile(tempfile_path):
+            try:
+                os.unlink(tempfile_path)
+            except IOError, (ecode, emsg):
+                raise TreeError('Error removing temporary file %s: %s' % (tempfile_path, emsg))
 
         return rv
