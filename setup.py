@@ -3,11 +3,10 @@
 Setup for soundforest package for setuptools
 """
 
-import os
 import glob
 from setuptools import setup, find_packages
 
-VERSION ='3.4.4'
+VERSION ='3.4.5'
 
 setup(
     name = 'soundforest',
@@ -17,7 +16,7 @@ setup(
     author = 'Ilkka Tuohela',
     author_email = 'hile@iki.fi',
     license = 'PSF',
-    url = 'http://tuohela.net/packages/soundforest',
+    url = 'https://github.com/hile/soundforest',
     packages = find_packages(),
     scripts = glob.glob('bin/*'),
     install_requires = (
