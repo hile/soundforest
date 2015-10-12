@@ -4,21 +4,22 @@ Setup for soundforest package for setuptools
 """
 
 import glob
-from setuptools import setup, find_packages
+import os
 
-VERSION ='3.4.5'
+from setuptools import setup, find_packages
+from soundforest import __version__
 
 setup(
     name = 'soundforest',
     keywords = 'Sound Audio File Tree Codec Database',
     description = 'Audio file library manager',
-    version = VERSION,
     author = 'Ilkka Tuohela',
     author_email = 'hile@iki.fi',
     license = 'PSF',
     url = 'https://github.com/hile/soundforest',
     packages = find_packages(),
     scripts = glob.glob('bin/*'),
+    version = __version__,
     install_requires = (
         'setproctitle',
         'sqlalchemy',
