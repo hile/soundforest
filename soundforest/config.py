@@ -161,7 +161,7 @@ class ConfigDB(object):
                         errors +=1
 
                 elif not db_track.checksum and update_checksum:
-                    if self.update_track_checksum(track):
+                    if self.update_track_checksum(track) is not None:
                         updated += 1
                     else:
                         errors +=1
@@ -217,21 +217,23 @@ class ConfigDB(object):
         self.commit()
 
         if update_checksum:
-            if not self.update_track_checksum(track):
+            if self.update_track_checksum(track) is None:
                 return False
 
         return True
 
     def update_track_checksum(self, track):
         db_track = self.get_track(track.path)
-        with open(track.path, 'rb') as fd:
-            m = hashlib.md5()
-            m.update(fd.read())
-            db_track.checksum = m.hexdigest()
-            self.commit()
-
-        return True
-
+        if db_track is not None:
+            checksum = track.checksum
+            if db_track.checksum != checksum:
+                db_track.checksum = checksum
+                self.commit()
+                return checksum
+            else:
+                return None
+        else:
+            return None
 
 class ConfigDBDictionary(dict):
     """Configuration database dictionary

@@ -234,14 +234,55 @@ class TesterCommand(SoundforestCommand):
                     errors = True
 
         if errors:
-            sys.exit(1)
+            self.exit(1)
 
         else:
-            sys.exit(0)
+            self.exit(0)
+
+
+class ChecksumCommand(SoundforestCommand):
+    def verify(self, track):
+        db_track = self.db.get_track(track.path)
+
+        if db_track is not None:
+            status = db_track.checksum == track.checksum and 'OK' or 'NOK'
+        else:
+            status = 'NOTFOIND'
+        self.message('{0:8} {1}'.format(status, track.path))
+
+    def update(self, track):
+        checksum = self.db.update_track_checksum(track)
+        if checksum is not None:
+            self.message('{0:24} {1}'.format(checksum, track.path))
+
+    def process(self, action, track):
+        if action == 'update':
+            self.update(track)
+        elif action == 'verify':
+            self.verify(track)
+
+    def run(self, args):
+        args = SoundforestCommand.parse_args(self, args)
+
+        for path in args.paths:
+            realpath = os.path.realpath(path)
+
+            if os.path.isdir(realpath):
+                tree = Tree(path)
+                for track in tree:
+                    self.process(args.action, track)
+
+            elif os.path.isfile(realpath):
+                self.process(args.action, Track(path))
 
 
 # Register parser and sub commands
 script = Script()
+
+c = script.add_subcommand(ChecksumCommand('checksum', description='Check and update track checksums'))
+c.add_argument('action', choices=('verify', 'update'), help='Checksum action')
+c.add_argument('paths', nargs='*', help='Paths to process')
+
 c = script.add_subcommand(CodecsCommand('codec', 'Codec database manipulations'))
 c.add_argument('-v', '--verbose', action='store_true', help='Verbose details')
 c.add_argument('action', choices=('list',), help='Codec database action')
@@ -273,16 +314,16 @@ c.add_argument('-t', '--tree', help='Tree to match')
 c.add_argument('action', choices=('list',), help='List trees in database')
 c.add_argument('paths', nargs='*', help='Paths to trees to process')
 
-c = script.add_subcommand(PrefixCommand('prefix', description = 'Prefix database manipulations'))
+c = script.add_subcommand(PrefixCommand('prefix', description='Prefix database manipulations'))
 c.add_argument('action', choices=('list', 'match', 'register', 'unregister'), help='Prefix database action')
 c.add_argument('paths', nargs='*', help='Paths to prefixes to process')
 
-c = script.add_subcommand(TreeCommand('tree', description = 'Tree database manipulations'))
+c = script.add_subcommand(TreeCommand('tree', description='Tree database manipulations'))
 c.add_argument('-t', '--tree-type', help='Type of audio files in tree')
 c.add_argument('action', choices=('list', 'update', 'register', 'unregister'), help='Tree database action')
 c.add_argument('paths', nargs='*', help='Paths to trees to process')
 
-c = script.add_subcommand(TreeTypesCommand('tree-type', description = 'Tree type database manipulations'))
+c = script.add_subcommand(TreeTypesCommand('tree-type', description='Tree type database manipulations'))
 c.add_argument('action', choices=('list', 'register', 'unregister'), help='List tree types in database')
 c.add_argument('types', nargs='*', help='Tree type names to process')
 

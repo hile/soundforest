@@ -5,6 +5,7 @@ Abstraction of filesystem audio file trees, albums and tracks
 
 """
 
+import hashlib
 import os
 import re
 import shutil
@@ -404,6 +405,13 @@ class Track(AudioFileFormat):
             title = filename
 
         return tracknumber, title
+
+    @property
+    def checksum(self):
+        with open(self.path, 'rb') as fd:
+            m = hashlib.md5()
+            m.update(fd.read())
+            return m.hexdigest()
 
     def get_album_tracks(self):
         path = os.path.dirname(self.path)
