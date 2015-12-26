@@ -322,7 +322,7 @@ c.add_argument('paths', nargs='*', help='Paths to trees to process')
 c = script.add_subcommand(TracksCommand('track', 'Tree database manipulations'))
 c.add_argument('-c', '--checksum', action='store_true', help='Show track checksum')
 c.add_argument('action', choices=('list', 'tags',), help='List tracks in database')
-c.add_argument('paths', nargs='*', help='Paths to trees to matchss  ')
+c.add_argument('paths', nargs='*', help='Paths to trees to matches')
 
 c = script.add_subcommand(PrefixCommand('prefix', description='Prefix database manipulations'))
 c.add_argument('action', choices=('list', 'match', 'register', 'unregister'), help='Prefix database action')
