@@ -132,7 +132,7 @@ class FLACNumberingTag(TrackNumberingTag):
         """
         value = self.__repr__()
         if value is not None:
-            self.track.entry[self.tag] = '%s' % value
+            self.track.entry[self.tag] = '{0}'.format(value)
             self.track.modified = True
 
 class flac(TagParser):
@@ -145,9 +145,9 @@ class flac(TagParser):
         try:
             self.entry = FLAC(path)
         except IOError, emsg:
-            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+            raise TagError('Error opening }0}: {1}'.format(path, str(emsg)))
         except FLACNoHeaderError, emsg:
-            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+            raise TagError('Error opening }0}: {1}'.format(path, str(emsg)))
 
         self.albumart_obj = None
         self.track_numbering = FLACNumberingTag(self, 'TRACKNUMBER')
@@ -155,13 +155,13 @@ class flac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [unicode('%d' % self.track_numbering.value)]
+            return [unicode('{0:d}'.format(self.track_numbering.value))]
         if item == 'totaltracks':
-            return [unicode('%d' % self.track_numbering.total)]
+            return [unicode('{0:d}'.format(self.track_numbering.total))]
         if item == 'disknumber':
-            return [unicode('%d' % self.disk_numbering.value)]
+            return [unicode('{0:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
-            return [unicode('%d' % self.disk_numbering.total)]
+            return [unicode('{0:d}'.format(self.disk_numbering.total))]
         return TagParser.__getitem__(self, item)
 
     def __delitem__(self, item):

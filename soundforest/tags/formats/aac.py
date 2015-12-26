@@ -102,6 +102,7 @@ AAC_TAG_FORMATTERS = {
     'tmpo':    lambda x: int(x),
 }
 
+
 class AACAlbumArt(TrackAlbumart):
     """
     Thin wrapper to process AAC object albumart files
@@ -121,7 +122,7 @@ class AACAlbumArt(TrackAlbumart):
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag][0])
         except AlbumArtError, emsg:
-            raise TagError('Error reading AAC albumart tag: %s' % emsg)
+            raise TagError('Error reading AAC albumart tag: {0}'.format(emsg))
 
         self.albumart = albumart
 
@@ -136,11 +137,11 @@ class AACAlbumArt(TrackAlbumart):
         try:
             img_format = AAC_ALBUMART_PIL_FORMAT_MAP[self.albumart.get_fileformat()]
         except KeyError:
-            raise TagError('Unsupported albumart format %s' % self.albumart.get_fileformat() )
+            raise TagError('Unsupported albumart format {0}'.format(self.albumart.get_fileformat() ))
         try:
             tag = MP4Cover(data=self.albumart.dump(), imageformat=img_format)
         except MP4MetadataValueError, emsg:
-            raise TagError('Error encoding albumart: %s' % emsg)
+            raise TagError('Error encoding albumart: {0}'.format(emsg))
 
         if self.track.entry.has_key(self.tag):
             if self.track.entry[self.tag] != [tag]:
@@ -150,6 +151,7 @@ class AACAlbumArt(TrackAlbumart):
         self.track.entry[self.tag] = [tag]
         self.track.modified = True
         return self.track.modified
+
 
 class AACIntegerTuple(TrackNumberingTag):
     """
@@ -189,6 +191,7 @@ class AACIntegerTuple(TrackNumberingTag):
         self.track.entry[self.tag] = [(value, total)]
         self.track.modified = True
 
+
 class aac(TagParser):
     """
     Class for processing AAC file tags
@@ -199,16 +202,16 @@ class aac(TagParser):
         try:
             self.entry = MP4(self.path)
         except IOError, emsg:
-            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
 
         except MP4StreamInfoError, emsg:
-            raise TagError('Error opening %s: %s' % (path, str(emsg)))
-
-        except struct.error:
-            raise TagError('Invalid tags in %s' % path)
+            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
 
         except RuntimeError, emsg:
-            raise TagError('Error opening %s: %s' % (path, str(emsg)))
+            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
+
+        except struct.error:
+            raise TagError('Invalid tags in {0}'.format(path))
 
         self.supports_albumart = True
         self.albumart_obj = AACAlbumArt(self)
@@ -217,13 +220,13 @@ class aac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [unicode('%d' % self.track_numbering.value)]
+            return [unicode('{0:d}'.format(self.track_numbering.value))]
         if item == 'totaltracks':
-            return [unicode('%d' % self.track_numbering.total)]
+            return [unicode('{0:d}'.format(self.track_numbering.total))]
         if item == 'disknumber':
-            return [unicode('%d' % self.disk_numbering.value)]
+            return [unicode('{0:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
-            return [unicode('%d' % self.disk_numbering.total)]
+            return [unicode('{0:d}'.format(self.disk_numbering.total))]
         if item == 'unknown_tags':
             keys = []
             for tag in self.entry.keys():

@@ -78,7 +78,7 @@ class SoundforestLogger(object):
         def __getattr__(self, attr):
             if attr in self.keys():
                 return self[attr]
-            raise AttributeError('No such LoggerInstance attribute: %s' % attr)
+            raise AttributeError('No such LoggerInstance attribute: {0}'.format(attr))
 
         def __get_or_create_logger__(self, name):
             if name not in self.keys():
@@ -118,7 +118,7 @@ class SoundforestLogger(object):
                 return True
 
             if not isinstance(handler, logging.Handler):
-                raise LoggerError('Not an instance of logging.Handler: %s' % handler)
+                raise LoggerError('Not an instance of logging.Handler: {0}'.format(handler))
 
             if not isinstance(handler_list, list):
                 raise LoggerError('BUG handler_list must be a list instance')
@@ -175,7 +175,7 @@ class SoundforestLogger(object):
             try:
                 host, path = urllib.splithost(url[url.index(':')+1:])
             except IndexError, emsg:
-                raise LoggerError('Error parsing URL %s: %s' % (url, emsg))
+                raise LoggerError('Error parsing URL {0}: {1}'.format(url, emsg))
 
             handler = logging.handlers.HTTPHandler(host, url, method)
             if not self.__match_handlers__(logger.handlers, handler):
@@ -200,8 +200,8 @@ class SoundforestLogger(object):
                 try:
                     os.makedirs(directory)
                 except OSError:
-                    raise LoggerError('Error creating directory: %s' % directory)
-            logfile = os.path.join(directory, '%s.log' % name)
+                    raise LoggerError('Error creating directory: {0}'.format(directory))
+            logfile = os.path.join(directory, '{0}.log'.format(name))
 
             logger = self.__get_or_create_logger__(name)
             handler = logging.handlers.RotatingFileHandler(
@@ -229,7 +229,7 @@ class SoundforestLogger(object):
                     if value not in SYSLOG_LEVEL_MAP.values():
                         raise ValueError
                 except ValueError:
-                    raise ValueError('Invalid logging level value: %s' % value)
+                    raise ValueError('Invalid logging level value: {0}'.format(value))
 
             for logger in self.values():
                 if hasattr(logger, 'setLevel'):

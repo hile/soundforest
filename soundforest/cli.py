@@ -227,7 +227,7 @@ class ScriptCommand(argparse.ArgumentParser):
             if not hasattr(args, flag):
                 continue
 
-            if getattr(self, flag) not in ( None, False, [], ):
+            if getattr(args, flag) not in ( None, False, [], ):
                 self.selected_mode_flags.append(flag)
 
         xterm_title('soundforest %s' % (self.name))

@@ -154,7 +154,7 @@ class SyncTargetModel(Base, BaseNamedModel):
     defaults = Column(Boolean)
 
     def __repr__(self):
-        return '%s %s from %s to %s (flags %s)' % (
+        return '{0} {1} from {2} to {3} (flags {4})'.format(
             self.name, self.type, self.src, self.dst, self.flags
         )
 
@@ -191,7 +191,7 @@ class CodecModel(Base, BaseNamedModel):
             ExtensionModel.extension == extension
         ).first()
         if existing:
-            raise SoundforestError('ExtensionModel already registered: %s' % extension)
+            raise SoundforestError('ExtensionModel already registered: {0}'.format(extension))
 
         session.add(ExtensionModel(codec=self, extension=extension))
         session.commit()
@@ -201,7 +201,7 @@ class CodecModel(Base, BaseNamedModel):
             ExtensionModel.extension == extension
         ).first()
         if not existing:
-            raise SoundforestError('ExtensionModel was not registered: %s' % extension)
+            raise SoundforestError('ExtensionModel was not registered: {0}'.format(extension))
 
         session.delete(existing)
         session.commit()
@@ -212,7 +212,7 @@ class CodecModel(Base, BaseNamedModel):
             DecoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('DecoderModel already registered: %s' % command)
+            raise SoundforestError('DecoderModel already registered: {0}'.format(command))
 
         session.add(DecoderModel(codec=self, command=command))
         session.commit()
@@ -223,7 +223,7 @@ class CodecModel(Base, BaseNamedModel):
             DecoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('DecoderModel was not registered: %s' % command)
+            raise SoundforestError('DecoderModel was not registered: {0}'.format(command))
 
         session.delete(existing)
         session.commit()
@@ -234,7 +234,7 @@ class CodecModel(Base, BaseNamedModel):
             EncoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('EncoderModel already registered: %s' % command)
+            raise SoundforestError('EncoderModel already registered: {0}'.format(command))
 
         session.add(EncoderModel(codec=self, command=command))
         session.commit()
@@ -245,7 +245,7 @@ class CodecModel(Base, BaseNamedModel):
             EncoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('EncoderModel was not registered: %s' % command)
+            raise SoundforestError('EncoderModel was not registered: {0}'.format(command))
 
         session.delete(existing)
         session.commit()
@@ -256,7 +256,7 @@ class CodecModel(Base, BaseNamedModel):
             TesterModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('File tester already registered: %s' % command)
+            raise SoundforestError('File tester already registered: {0}'.format(command))
 
         session.add(TesterModel(codec=self, command=command))
         session.commit()
@@ -267,7 +267,7 @@ class CodecModel(Base, BaseNamedModel):
             TesterModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('File tester was not registered: %s' % command)
+            raise SoundforestError('File tester was not registered: {0}'.format(command))
 
         session.delete(existing)
         session.commit()
@@ -320,10 +320,7 @@ class TesterModel(Base):
     )
 
     def __repr__(self):
-        return '%s format tester: %s' % (
-            self.codec.name,
-            self.command
-        )
+        return '{0} format tester: {1}'.format(self.codec.name, self.command)
 
 
 class DecoderModel(Base):
@@ -349,10 +346,7 @@ class DecoderModel(Base):
     )
 
     def __repr__(self):
-        return '%s decoder: %s' % (
-            self.codec.name,
-            self.command
-        )
+        return '{0} decoder: {1}'.format(self.codec.name, self.command)
 
 
 class EncoderModel(Base):
@@ -378,10 +372,7 @@ class EncoderModel(Base):
     )
 
     def __repr__(self):
-        return '%s encoder: %s' % (
-            self.codec.name,
-            self.command
-        )
+        return '{0} encoder: {1}'.format(self.codec.name, self.command)
 
 
 class PlaylistTreeModel(Base, BaseNamedModel):
@@ -399,7 +390,7 @@ class PlaylistTreeModel(Base, BaseNamedModel):
     path = Column(SafeUnicode)
 
     def __repr__(self):
-        return '%s: %s' % (self.name, self.path)
+        return '{0}: {1}'.format(self.name, self.path)
 
     @property
     def exists(self):
@@ -442,7 +433,7 @@ class PlaylistTreeModel(Base, BaseNamedModel):
             try:
                 playlist.read()
             except PlaylistError, emsg:
-                logger.debug('Error reading playlist %s: %s' % (playlist, emsg))
+                logger.debug('Error reading playlist {0}: {1}'.format(playlist, emsg))
                 continue
 
             tracks = []
@@ -486,10 +477,7 @@ class PlaylistModel(Base, BaseNamedModel):
     )
 
     def __repr__(self):
-        return '%s: %d tracks' % (
-            os.sep.join([self.folder, self.name]),
-            len(self.tracks)
-        )
+        return '{0}: {1:d} tracks'.format(os.sep.join([self.folder, self.name]), len(self.tracks))
 
     def __len__(self):
         return len(self.tracks)
@@ -520,7 +508,7 @@ class PlaylistTrackModel(Base, BasePathNamedModel):
     )
 
     def __repr__(self):
-        return '%d %s' % (self.position, self.path)
+        return '{0:d} {1}'.format(self.position, self.path)
 
 
 class TreeTypeModel(Base, BaseNamedModel):
@@ -610,14 +598,14 @@ class TreeModel(Base, BasePathNamedModel):
         return session.query(TrackModel)\
             .filter(TrackModel.tree == self)\
             .filter(TagModel.track_id == TrackModel.id)\
-            .filter(TagModel.value.like('%%%s%%' % match))\
+            .filter(TagModel.value.like('%{0}%'.format(match)))\
             .all()
 
     def filter_tracks(self, session, path):
         res = session.query(TrackModel).filter(TrackModel.tree == self)
         return res.filter(
-            TrackModel.directory.like('%%%s%%' % path) |
-            TrackModel.filename.like('%%%s%%' % path)
+            TrackModel.directory.like('%{0}%'.format(path)) |
+            TrackModel.filename.like('%{0}%'.format(path))
         ).all()
 
     def to_json(self):
@@ -732,7 +720,7 @@ class AlbumArtModel(Base):
     )
 
     def __repr__(self):
-        return 'AlbumArtModel for %s' % self.album.path
+        return 'AlbumArtModel for {0}'.format(self.album.path)
 
 
 class TrackModel(Base, BasePathNamedModel):
@@ -845,7 +833,7 @@ class TagModel(Base):
     )
 
     def __repr__(self):
-        return '%s=%s' % (self.tag, self.value)
+        return '{0}={1}'.format(self.tag, self.value)
 
 
 class SoundforestDB(object):
@@ -870,9 +858,9 @@ class SoundforestDB(object):
                 try:
                     os.makedirs(config_dir)
                 except OSError, (ecode, emsg):
-                    raise SoundforestError('Error creating directory: %s' % config_dir)
+                    raise SoundforestError('Error creating directory: {0}'.format(config_dir))
 
-            engine = create_engine('sqlite:///%s' % path, encoding='utf-8', echo=debug)
+            engine = create_engine('sqlite:///{0}'.format(path), encoding='utf-8', echo=debug)
 
         event.listen(engine, 'connect', self._fk_pragma_on_connect)
         Base.metadata.create_all(engine)
@@ -998,7 +986,7 @@ class SoundforestDB(object):
             SyncTargetModel.name == name
         ).first()
         if existing:
-            raise SoundforestError('Sync target was already registerd: %s' % name)
+            raise SoundforestError('Sync target was already registered: {0}'.format(name))
 
         target = SyncTargetModel(
             name=name,
@@ -1015,7 +1003,7 @@ class SoundforestDB(object):
     def unregister_sync_target(self, name):
         existing = self.query(SyncTargetModel).filter(SyncTargetModel.name == name).first()
         if not existing:
-            raise SoundforestError('Sync target was not registered: %s' % name)
+            raise SoundforestError('Sync target was not registered: {0}'.format(name))
 
         self.delete(existing)
 
@@ -1049,7 +1037,7 @@ class SoundforestDB(object):
             TreeTypeModel.name == name
         ).first()
         if existing:
-            raise SoundforestError('Tree type was already registered: %s' % name)
+            raise SoundforestError('Tree type was already registered: {0}'.format(name))
 
         self.add(TreeTypeModel(name=name, description=description))
 
@@ -1058,7 +1046,7 @@ class SoundforestDB(object):
             TreeTypeModel.name == name
         ).first()
         if not existing:
-            raise SoundforestError('Tree type was not registered: %s' % name)
+            raise SoundforestError('Tree type was not registered: {0}'.format(name))
 
         self.delete(existing)
 
@@ -1067,7 +1055,7 @@ class SoundforestDB(object):
             PlaylistTreeModel.path == path
         ).first()
         if existing:
-            raise SoundforestError('Playlist source is already registered: %s' % path)
+            raise SoundforestError('Playlist source is already registered: {0}'.format(path))
 
         self.add(PlaylistTreeModel(path=path, name=name))
 
@@ -1076,7 +1064,7 @@ class SoundforestDB(object):
             PlaylistTreeModel.path == path
         ).first()
         if not existing:
-            raise SoundforestError('Playlist source is not registered: %s' % path)
+            raise SoundforestError('Playlist source is not registered: {0}'.format(path))
 
         self.delete(existing)
 
@@ -1089,7 +1077,7 @@ class SoundforestDB(object):
             PrefixModel.path == path
         ).first()
         if existing:
-            raise SoundforestError('Prefix was already registered: %s' % path)
+            raise SoundforestError('Prefix was already registered: {0}'.format(path))
 
         self.add(PrefixModel(path=path))
 
@@ -1099,7 +1087,7 @@ class SoundforestDB(object):
             PrefixModel.path == path
         ).first()
         if not existing:
-            raise SoundforestError('Prefix was not registered: %s' % path)
+            raise SoundforestError('Prefix was not registered: {0}'.format(path))
 
         self.delete(existing)
 
@@ -1112,7 +1100,7 @@ class SoundforestDB(object):
             TreeModel.path == path
         ).first()
         if existing:
-            raise SoundforestError('Tree was already registered: %s' % path)
+            raise SoundforestError('Tree was already registered: {0}'.format(path))
 
         tt = self.get_tree_type(tree_type)
         self.add(TreeModel(path=path, description=description, type=tt))
@@ -1123,7 +1111,7 @@ class SoundforestDB(object):
             TreeModel.path == path
         ).first()
         if not existing:
-            raise SoundforestError('Tree was not registered: %s' % path)
+            raise SoundforestError('Tree was not registered: {0}'.format(path))
 
         self.delete(existing)
 

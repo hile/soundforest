@@ -49,7 +49,7 @@ def XMLTrackYear(details):
 
         if value is None:
             continue
-        nodes.append(E('year', '%d' % value.tm_year))
+        nodes.append(E('year', '{0:d}'.format(value.tm_year)))
     return nodes
 
 XML_FIELD_CLASSES = {
@@ -92,6 +92,6 @@ class XMLTrackTree(object):
         self.tracks.append(xmltags.tree)
 
     def tostring(self):
-        self.tracks.set('total', '%d' % len(self.tracks))
+        self.tracks.set('total', '{0:d}'.format(len(self.tracks)))
         return ET.tostring(self.tree, pretty_print=True)
 

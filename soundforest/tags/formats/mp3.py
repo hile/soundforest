@@ -58,7 +58,7 @@ def encode_frame(tag,value):
         if tagclass is None:
             raise AttributeError
     except AttributeError, emsg:
-        raise TagError('Error importing ID3 frame %s: %s' % (tag, emsg))
+        raise TagError('Error importing ID3 frame {0}: {1}'.format(tag, emsg))
     if not isinstance(value, list):
         value = [value]
     return tagclass(encoding=3, text=value)
@@ -85,7 +85,7 @@ class MP3AlbumArt(TrackAlbumart):
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag].data)
         except AlbumArtError, emsg:
-            raise TagError('Error reading mp3 albumart tag: %s' % emsg)
+            raise TagError('Error reading mp3 albumart tag: {0}'.format(emsg))
         self.albumart = albumart
 
     def import_albumart(self, albumart):
@@ -119,8 +119,9 @@ class MP3NumberingTag(TrackNumberingTag):
             self.value = int(self.value)
             self.total = int(self.total)
         except ValueError:
-            raise TagError('Unsupported tag value for %s: %s' % (
-                self.tag, self.track.entry[self.tag].text[0])
+            raise TagError('Unsupported tag value for {0}: {1}'.format(
+                self.tag,
+                self.track.entry[self.tag].text[0]),
             )
 
     def save_tag(self):
@@ -136,7 +137,7 @@ class MP3NumberingTag(TrackNumberingTag):
         if total < value:
             raise ValueError('Total is smaller than number')
 
-        value = '%d/%d' % (value, total)
+        value = '{0:d}/{1:d}'.format(value, total)
         if self.track.entry.tags.has_key(self.tag):
             old_value = self.track.entry.tags[self.tag]
             if value == old_value:
@@ -157,11 +158,11 @@ class mp3(TagParser):
         try:
             self.entry = MP3(self.path, ID3=ID3)
         except IOError:
-            raise TagError('No ID3 header in %s' % self.path)
+            raise TagError('No ID3 header in {0}'.format(self.path))
         except ID3NoHeaderError:
-            raise TagError('No ID3 header in %s' % self.path)
+            raise TagError('No ID3 header in {0}'.format(self.path))
         except RuntimeError:
-            raise TagError('Runtime error loading %s' % self.path)
+            raise TagError('Runtime error loading {0}'.format(self.path))
 
         try:
             self.entry.add_tags()
@@ -180,13 +181,13 @@ class mp3(TagParser):
         by self.__getattr__('albumart')
         """
         if item == 'tracknumber':
-            return [unicode('%d'%self.track_numbering.value)]
+            return [unicode('{0:d}'.format(self.track_numbering.value))]
         if item == 'totaltracks':
-            return [unicode('%d'%self.track_numbering.total)]
+            return [unicode('{0:d}'.format(self.track_numbering.total))]
         if item == 'disknumber':
-            return [unicode('%d'%self.disk_numbering.value)]
+            return [unicode('{0:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
-            return [unicode('%d'%self.disk_numbering.total)]
+            return [unicode('{0:d}'.format(self.disk_numbering.total)]
 
         if item[:5] == 'APIC:':
             return self.albumart_obj
@@ -213,20 +214,20 @@ class mp3(TagParser):
                     continue
 
                 if not matched:
-                    raise TagError('Error parsing %s: %s' % (tag, dir(value)))
+                    raise TagError('Error parsing {0}: {1}'.format(tag, dir(value)))
 
                 if not isinstance(value, unicode):
                     try:
-                        value = '%d' % int(str(value))
+                        value = '{0:d}'.format(int(str(value)))
                     except ValueError, emsg:
                         pass
                     try:
                         value = unicode(value, 'utf-8')
                     except UnicodeDecodeError, emsg:
-                        raise TagError('Error decoding %s tag %s: %s' % (self.path, field, emsg) )
+                        raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, emsg) )
                 values.append(value)
             return values
-        raise KeyError('No such tag: %s' % fields)
+        raise KeyError('No such tag: {0}'.format(fields))
 
     def __delitem__(self, item):
         tags = self.__tag2fields__(item)

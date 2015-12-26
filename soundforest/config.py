@@ -84,7 +84,7 @@ class ConfigDB(object):
                 try:
                     value = FIELD_CONVERT_MAP[key](value)
                 except ValueError:
-                    raise SoundforestError('Invalid data in configuration for field %s' % key)
+                    raise SoundforestError('Invalid data in configuration for field {0}'.format(key))
 
             return value
 
@@ -168,7 +168,7 @@ class ConfigDB(object):
 
                 processed += 1
                 if progresslog and processed % 1000 == 0:
-                    self.log.debug('Processed: %d tracks' % processed)
+                    self.log.debug('Processed: {0:d} tracks'.format(processed))
 
             self.commit()
 
@@ -177,7 +177,7 @@ class ConfigDB(object):
             if album.path in album_paths or album.exists:
                 continue
 
-            self.log.debug('Removing album: %s' % album.path)
+            self.log.debug('Removing album: {0}'.format(album.path))
             self.delete(album)
 
         self.log.debug('Checking for removed tracks')
@@ -185,14 +185,14 @@ class ConfigDB(object):
             if track.path in track_paths or track.exists:
                 continue
 
-            self.log.debug('Removing track: %s' % track.path)
+            self.log.debug('Removing track: {0}'.format(track.path))
             self.delete(track)
             deleted += 1
 
         self.commit()
 
         if errors > 0:
-            self.log.debug('Total %d errors updating tree' % errors)
+            self.log.debug('Total {0:d} errors updating tree'.format(errors))
 
         return added, updated, deleted, processed, errors
 
@@ -207,10 +207,12 @@ class ConfigDB(object):
         try:
             tags = track.tags
         except TreeError, emsg:
-            self.log.debug('ERROR loading %s: %s' % (track.path, emsg))
+            self.log.debug('ERROR loading {0}: {1}'.format(track.path, emsg))
             return False
 
         for tag, value in tags.items():
+            if isinstance(value, list):
+                value = value[0]
             self.add(models.TagModel(track=db_track, tag=tag, value=value))
         self.commit()
 

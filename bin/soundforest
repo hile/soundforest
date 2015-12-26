@@ -47,9 +47,9 @@ class CodecsCommand(SoundforestCommand):
 
         if args.action == 'list':
             for name, codec in self.db.codecs.items():
-                self.message('%s (%s)' % (codec, codec.description))
+                self.message('{0} ({1})'.format(codec, codec.description))
                 self.message('Extensions')
-                self.message('  %s' %  ','.join(x.extension for x in codec.extensions))
+                self.message('  {0}'.format(','.join(x.extension for x in codec.extensions)))
 
                 self.message('Decoders')
                 for decoder in codec.decoders:
@@ -73,7 +73,7 @@ class ConfigCommand(SoundforestCommand):
 
         if args.action == 'list':
             for setting in self.db.registered_settings:
-                self.message('%16s %s' % (setting.key, setting.value))
+                self.message('{0:16s} {1}'.format(setting.key, setting.value))
 
 
 class PlaylistsCommand(SoundforestCommand):
@@ -94,11 +94,11 @@ class SyncConfigCommand(SoundforestCommand):
                 self.message(s)
 
         if args.action == 'register':
-            self.message('Registering sync target %s' % args.name)
+            self.message('Registering sync target {0}'.format(args.name))
             self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
 
         if args.action == 'unregister':
-            self.message('Unregistering sync target %s' % args.name)
+            self.message('Unregistering sync target {0}'.format(args.name))
             self.db.unregister_sync_target(args.name)
 
 
@@ -116,7 +116,7 @@ class TagsCommand(SoundforestCommand):
                 for path in args.paths:
                     for track in tree.filter_tracks(self.db.session, path):
                         for entry in track.tags:
-                            self.message('  %s = %s' % (entry.tag, entry.value))
+                            self.message('  {0} = {1}'.format(entry.tag, entry.value))
 
 
 class TracksCommand(SoundforestCommand):
@@ -170,7 +170,7 @@ class TreeCommand(SoundforestCommand):
         args = SoundforestCommand.parse_args(self, args)
 
         if args.tree_type and args.tree_type not in script.db.registered_tree_types:
-            self.script.exit(1, 'Unsupported tree type: %s' % args.tree_type)
+            self.script.exit(1, 'Unsupported tree type: {0}'.format(args.tree_type))
 
         if args.action == 'register':
             for path in args.paths:
@@ -203,7 +203,7 @@ class TreeTypesCommand(SoundforestCommand):
 
         if args.action == 'list':
             for tt in self.db.registered_tree_types:
-                self.message( '%14s %s' % (tt.name, tt.description))
+                self.message( '{0:14s} {1}'.format(tt.name, tt.description))
 
         if args.action == 'register':
             for tt in args.types:
@@ -217,7 +217,7 @@ class TreeTypesCommand(SoundforestCommand):
 class TesterCommand(SoundforestCommand):
     def testresult(self, track, result, errors='', stdout=None, stderr=None):
         if not result:
-            self.message( '%s %s%s' % ('NOK', track.path, errors and ': %s' % errors or ''))
+            self.message( '{0} {1}{2}'.format('NOK', track.path, errors and ': {0}'.format(errors) or ''))
 
     def run(self, args):
         args = SoundforestCommand.parse_args(self, args)

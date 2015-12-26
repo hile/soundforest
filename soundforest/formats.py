@@ -137,7 +137,7 @@ class AudioFileFormat(object):
                 self.description = 'unknown file format'
 
     def __repr__(self):
-        return '%s %s' % (self.codec, self.path)
+        return '{0} {1}'.format(self.codec, self.path)
 
     @property
     def directory(self):
@@ -174,9 +174,9 @@ class AudioFileFormat(object):
             try:
                 os.makedirs(dir)
             except IOError, (ecode, emsg):
-                raise SoundforestError('Error creating directory %s: %s' % (SOUNDFOREST_CACHE_DIR, emsg))
+                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, emsg))
             except OSError, (ecode, emsg):
-                raise SoundforestError('Error creating directory %s: %s' % (SOUNDFOREST_CACHE_DIR, emsg))
+                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, emsg))
 
         return tempfile.mktemp(dir=dir, prefix=prefix, suffix=suffix)
 
@@ -214,13 +214,13 @@ class AudioFileFormat(object):
         return filter_available_command_list(self.codec.testers)
 
     def execute(self, args):
-        self.log.debug('running: %s' % ' '.join(args))
+        self.log.debug('running: {0}'.format(' '.join(args)))
         p = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         (stdout, stderr) = p.communicate()
 
         if stdout:
-            self.log.debug('output:\n%s' % stdout)
+            self.log.debug('output:\n{0}'.format(stdout))
         if stderr:
-            self.log.debug('errors:\n%s' % stderr)
+            self.log.debug('errors:\n{0}'.format(stderr))
 
         return p.returncode, stdout, stderr

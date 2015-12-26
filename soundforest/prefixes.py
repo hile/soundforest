@@ -62,7 +62,7 @@ class MusicTreePrefix(object):
 
     def __repr__(self):
         if self.extensions:
-            return '%s (%s)' % (self.path, ','.join(self.extensions))
+            return '{0} ({1})'.format(self.path, ','.join(self.extensions))
         else:
             return self.path
 
@@ -97,7 +97,7 @@ class MusicTreePrefix(object):
         if realpath[:len(mypath)] == mypath:
             return path_string(realpath[len(mypath):].lstrip(os.sep))
 
-        raise PrefixError('Prefix does not match: %s' % path)
+        raise PrefixError('Prefix does not match: {0}'.format(path))
 
 
 class TreePrefixes(object):
@@ -154,7 +154,7 @@ class TreePrefixes(object):
                             (codec_name, paths) = [x.strip() for x in line.split('=', 1)]
                             paths = [x.strip() for x in paths.split(',')]
                         except ValueError:
-                            self.log.debug('Error parsing line: %s' % line)
+                            self.log.debug('Error parsing line: {0}'.format(line))
                             continue
 
                         user_codecs[codec_name] = paths
@@ -179,7 +179,7 @@ class TreePrefixes(object):
                                 self.register_prefix(prefix, prepend=True)
 
             except IOError, (ecode, emsg):
-                raise PrefixError('Error reading %s: %s' % (USER_PATH_CONFIG, emsg))
+                raise PrefixError('Error reading {0}: {1}'.format(USER_PATH_CONFIG, emsg))
 
         def index(self, prefix):
             if not isinstance(prefix, MusicTreePrefix):

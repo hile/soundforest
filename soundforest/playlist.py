@@ -56,7 +56,7 @@ class Playlist(list):
                     position = list.__len__(self)
 
             except ValueError:
-                raise PlaylistError('Invalid position: %s' % position)
+                raise PlaylistError('Invalid position: {0}'.format(position))
 
             self.insert(position, path)
 
@@ -66,7 +66,7 @@ class Playlist(list):
             self.__insert(path, position)
 
         elif os.path.isdir(path):
-            for f in ['%s' % os.path.join(path, x) for x in os.listdir(path)]:
+            for f in ['{0}'.format(os.path.join(path, x)) for x in os.listdir(path)]:
                 f = normalized(os.path.realpath(f))
 
                 if not recursive and os.path.isdir(f):
@@ -75,7 +75,7 @@ class Playlist(list):
                 self.append(f, position)
 
         else:
-            raise PlaylistError('Not a file or directory: %s' % path)
+            raise PlaylistError('Not a file or directory: {0}'.format(path))
 
         self.modified = True
 
@@ -88,9 +88,9 @@ class m3uPlaylist(Playlist):
 
         else:
             if folder is not None:
-                path = os.path.join(folder, '%s.m3u' % self.name)
+                path = os.path.join(folder, '{0}.m3u'.format(self.name))
             else:
-                path = os.path.join('%s.m3u' % self.name)
+                path = os.path.join('{0}.m3u'.format(self.name))
 
         self.path = normalized(os.path.realpath(path))
         self.filename = os.path.basename(self.path)
@@ -117,7 +117,7 @@ class m3uPlaylist(Playlist):
 
                     self.append(filepath)
         except IOError, (ecode, emsg):
-            raise PlaylistError('Error reading %s: %s' % (self.path, emsg))
+            raise PlaylistError('Error reading {0}: {1}'.format(self.path, emsg))
 
     def write(self):
         pl_dir = os.path.dirname(self.path)
@@ -127,24 +127,25 @@ class m3uPlaylist(Playlist):
                 os.makedirs(pl_dir)
 
             except OSError, (ecode, emsg):
-                raise PlaylistError('Error creating directory %s: %s' % pl_dir)
+                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir))
 
             except IOError, (ecode, emsg):
-                raise PlaylistError('Error creating directory %s: %s' % pl_dir)
+                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir))
 
         if not self.modified:
             return
 
         try:
             fd = open(self.path, 'w')
-            for f in self: fd.write('%s\n' % f)
+            for filename in self:
+                fd.write('{0}\n'.format(filename))
             fd.close()
 
         except IOError, (ecode, emsg):
-            raise PlaylistError('Error writing playlist %s: %s' % (self.path, emsg))
+            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, emsg))
 
         except OSError, (ecode, emsg):
-            raise PlaylistError('Error writing playlist %s: %s' % (self.path, emsg))
+            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, emsg))
 
     def remove(self):
         if not os.path.isfile(self.path):
@@ -154,17 +155,17 @@ class m3uPlaylist(Playlist):
             os.unlink(self.path)
 
         except OSError, (ecode, emsg):
-            raise PlaylistError('Error removing playlist %s: %s' % (self.path, emsg))
+            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, emsg))
 
         except oError, (ecode, emsg):
-            raise PlaylistError('Error removing playlist %s: %s' % (self.path, emsg))
+            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, emsg))
 
 
 class m3uPlaylistDirectory(list):
     def __init__(self, path=None):
         self.path = path
         if not os.path.isdir(self.path):
-            raise PlaylistError('No such directory: %s' % self.path)
+            raise PlaylistError('No such directory: {0}'.format(self.path))
 
         for f in sorted(os.listdir(self.path)):
             f = os.path.join(self.path, f)
@@ -202,5 +203,5 @@ class m3uPlaylistDirectory(list):
         except IndexError:
             pass
 
-        raise IndexError('Invalid m3uPlaylistDirectory index %s' % item)
+        raise IndexError('Invalid m3uPlaylistDirectory index {0}'.format(item))
 
