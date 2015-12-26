@@ -17,7 +17,6 @@ setup(
     url = 'https://github.com/hile/soundforest',
     packages = find_packages(),
     scripts = glob.glob('bin/*'),
-    version = __version__,
     install_requires = (
         'setproctitle',
         'sqlalchemy',
