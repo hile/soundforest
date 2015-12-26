@@ -1156,3 +1156,6 @@ class SoundforestDB(object):
         return self.query(PlaylistModel).filter(
             PlaylistModel.path == path
         ).first()
+
+    def match_tracks_by_tree_prefix(self, path):
+        return self.query(TrackModel).filter(TrackModel.directory.like('%{0}%'.format(path))).all()

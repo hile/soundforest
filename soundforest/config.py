@@ -100,7 +100,6 @@ class ConfigDB(object):
         def values(self):
             return [s.value for s in self.session.query(models.SettingModel).all()]
 
-
     def update_tree(self, tree, update_checksum=True, progresslog=False):
         """
         Update tracks in database from loaded tree instance
@@ -195,6 +194,24 @@ class ConfigDB(object):
             self.log.debug('Total {0:d} errors updating tree'.format(errors))
 
         return added, updated, deleted, processed, errors
+
+    def find_tracks(self, path):
+        track = self.get_track(path)
+        if track is not None:
+            return [track]
+
+        db_tree = self.get_tree(path)
+        if db_tree is not None:
+            return db_tree.tracks
+
+        db_album = self.get_album(path)
+        if db_album is not None:
+            return db_album.tracks
+
+        if os.path.isdir(os.path.realpath(path)):
+            return self.match_tracks_by_tree_prefix(path)
+
+        return []
 
     def update_track(self, track, update_checksum=True):
         db_track = self.get_track(track.path)

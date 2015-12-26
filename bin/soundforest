@@ -119,22 +119,6 @@ class TagsCommand(SoundforestCommand):
                             self.message('  {0} = {1}'.format(entry.tag, entry.value))
 
 
-class TracksCommand(SoundforestCommand):
-    def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
-
-        if args.action == 'list':
-            if args.tree:
-                trees = [self.db.get_tree(args.tree)]
-            else:
-                trees = self.db.trees
-
-            for tree in trees:
-                for path in args.paths:
-                    for track in tree.filter_tracks(self.db.session, path):
-                        self.message(track.relative_path)
-
-
 class PrefixCommand(SoundforestCommand):
     def run(self, args):
         args = SoundforestCommand.parse_args(self, args)
@@ -163,6 +147,32 @@ class PrefixCommand(SoundforestCommand):
                     continue
 
                 self.message(prefix)
+
+
+class TracksCommand(SoundforestCommand):
+    def run(self, args):
+        args = SoundforestCommand.parse_args(self, args)
+
+        tracks = []
+        if args.paths:
+            for path in args.paths:
+                tracks.extend(self.db.find_tracks(path))
+        else:
+            for tree in self.db.tress:
+                tracks.extend(tree.tracks)
+
+        for track in tracks:
+            if args.action == 'list':
+                if args.checksum:
+                    self.message('{0} {1}'.format(track.checksum, track.relative_path))
+                else:
+                    self.message(track.relative_path)
+
+            if args.action == 'tags':
+                self.message(track.relative_path)
+                for tag in track.tags:
+                    print '  {0}={1}'.format(tag.tag, tag.value)
+
 
 
 class TreeCommand(SoundforestCommand):
@@ -310,9 +320,9 @@ c.add_argument('action', choices=('list',), help='List trees in database')
 c.add_argument('paths', nargs='*', help='Paths to trees to process')
 
 c = script.add_subcommand(TracksCommand('track', 'Tree database manipulations'))
-c.add_argument('-t', '--tree', help='Tree to match')
-c.add_argument('action', choices=('list',), help='List trees in database')
-c.add_argument('paths', nargs='*', help='Paths to trees to process')
+c.add_argument('-c', '--checksum', action='store_true', help='Show track checksum')
+c.add_argument('action', choices=('list', 'tags',), help='List tracks in database')
+c.add_argument('paths', nargs='*', help='Paths to trees to matchss  ')
 
 c = script.add_subcommand(PrefixCommand('prefix', description='Prefix database manipulations'))
 c.add_argument('action', choices=('list', 'match', 'register', 'unregister'), help='Prefix database action')
