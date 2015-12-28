@@ -70,7 +70,8 @@ class MP3AlbumArt(TrackAlbumart):
     def __init__(self, track):
         if not isinstance(track, mp3):
             raise TagError('Track is not instance of mp3')
-        TrackAlbumart.__init__(self, track)
+
+        super(MP3AlbumArt, self).__init__(track)
 
         try:
             self.tag = filter(lambda k:
@@ -94,7 +95,7 @@ class MP3AlbumArt(TrackAlbumart):
 
         Sets self.track.modified to True
         """
-        TrackAlbumart.import_albumart(self, albumart)
+        super(MP3AlbumArt, self).import_albumart(albumart)
         frame = APIC(0, albumart.mimetype, 0, '', albumart.dump())
         self.track.entry.tags.add(frame)
         self.track.modified = True
@@ -104,7 +105,7 @@ class MP3NumberingTag(TrackNumberingTag):
     mp3 track numbering field handling
     """
     def __init__(self, track, tag):
-        TrackNumberingTag.__init__(self, track, tag)
+        super(MP3NumberingTag, self).__init__(track, tag)
 
         if not self.track.entry.has_key(self.tag):
             return
@@ -153,7 +154,7 @@ class mp3(TagParser):
     Class for processing mp3 tags
     """
     def __init__(self, codec, path):
-        TagParser.__init__(self, codec, path, tag_map=MP3_STANDARD_TAGS)
+        super(mp3, self).__init__(codec, path, tag_map=MP3_STANDARD_TAGS)
 
         try:
             self.entry = MP3(self.path, ID3=ID3)
@@ -181,11 +182,15 @@ class mp3(TagParser):
         by self.__getattr__('albumart')
         """
         if item == 'tracknumber':
+
             return [unicode('{0:d}'.format(self.track_numbering.value))]
+
         if item == 'totaltracks':
             return [unicode('{0:d}'.format(self.track_numbering.total))]
+
         if item == 'disknumber':
             return [unicode('{0:d}'.format(self.disk_numbering.value))]
+
         if item == 'totaldisks':
             return [unicode('{0:d}'.format(self.disk_numbering.total)]
 
@@ -193,20 +198,25 @@ class mp3(TagParser):
             return self.albumart_obj
 
         fields = self.__tag2fields__(item)
+
         for field in fields:
             if not self.entry.has_key(field):
                 continue
+
             tag = self.entry[field]
             if not isinstance(tag, list):
                 tag = [tag]
+
             values = []
             for value in tag:
                 matched = False
+
                 for field in ['text', 'url']:
                     if hasattr(value, field):
                         value = getattr(value, field)
                         if isinstance(value, list):
                             value = value[0]
+
                         matched = True
                         break
 
@@ -221,12 +231,16 @@ class mp3(TagParser):
                         value = '{0:d}'.format(int(str(value)))
                     except ValueError, emsg:
                         pass
+
                     try:
                         value = unicode(value, 'utf-8')
                     except UnicodeDecodeError, emsg:
                         raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, emsg) )
+
                 values.append(value)
+
             return values
+
         raise KeyError('No such tag: {0}'.format(fields))
 
     def __delitem__(self, item):
@@ -243,7 +257,7 @@ class mp3(TagParser):
 
         Itunes internal tags are ignored from results
         """
-        keys = TagParser.keys(self)
+        keys = super(mp3, self).keys()
         if 'TRCK' in keys:
             keys.extend(['tracknumber', 'totaltracks'])
             keys.remove('TRCK')
@@ -263,12 +277,15 @@ class mp3(TagParser):
         if item == 'tracknumber':
             self.track_numbering.value = value
             return
+
         if item == 'totaltracks':
             self.track_numbering.total = value
             return
+
         if item == 'disknumber':
             self.disk_numbering.value = value
             return
+
         if item == 'totaldisks':
             self.disk_numbering.total = value
             return

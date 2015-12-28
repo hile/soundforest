@@ -40,8 +40,9 @@ class ConfigDB(object):
 
         """
         def __init__(self, path):
-            self.log = SoundforestLogger().default_stream
             models.SoundforestDB.__init__(self, path=path)
+
+            self.log = SoundforestLogger().default_stream
 
             treetypes = self.session.query(models.TreeTypeModel).all()
             if not treetypes:

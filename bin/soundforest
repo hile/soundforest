@@ -13,12 +13,13 @@ import argparse
 from soundforest import SoundforestError
 from soundforest.cli import Script, ScriptCommand, ScriptError
 from soundforest.prefixes import TreePrefixes
+from soundforest.sync import SyncManager, SyncError
 from soundforest.tree import Tree, Track, Album
 
 
 class SoundforestCommand(ScriptCommand):
     def parse_args(self, args):
-        args = ScriptCommand.parse_args(self, args)
+        args = super(SoundforestCommand, self).parse_args(args)
 
         if 'paths' in args and args.paths:
             paths = []
@@ -43,7 +44,7 @@ class SoundforestCommand(ScriptCommand):
 
 class CodecsCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(CodecsCommand, self).parse_args(args)
 
         if args.action == 'list':
             for name, codec in self.db.codecs.items():
@@ -69,7 +70,7 @@ class CodecsCommand(SoundforestCommand):
 
 class ConfigCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(ConfigCommand, self).parse_args(args)
 
         if args.action == 'list':
             for setting in self.db.registered_settings:
@@ -78,7 +79,7 @@ class ConfigCommand(SoundforestCommand):
 
 class PlaylistsCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(PlaylistsCommand, self).parse_args(args)
 
         if args.action == 'list':
             for playlist in self.db.playlists:
@@ -87,24 +88,79 @@ class PlaylistsCommand(SoundforestCommand):
 
 class SyncConfigCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(SyncConfigCommand, self).parse_args(args)
 
         if args.action == 'list':
             for s in self.db.registered_sync_targets:
                 self.message(s)
 
         if args.action == 'register':
-            self.message('Registering sync target {0}'.format(args.name))
-            self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
+            try:
+                self.db.register_sync_target(args.name, args.type, args.src, args.dst, args.flags)
+            except SoundforestError, emsg:
+                self.exit(1, emsg)
 
         if args.action == 'unregister':
-            self.message('Unregistering sync target {0}'.format(args.name))
-            self.db.unregister_sync_target(args.name)
+            try:
+                self.db.unregister_sync_target(args.name)
+            except SoundforestError, emsg:
+                self.exit(1, emsg)
+
+
+class SyncCommand(SoundforestCommand):
+
+    def run(self, args):
+        args = super(SyncCommand, self).parse_args(args)
+
+        self.manager = SyncManager(threads=args.threads, delete=args.delete, debug=args.debug)
+
+        if args.list:
+            for name, settings in self.db.sync.items():
+                if args.paths and name not in args.paths:
+                    continue
+
+                self.message('{0}'.format(name))
+                self.message('  Type:        {0}'.format(settings['type']))
+                self.message('  Source:      {0}'.format(settings['src']))
+                self.message('  Destination: {0}'.format(settings['dst']))
+                self.message('  Flags:       {0}'.format(settings['flags']))
+
+            script.exit(0)
+
+        if args.directories:
+            if len([d for d in args.paths if os.path.isdir(d)]) != 2:
+                self.script.exit(1, 'Directory sync requires two existing directory paths')
+
+            src = Tree(args.paths[0])
+            dst = Tree(args.paths[1])
+            self.manager.enqueue({
+                'type': 'directory',
+                'src': src,
+                'dst': dst,
+                'rename': args.rename,
+            })
+
+        elif args.paths:
+            for arg in args.paths:
+                target = self.manager.parse_target(arg)
+                if not target:
+                    self.script.exit(1, 'No such target: {0}'.format(arg))
+
+                self.manager.enqueue(target)
+
+        else:
+            for target in self.db.registered_sync_targets:
+                self.manager.enqueue(target.as_dict())
+
+        if len(self.manager):
+            self.manager.run()
+        else:
+            self.script.exit(1, 'No sync targets found')
 
 
 class TagsCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(TagsCommand, self).parse_args(args)
 
         if args.action == 'list':
             if args.tree:
@@ -121,7 +177,7 @@ class TagsCommand(SoundforestCommand):
 
 class PrefixCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(PrefixCommand, self).parse_args(args)
 
         if args.action == 'match':
             prefixes = TreePrefixes()
@@ -151,7 +207,7 @@ class PrefixCommand(SoundforestCommand):
 
 class TracksCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(TracksCommand, self).parse_args(args)
 
         tracks = []
         if args.paths:
@@ -177,7 +233,7 @@ class TracksCommand(SoundforestCommand):
 
 class TreeCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(TreeCommand, self).parse_args(args)
 
         if args.tree_type and args.tree_type not in script.db.registered_tree_types:
             self.script.exit(1, 'Unsupported tree type: {0}'.format(args.tree_type))
@@ -209,7 +265,7 @@ class TreeCommand(SoundforestCommand):
 
 class TreeTypesCommand(SoundforestCommand):
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(TreeTypesCommand, self).parse_args(args)
 
         if args.action == 'list':
             for tt in self.db.registered_tree_types:
@@ -230,7 +286,7 @@ class TesterCommand(SoundforestCommand):
             self.message( '{0} {1}{2}'.format('NOK', track.path, errors and ': {0}'.format(errors) or ''))
 
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(TesterCommand, self).parse_args(args)
 
         errors = False
         for path in args.paths:
@@ -272,7 +328,7 @@ class ChecksumCommand(SoundforestCommand):
             self.verify(track)
 
     def run(self, args):
-        args = SoundforestCommand.parse_args(self, args)
+        args = super(ChecksumCommand, self).parse_args(args)
 
         for path in args.paths:
             realpath = os.path.realpath(path)
@@ -313,6 +369,14 @@ c.add_argument('type', choices=('rsync', 'directory',), nargs='?', help='Sync ty
 c.add_argument('flags', nargs='?', help='Flags for sync command')
 c.add_argument('src', nargs='?', help='Source path')
 c.add_argument('dst', nargs='?', help='Destination path')
+
+c = script.add_subcommand(SyncCommand('sync', 'Synchronize files and trees'))
+c.add_argument('-d', '--directories', action='store_true', help='Sync directories, not configured targets')
+c.add_argument('-l', '--list', action='store_true', help='List configured sync targets')
+c.add_argument('-r', '--rename', help='Directory sync target filesystem rename callback')
+c.add_argument('-D', '--delete', action='store_true', help='Remove unknown files from target')
+c.add_argument('-t', '--threads', type=int, help='Number of sync threads to use')
+c.add_argument('paths', metavar='path', nargs='*', help='Paths to process')
 
 c = script.add_subcommand(TagsCommand('tag', 'Track tag database manipulations'))
 c.add_argument('-t', '--tree', help='Tree to match')

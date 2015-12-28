@@ -114,10 +114,12 @@ class AACAlbumArt(TrackAlbumart):
         if not isinstance(track, aac):
             raise TagError('Track is not instance of aac')
 
-        TrackAlbumart.__init__(self, track)
+        super(AACAlbumArt, self).__init__(track)
+
         self.tag = AAC_ALBUMART_TAG
         if not self.track.entry.has_key(self.tag):
             return
+
         try:
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag][0])
@@ -132,7 +134,7 @@ class AACAlbumArt(TrackAlbumart):
 
         Sets self.track.modified to True
         """
-        TrackAlbumart.import_albumart(self, albumart)
+        super(AACAlbumArt, self).import_albumart(albumart)
 
         try:
             img_format = AAC_ALBUMART_PIL_FORMAT_MAP[self.albumart.get_fileformat()]
@@ -159,7 +161,7 @@ class AACIntegerTuple(TrackNumberingTag):
     Used for track and disk numbering
     """
     def __init__(self, track, tag):
-        TrackNumberingTag.__init__(self, track, tag)
+        super(AACIntegerTuple, self).__init__(track, tag)
 
         if not self.track.entry.has_key(self.tag):
             return
@@ -197,7 +199,7 @@ class aac(TagParser):
     Class for processing AAC file tags
     """
     def __init__(self, codec, path):
-        TagParser.__init__(self, codec, path, tag_map=AAC_STANDARD_TAGS)
+        super(aac, self).__init__(codec, path, tag_map=AAC_STANDARD_TAGS)
 
         try:
             self.entry = MP4(self.path)
@@ -221,12 +223,16 @@ class aac(TagParser):
     def __getitem__(self, item):
         if item == 'tracknumber':
             return [unicode('{0:d}'.format(self.track_numbering.value))]
+
         if item == 'totaltracks':
             return [unicode('{0:d}'.format(self.track_numbering.total))]
+
         if item == 'disknumber':
             return [unicode('{0:d}'.format(self.disk_numbering.value))]
+
         if item == 'totaldisks':
             return [unicode('{0:d}'.format(self.disk_numbering.total))]
+
         if item == 'unknown_tags':
             keys = []
             for tag in self.entry.keys():
@@ -237,15 +243,19 @@ class aac(TagParser):
                 if tag in AAC_UNOFFICIAL_TAGS.values():
                     continue
                 keys.append(tag)
+
             return keys
-        return TagParser.__getitem__(self, item)
+
+        return super(aac, self).__getitem__(item)
 
     def __delitem__(self, item):
         if item in ['tracknumber', 'totaltracks']:
             return self.track_numbering.delete_tag()
+
         if item in ['disknumber', 'totaldisks']:
             return self.disk_numbering.delete_tag()
-        return TagParser.__delitem__(self, item)
+
+        return super(aac, self).__delitem__(item)
 
     def set_tag(self, item, value):
         """

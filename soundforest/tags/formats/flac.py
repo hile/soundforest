@@ -82,7 +82,8 @@ class FLACAlbumart(TrackAlbumart):
     def __init__(self, track):
         if not isinstance(track, flac):
             raise TagError('Track is not instance of flac')
-        TrackAlbumart.__init__(self, track)
+
+        super(FLACAlbumart, self).__init__(track)
 
         try:
             self.albumart = AlbumArt()
@@ -97,7 +98,8 @@ class FLACAlbumart(TrackAlbumart):
 
         Sets self.track.modified to True
         """
-        TrackAlbumart.import_albumart(self, albumart)
+
+        super(FLACAlbumart, self).import_albumart(albumart)
 
         p = Picture()
         [setattr(p, k, v) for k, v in self.albumart.info.items()]
@@ -111,7 +113,7 @@ class FLACNumberingTag(TrackNumberingTag):
     If total is given, the value must be integer.
     """
     def __init__(self, track, tag):
-        TrackNumberingTag.__init__(self, track, tag)
+        super(FLACNumberingTag, self).__init__(track, tag)
 
         if not self.track.entry.has_key(self.tag):
             return
@@ -140,7 +142,7 @@ class flac(TagParser):
     Class for processing Ogg FLAC file tags
     """
     def __init__(self, codec, path):
-        TagParser.__init__(self, codec, path, tag_map=FLAC_STANDARD_TAGS)
+        super(flac, self).__init__(codec, path, tag_map=FLAC_STANDARD_TAGS)
 
         try:
             self.entry = FLAC(path)
@@ -156,13 +158,17 @@ class flac(TagParser):
     def __getitem__(self, item):
         if item == 'tracknumber':
             return [unicode('{0:d}'.format(self.track_numbering.value))]
+
         if item == 'totaltracks':
             return [unicode('{0:d}'.format(self.track_numbering.total))]
+
         if item == 'disknumber':
             return [unicode('{0:d}'.format(self.disk_numbering.value))]
+
         if item == 'totaldisks':
             return [unicode('{0:d}'.format(self.disk_numbering.total))]
-        return TagParser.__getitem__(self, item)
+
+        return super(flac, self).__getitem__(item)
 
     def __delitem__(self, item):
         try:
@@ -179,7 +185,7 @@ class flac(TagParser):
             self.modified = True
 
     def __field2tag__(self, field):
-        return TagParser.__field2tag__(self, field.upper())
+        return super(flac, self).__field2tag__(field.upper())
 
     def keys(self):
         """

@@ -44,7 +44,7 @@ class Playlist(list):
 
         self.modified = True
         if not position:
-            list.append(self, path)
+            super(Playlist, self).append(path)
 
         else:
             try:

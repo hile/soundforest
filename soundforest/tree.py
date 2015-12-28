@@ -32,12 +32,15 @@ class IterableTrackFolder(object):
         self.log = SoundforestLogger().default_stream
         self.__next = None
         self.__iterable = iterable
+
         if path in ['.', '']:
             path = os.path.realpath(path)
+
         self.path = path_string(path)
         self.prefixes = TreePrefixes()
         self.invalid_paths = []
         self.has_been_iterated = False
+
         setattr(self, iterable, [])
 
     def __getitem__(self, item):
@@ -371,10 +374,12 @@ class Track(AudioFileFormat):
     """
 
     def __init__(self, path):
-        AudioFileFormat.__init__(self, path)
+        super(Track, self).__init__(path)
+
         self.prefixes = TreePrefixes()
         if self.codec is None:
             raise TreeError('Not a music file: {0}'.format(self.path))
+
         self.tags_loaded = False
         self.file_tags = None
 
@@ -403,6 +408,7 @@ class Track(AudioFileFormat):
     @property
     def tracknumber_and_title(self):
         filename = os.path.splitext(os.path.basename(self.path))[0]
+
         try:
             tracknumber, title = filename.split(None, 1)
             tracknumber = int(tracknumber)

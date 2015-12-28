@@ -81,7 +81,8 @@ class VorbisNumberingTag(TrackNumberingTag):
     If total is given, the value must be integer.
     """
     def __init__(self, track, tag):
-        TrackNumberingTag.__init__(self, track, tag)
+        super(VorbisNumberingTag, self).__init__(track, tag)
+
         if not isinstance(track, vorbis):
             raise TagError('Track is not instance of vorbis')
 
@@ -111,7 +112,7 @@ class vorbis(TagParser):
     Class for processing Ogg Vorbis file tags
     """
     def __init__(self, codec, path):
-        TagParser.__init__(self, codec, path, tag_map=VORBIS_STANDARD_TAGS)
+        super(vorbis, self).__init__(codec, path, tag_map=VORBIS_STANDARD_TAGS)
 
         try:
             self.entry = OggVorbis(path)
@@ -133,7 +134,8 @@ class vorbis(TagParser):
             return [unicode('{0:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
             return [unicode('{0:d}'.format(self.disk_numbering.total))]
-        return TagParser.__getitem__(self, item)
+
+        super(vorbis, self).__getitem__(item)
 
     def __delitem__(self, item):
         try:
@@ -160,7 +162,7 @@ class vorbis(TagParser):
                 self.modified = True
 
     def __field2tag__(self, field):
-        return TagParser.__field2tag__(self, field.upper())
+        super(vorbis, self).__field2tag__(field.upper())
 
     def keys(self):
         """

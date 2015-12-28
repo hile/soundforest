@@ -395,7 +395,7 @@ class TagParser(dict):
         try:
             for attr in ('track_numbering', 'disk_numbering'):
                 try:
-                    tag = getattr(self, attr)
+                    tag = super(TagParser, self).getattr(attr)
                     tag.save_tag()
                 except ValueError, emsg:
                     logger.debug('Error processing {0}: {1}'.format(attr, emsg))
@@ -520,7 +520,7 @@ class TrackNumberingTag(object):
                 self.f_total = value
 
         else:
-            object.__setattr__(self, attr, value)
+            super(TrackNumberingTag, self).__setattr__(attr, value)
 
     def save_tag(self):
         """
