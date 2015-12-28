@@ -167,7 +167,7 @@ class ConfigDB(object):
 
                 elif not db_track.checksum and update_checksum:
                     self.log.debug('{0} update checksum {1}'.format(tree.path, track.relative_path()))
-                    if self.update_track_checksum(track, update_checksum=update_checksum) is not None:
+                    if self.update_track_checksum(track) is not None:
                         updated += 1
                     else:
                         errors +=1
