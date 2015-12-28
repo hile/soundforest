@@ -74,7 +74,7 @@ class OSXSystemFile(MetadataFileType):
     OS/X system metadata files not relevant for audio trees.
     """
     def __init__(self):
-        MetadataFileType.__init__(self, 'OS/X System file', filenames=OSX_SYSTEM_FILES)
+        super(OSXSystemFile, self).__init__('OS/X System file', filenames=OSX_SYSTEM_FILES)
 
 
 class AbletonAnalysisFile(MetadataFileType):
@@ -82,7 +82,7 @@ class AbletonAnalysisFile(MetadataFileType):
     Ableton track metadata files.
     """
     def __init__(self):
-        MetadataFileType.__init__(self, 'Ableton Live Track Metadata', extensions=['asd'])
+        super(AbletonAnalysisFile, self).__init__('Ableton Live Track Metadata', extensions=['asd'])
 
 
 class PDFBooklet(MetadataFileType):
@@ -93,7 +93,7 @@ class PDFBooklet(MetadataFileType):
     as the album. Someone else may add parser for PDF files in general if needed.
     """
     def __init__(self):
-        MetadataFileType.__init__(self, 'Album Cover Booklet', filenames=BOOKLET_FILENAMES)
+        super(PDFBooklet, self).__init__('Album Cover Booklet', filenames=BOOKLET_FILENAMES)
 
 
 class CoverArt(MetadataFileType):
@@ -103,7 +103,7 @@ class CoverArt(MetadataFileType):
     Static list of albumart filenames we process are defined in module sources.
     """
     def __init__(self):
-        MetadataFileType.__init__(self, 'Album Artwork', filenames=ALBUMART_FILENAMES)
+        super(CoverArt, self).__init__('Album Artwork', filenames=ALBUMART_FILENAMES)
 
 
 class m3uPlaylist(MetadataFileType):
@@ -111,7 +111,7 @@ class m3uPlaylist(MetadataFileType):
     Playlist files in m3u format
     """
     def __init__(self):
-        MetadataFileType.__init__(self, 'm3u playlist', extensions=['m3u'])
+        super(m3uPlaylist, self).__init__('m3u playlist', extensions=['m3u'])
 
 
 class Metadata(list):
@@ -122,7 +122,6 @@ class Metadata(list):
         """
         Register instances of the MetadataFileType classes in the module
         """
-        list.__init__(self)
         self.register_metadata(CoverArt())
         self.register_metadata(m3uPlaylist())
         self.register_metadata(AbletonAnalysisFile())

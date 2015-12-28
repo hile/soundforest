@@ -111,9 +111,9 @@ class ConfigDB(object):
         album_paths = [a.path for a in albums]
         track_paths = tree.realpaths
 
-        self.log.debug('Updating existing tree tracks')
         processed = 0
 
+        self.log.debug('{0} update tree'.format(tree.path))
         for album in albums:
 
             db_album = self.query(models.AlbumModel).filter(
@@ -122,6 +122,7 @@ class ConfigDB(object):
             ).first()
 
             if db_album is None:
+                self.log.debug('{0} add album {1}'.format(tree.path, album.path))
                 db_album = models.AlbumModel(
                     tree=db_tree,
                     directory=album.path,
@@ -130,15 +131,18 @@ class ConfigDB(object):
                 self.add(db_album)
 
             elif db_album.mtime != album.mtime:
+                self.log.debug('{0} update album mtime {1}'.format(tree.path, album.relative_path()))
                 db_album.mtime = album.mtime
 
+            self.log.debug('{0} update album tracks {1}'.format(tree.path, album.relative_path()))
             for track in album:
                 db_track = self.query(models.TrackModel).filter(
                     models.TrackModel.directory == track.path.directory,
-                    models.TrackModel.filename == track.path.filename
+                    models.TrackModel.filename == track.path.filename,
                 ).first()
 
                 if db_track is None:
+                    self.log.debug('{0} add track {1}'.format(tree.path, track.relative_path()))
                     db_track = models.TrackModel(
                         tree=db_tree,
                         album=db_album,
@@ -148,43 +152,45 @@ class ConfigDB(object):
                         mtime=track.mtime,
                         deleted=False,
                     )
-                    if self.update_track(track):
+                    if self.update_track(track, update_checksum=update_checksum):
                         added +=1
                     else:
                         errors +=1
 
                 elif db_track.mtime != track.mtime:
-                    if self.update_track(track):
+                    self.log.debug('{0} update track {1}'.format(tree.path, track.relative_path()))
+                    if self.update_track(track, update_checksum=update_checksum):
                         updated += 1
                     else:
                         errors +=1
 
                 elif not db_track.checksum and update_checksum:
-                    if self.update_track_checksum(track) is not None:
+                    self.log.debug('{0} update checksum {1}'.format(tree.path, track.relative_path()))
+                    if self.update_track_checksum(track, update_checksum=update_checksum) is not None:
                         updated += 1
                     else:
                         errors +=1
 
                 processed += 1
                 if progresslog and processed % 1000 == 0:
-                    self.log.debug('Processed: {0:d} tracks'.format(processed))
+                    self.log.debug('{0} processed {1:d} tracks'.format(tree.path, processed))
 
             self.commit()
 
-        self.log.debug('Checking for removed albums')
+        self.log.debug('{0} check for removed albums'.format(tree.path))
         for album in db_tree.albums:
             if album.path in album_paths or album.exists:
                 continue
 
-            self.log.debug('Removing album: {0}'.format(album.path))
+            self.log.debug('{0} remove album {1}'.format(tree.path, album.relative_path()))
             self.delete(album)
 
-        self.log.debug('Checking for removed tracks')
+        self.log.debug('{0} check for removed tracks'.format(tree.path))
         for track in db_tree.tracks:
             if track.path in track_paths or track.exists:
                 continue
 
-            self.log.debug('Removing track: {0}'.format(track.path))
+            self.log.debug('{0} remove track {1}'.format(tree.path, track.relative_path()))
             self.delete(track)
             deleted += 1
 
@@ -213,7 +219,7 @@ class ConfigDB(object):
 
         return []
 
-    def update_track(self, track, update_checksum=True):
+    def update_track(self, track, update_checksum=False):
         db_track = self.get_track(track.path)
         db_track.mtime = track.mtime
 
@@ -280,7 +286,7 @@ class SyncConfiguration(ConfigDBDictionary):
     """
 
     def __init__(self, db):
-        ConfigDBDictionary.__init__(self, db)
+        super(SyncConfiguration, self).__init__(db)
 
         for target in self.db.registered_sync_targets:
             self[target.name] = target.as_dict()
@@ -306,7 +312,7 @@ class CodecConfiguration(ConfigDBDictionary):
     """
 
     def __init__(self, db):
-        ConfigDBDictionary.__init__(self, db)
+        super(CodecConfiguration, self).__init__(db)
 
         self.load()
 

@@ -18,8 +18,8 @@ setup(
     packages = find_packages(),
     scripts = glob.glob('bin/*'),
     install_requires = (
+        'sqlalchemy>=1.0.11',
         'setproctitle',
-        'sqlalchemy',
         'requests',
         'lxml',
         'pytz',

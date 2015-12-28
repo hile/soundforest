@@ -164,12 +164,12 @@ class TracksCommand(SoundforestCommand):
         for track in tracks:
             if args.action == 'list':
                 if args.checksum:
-                    self.message('{0} {1}'.format(track.checksum, track.relative_path))
+                    self.message('{0} {1}'.format(track.checksum, track.relative_path()))
                 else:
-                    self.message(track.relative_path)
+                    self.message(track.relative_path())
 
             if args.action == 'tags':
-                self.message(track.relative_path)
+                self.message(track.relative_path())
                 for tag in track.tags:
                     print '  {0}={1}'.format(tag.tag, tag.value)
 

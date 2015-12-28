@@ -71,9 +71,9 @@ def match_metadata(path):
 class path_string(unicode):
     def __init__(self, path):
         if isinstance(path, unicode):
-            unicode.__init__(self, normalized(path).encode('utf-8'))
+            super(path_string, self).__init__(normalized(path).encode('utf-8'))
         else:
-            unicode.__init__(self, normalized(path))
+            super(path_string, self).__init__(normalized(path))
 
     @property
     def exists(self):

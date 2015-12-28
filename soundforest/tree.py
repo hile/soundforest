@@ -81,13 +81,19 @@ class IterableTrackFolder(object):
             raise StopIteration
 
     def load(self):
-        """Lazy loader of the iterable item"""
+        """Lazy loader
+
+        Lazy loader of the iterable item
+        """
         iterable = getattr(self, self.__iterable)
         iterable.__delslice__(0, len(iterable))
         self.invalid_paths.__delslice__(0, len(self.invalid_paths))
 
     def relative_path(self, item=None):
-        """Returns relative path of this iterable item"""
+        """Item relative path
+
+        Returns relative path of this iterable item
+        """
 
         if item is not None:
             if isinstance(item, Track):
@@ -99,13 +105,16 @@ class IterableTrackFolder(object):
             return self.prefixes.relative_path(self.path)
 
     def remove_empty_path(self, empty):
-        """
+        """Remove empty directory
+
         Remove empty directory and all empty parent directories
         """
         while True:
             if not os.path.isdir(empty):
+
                 # Directory does not exist
                 return
+
             if os.listdir(empty):
                 # Directory is not empty
                 return
@@ -127,13 +136,14 @@ class Tree(IterableTrackFolder):
     """
 
     def __init__(self, path):
-        IterableTrackFolder.__init__(self, path, 'files')
+        super(Tree, self).__init__(path, 'files')
         self.paths = {}
         self.empty_dirs = []
         self.relative_dirs = []
 
     def __len__(self):
-        """
+        """Tree track cound
+
         Tree must be loaded to figure out it's length
         """
         if not self.has_been_iterated:
@@ -143,7 +153,8 @@ class Tree(IterableTrackFolder):
                     self.next()
                 except StopIteration:
                     break
-        return IterableTrackFolder.__len__(self)
+
+        return super(Tree, self).__len__()
 
     def __cmp_file_path__(self, a, b):
         if a[0] != b[0]:
@@ -156,13 +167,14 @@ class Tree(IterableTrackFolder):
         if not os.path.isdir(self.path):
             raise TreeError('Not a directory: {0}'.format(self.path))
 
-        self.log.debug('load tree: {0}'.format(self.path))
+        self.log.debug('{0} load tree'.format(self.path))
         start = long(time.mktime(time.localtime()))
 
-        IterableTrackFolder.load(self)
+        super(Tree, self).load()
         self.paths = {}
         self.empty_dirs = []
         self.relative_dirs = []
+
         for (root, dirs, files) in os.walk(self.path, topdown=True):
             if files:
                 self.files.extend((root, x) for x in files)
@@ -181,16 +193,16 @@ class Tree(IterableTrackFolder):
         if not len(self.files):
             self.load()
 
-        tracks = filter(lambda f: match_codec(f[1]), self.files)
+        tracks = [track for track in self.files if match_codec(track[1])]
+
         if regexp is not None:
             if not re_file and not re_path:
                 raise TreeError('No matches if both re_file and re_path are False')
+
             if isinstance(regexp, basestring):
                 regexp = re.compile(regexp)
-            tracks = filter(lambda t:
-                re_path and regexp.match(t[0]) or re_file and regexp.match(t[1]),
-                tracks
-            )
+
+            tracks = [track for track in tracks if re_path and regexp.match(track[0]) or re_file and regexp.match(track[1])]
 
         if as_tracks:
             return [Track(os.path.join(t[0], t[1])) for t in tracks]
@@ -205,18 +217,14 @@ class Tree(IterableTrackFolder):
     def realpaths(self):
         return dict((normalized(os.path.realpath(v)), True) for v in self.paths.keys())
 
-    def contains(self, path):
-        directory = os.path.dirname(path)
-        filename = os.path.filename(path)
-
     def as_albums(self):
         if not self.has_been_iterated:
             self.load()
         return [Album(path) for path in sorted(set(d[0] for d in self.files))]
 
     def match(self, path):
-        relative_path = self.relative_path(path)
-        if not os.path.dirname(relative_path) in self.relative_dirs:
+        match_path = self.relative_path(path)
+        if not os.path.dirname(match_path) in self.relative_dirs:
             return None
 
     def test(self, callback):
@@ -233,28 +241,28 @@ class Tree(IterableTrackFolder):
 class Album(IterableTrackFolder):
 
     def __init__(self, path):
-        IterableTrackFolder.__init__(self, path, 'files')
+        super(Album, self).__init__(path, 'files')
         self.metadata_files = []
 
     def __repr__(self):
         return 'album {0}'.format(self.path)
 
     def __getitem__(self, item):
-        item = IterableTrackFolder.__getitem__(self, item)
+        item = super(Album, self).__getitem__(item)
         return Track(os.path.join(*item))
 
     def load(self):
-        IterableTrackFolder.load(self)
+        super(Album, self).load()
 
         self.metadata_files = []
-        for f in os.listdir(self.path):
-            if match_codec(f) is not None:
-                self.files.append((self.path, f))
+        for name in os.listdir(self.path):
+            if match_codec(name) is not None:
+                self.files.append((self.path, name))
 
             else:
-                metadata = match_metadata(f)
+                metadata = match_metadata(name)
                 if metadata is not None:
-                    self.metadata_files.append(MetaDataFile(os.path.join(self.path, f), metadata))
+                    self.metadata_files.append(MetaDataFile(os.path.join(self.path, name), metadata))
 
         self.files.sort()
 
@@ -308,7 +316,7 @@ class Album(IterableTrackFolder):
             try:
                 shutil.copyfile(m.path, dst_path)
             except OSError, (ecode, emsg):
-                self.script.exit(1, 'Error writing {0}: {1}'.format(dst_path, emsg))
+                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, emsg))
 
         target.load()
         albumart = target.albumart
@@ -319,7 +327,7 @@ class Album(IterableTrackFolder):
                     continue
 
                 if not tags.supports_albumart:
-                    self.log.debug('no albumart support: {0}'.format(track.path))
+                    self.log.debug('albumart not supported: {0}'.format(track.path))
                     continue
 
                 if tags.set_albumart(albumart):
@@ -330,9 +338,7 @@ class Album(IterableTrackFolder):
 class MetaDataFile(object):
     """MetaDataFile
 
-    Metadata files, like album artwork, booklets and vendor specific
-    analysis files.
-
+    Metadata files, like album artwork, booklets and vendor specific analysis files.
     """
 
     def __init__(self, path, metadata=None):
@@ -355,6 +361,7 @@ class MetaDataFile(object):
     @property
     def filename(self):
         return os.path.basename(self.path)
+
 
 class Track(AudioFileFormat):
     """Track

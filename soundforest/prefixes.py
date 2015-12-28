@@ -118,7 +118,6 @@ class TreePrefixes(object):
 
         def __init__(self):
             self.log = SoundforestLogger().default_stream
-            list.__init__(self)
             self.db = ConfigDB()
 
             common_prefixes = set(DEFAULT_PATHS + [prefix.path for prefix in self.db.prefixes])

@@ -13,12 +13,14 @@ import pytz
 from datetime import datetime
 
 from sqlite3 import Connection as SQLite3Connection
-from sqlalchemy import create_engine, event
-from sqlalchemy import Column, ForeignKey, Integer, Boolean, String, Date
+from sqlalchemy import create_engine, event, \
+                       Column, ForeignKey, Integer, Boolean, String, Date, \
+                       UniqueConstraint, Index
+from sqlalchemy.engine import reflection
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.types import TypeDecorator, Unicode
-from sqlalchemy.ext.declarative import declarative_base
 
 from soundforest import SoundforestError, SOUNDFOREST_USER_DIR
 from soundforest.log import SoundforestLogger
@@ -74,24 +76,6 @@ class BasePathNamedModel(object):
             return cmp(self.path, other)
         return cmp(self, other)
 
-    def __eq__(self, other):
-        return self.__cmp__(other) == 0
-
-    def __ne__(self, other):
-        return self.__cmp__(other) != 0
-
-    def __lt__(self, other):
-        return self.__cmp__(other) < 0
-
-    def __lte__(self, other):
-        return self.__cmp__(other) <= 0
-
-    def __gt__(self, other):
-        return self.__cmp__(other) > 0
-
-    def __gte__(self, other):
-        return self.__cmp__(other) >= 0
-
 
 class BaseNamedModel(object):
     """Base name comparable with name string"""
@@ -100,24 +84,6 @@ class BaseNamedModel(object):
         if isinstance(other, basestring):
             return cmp(self.name, other)
         return cmp(self, other)
-
-    def __eq__(self, other):
-        return self.__cmp__(other) == 0
-
-    def __ne__(self, other):
-        return self.__cmp__(other) != 0
-
-    def __lt__(self, other):
-        return self.__cmp__(other) < 0
-
-    def __lte__(self, other):
-        return self.__cmp__(other) <= 0
-
-    def __gt__(self, other):
-        return self.__cmp__(other) > 0
-
-    def __gte__(self, other):
-        return self.__cmp__(other) >= 0
 
 
 class SettingModel(Base):
@@ -387,7 +353,7 @@ class PlaylistTreeModel(Base, BaseNamedModel):
 
     id = Column(Integer, primary_key=True)
     name = Column(SafeUnicode)
-    path = Column(SafeUnicode)
+    path = Column(SafeUnicode, unique=True)
 
     def __repr__(self):
         return '{0}: {1}'.format(self.name, self.path)
@@ -454,7 +420,6 @@ class PlaylistModel(Base, BaseNamedModel):
     """PlaylistModel
 
     PlaylistModel file of audio tracks
-
     """
 
     __tablename__ = 'playlists'
@@ -475,6 +440,8 @@ class PlaylistModel(Base, BaseNamedModel):
             cascade='all, delete, delete-orphan'
         )
     )
+    UniqueConstraint('folder', 'name', name='playlist_folder_path')
+
 
     def __repr__(self):
         return '{0}: {1:d} tracks'.format(os.sep.join([self.folder, self.name]), len(self.tracks))
@@ -488,7 +455,6 @@ class PlaylistTrackModel(Base, BasePathNamedModel):
     """PlaylistTrackModel
 
     Audio track in a playlist
-
     """
 
     __tablename__ = 'playlist_tracks'
@@ -516,13 +482,12 @@ class TreeTypeModel(Base, BaseNamedModel):
     """TreeTypeModel
 
     Audio file tree types (music, samples, loops etc.)
-
     """
 
     __tablename__ = 'treetypes'
 
     id = Column(Integer, primary_key=True)
-    name = Column(SafeUnicode)
+    name = Column(SafeUnicode, unique=True)
     description = Column(SafeUnicode)
 
     def __repr__(self):
@@ -534,7 +499,6 @@ class PrefixModel(Base, BasePathNamedModel):
     """PrefixModel
 
     Audio tree prefix paths
-
     """
 
     __tablename__ = 'prefixes'
@@ -551,13 +515,12 @@ class TreeModel(Base, BasePathNamedModel):
     """TreeModel
 
     Audio file tree
-
     """
 
     __tablename__ = 'trees'
 
     id = Column(Integer, primary_key=True)
-    path = Column(SafeUnicode, unique=True)
+    path = Column(SafeUnicode, index=True, unique=True)
     source = Column(SafeUnicode, default=u'filesystem')
     description = Column(SafeUnicode)
 
@@ -631,14 +594,13 @@ class AlbumModel(Base, BasePathNamedModel):
     """AlbumModel
 
     AlbumModel of music tracks in tree database.
-
     """
 
     __tablename__ = 'albums'
 
     id = Column(Integer, primary_key=True)
 
-    directory = Column(SafeUnicode)
+    directory = Column(SafeUnicode, index=True, unique=True)
     mtime = Column(Integer)
     tree_id = Column(Integer, ForeignKey('trees.id'), nullable=True)
     tree = relationship('TreeModel',
@@ -702,7 +664,6 @@ class AlbumArtModel(Base):
     """AlbumArtModel
 
     AlbumArtModel files for music albums in tree database.
-
     """
 
     __tablename__ = 'albumarts'
@@ -727,8 +688,7 @@ class TrackModel(Base, BasePathNamedModel):
 
     """TrackModel
 
-    Audio file. Optionally associated with a audio file tree
-
+    Audio file. Optionally associated with a audio file tree.
     """
 
     __tablename__ = 'tracks'
@@ -813,20 +773,19 @@ class TagModel(Base):
     """TagModel
 
     Metadata tag for an audio file
-
     """
 
-    __tablename__='tags'
+    __tablename__ = 'tags'
 
-    id=Column(Integer, primary_key = True)
-    tag=Column(SafeUnicode)
-    value=Column(SafeUnicode)
-    base64_encoded=Column(Boolean)
+    id = Column(Integer, primary_key=True)
+    tag = Column(SafeUnicode)
+    value = Column(SafeUnicode)
+    base64_encoded = Column(Boolean)
 
-    track_id=Column(Integer, ForeignKey('tracks.id'), nullable = False)
-    track=relationship('TrackModel',
-        single_parent = False,
-        backref = backref('tags',
+    track_id = Column(Integer, ForeignKey('tracks.id'), nullable=False)
+    track = relationship('TrackModel',
+        single_parent=False,
+        backref=backref('tags',
             order_by=tag,
             cascade='all, delete, delete-orphan'
         )
@@ -835,13 +794,11 @@ class TagModel(Base):
     def __repr__(self):
         return '{0}={1}'.format(self.tag, self.value)
 
-
 class SoundforestDB(object):
 
     """SoundforestDB
 
     Music database storing settings, synchronization data and music tree file metadata
-
     """
 
     def __init__(self, path=None, engine=None, debug=False):
@@ -864,37 +821,64 @@ class SoundforestDB(object):
 
         event.listen(engine, 'connect', self._fk_pragma_on_connect)
         Base.metadata.create_all(engine)
+        self.session = sessionmaker(bind=engine)()
 
-        session_instance = sessionmaker(bind=engine)
-        self.session = session_instance()
+        indexes = (
+            Index('tree_album_directory', AlbumModel.tree_id, AlbumModel.directory),
+            Index('track_directory_filename', TrackModel.directory, TrackModel.filename),
+            Index('track_tag', TagModel.track_id, TagModel.tag),
+        )
+        inspector = reflection.Inspector.from_engine(engine)
+        existing_index_names = [index['name'] for table in inspector.get_table_names() for index in inspector.get_indexes(table)]
+        for index in indexes:
+            if index.name not in existing_index_names:
+                index.create(bind=engine)
 
     def _fk_pragma_on_connect(self, connection, record):
-        """Enable foreign keys for sqlite databases"""
+        """Enable foreign keys
+
+        Enable foreign keys for sqlite databases during connect
+        """
         if isinstance(connection, SQLite3Connection):
             cursor = connection.cursor()
             cursor.execute('pragma foreign_keys=ON')
             cursor.close()
 
     def query(self, *args, **kwargs):
-        """Wrapper to do a session query"""
+        """Query session
+
+        Wrapper to do a session query
+        """
         return self.session.query(*args, **kwargs)
 
     def rollback(self):
-        """Wrapper to rolllback current session query"""
+        """Rollback session
+
+        Wrapper to rolllback current session query
+        """
         return self.session.rollback()
 
     def commit(self):
-        """Wrapper to commit current session query"""
+        """Commit session
+
+        Wrapper to commit current session query
+        """
         return self.session.commit()
 
     def as_dict(self, result):
-        """Returns current query Base result as dictionary"""
+        """Return query result dictionary
+
+        Returns current query Base result as dictionary
+        """
         if not hasattr(result, '__table__'):
             raise ValueError('Not a sqlalchemy ORM result')
         return dict((k.name, getattr(result, k.name)) for k in result.__table__.columns)
 
     def add(self, items):
-        """Add items in query session, committing changes"""
+        """Add items
+
+        Add items in query session, committing changes
+        """
         if isinstance(items, list):
             self.session.add_all(items)
         else:
@@ -903,7 +887,10 @@ class SoundforestDB(object):
         self.session.commit()
 
     def delete(self, items):
-        """Delete items in query session, committing changes"""
+        """Delete items
+
+        Delete items in query session, committing changes
+        """
         if isinstance(items, list):
             for item in items:
                 self.session.delete(item)
@@ -914,52 +901,89 @@ class SoundforestDB(object):
 
     @property
     def registered_sync_targets(self):
+        """Registered sync targets
+
+        Return all SyncTargetModel objects
+        """
         return self.query(SyncTargetModel).all()
 
     @property
     def registered_codecs(self):
+        """Registered codecs
+
+        Return all CodecModel objects
+        """
         return self.query(CodecModel).order_by(CodecModel.name).all()
 
     @property
     def registered_tree_types(self):
+        """Registered tree types
+
+        Return all TreeTypeModel objects
+        """
         return self.query(TreeTypeModel).order_by(TreeTypeModel.name).all()
 
     @property
     def registered_playlist_trees(self):
-        """Return registered PlaylistTreeModel objects from database"""
+        """Playlist trees
+
+        Return all PlaylistTreeModel objects
+        """
         return self.query(PlaylistTreeModel).order_by(PlaylistTreeModel.name).all()
 
     @property
     def playlists(self):
-        """Return registered PlaylistModel objects from database"""
+        """Playlists
+
+        Return all PlaylistModel objects
+        """
         return self.query(PlaylistModel).all()
 
     @property
     def prefixes(self):
-        """Return registered PrefixModel objects from database"""
+        """Path prefixes
+
+        Return all PrefixModel objects
+        """
         return self.query(PrefixModel).all()
 
     @property
     def trees(self):
-        """Return registered TreeModel objects from database"""
+        """Trees
+
+        Return all TreeModel objects
+        """
         return self.query(TreeModel).all()
 
     @property
     def albums(self):
-        """Return registered AlbumModel objects from database"""
+        """Albums
+
+        Return all AlbumModel objects
+        """
         return self.query(AlbumModel).all()
 
     @property
     def tracks(self):
-        """Return registered TrackModel objects from database"""
+        """Tracks
+
+        Return all TrackModel objects
+        """
         return self.query(TrackModel).all()
 
     @property
     def registered_settings(self):
-        """Return registered SettingModel objects from database"""
+        """Registered settings
+
+        Return all SettingModel objects
+        """
         return self.query(SettingModel).order_by(SettingModel.key).all()
 
     def update_setting(self, key, value):
+        """Update setting
+
+        Update or create setting key, value pair
+        """
         setting = self.query(SettingModel).filter(
             SettingModel.key == key
         ).first()
@@ -971,6 +995,10 @@ class SoundforestDB(object):
             self.add(SettingModel(key=key, value=value))
 
     def get_setting(self, key):
+        """Get setting
+
+        Return value for setting key, or None if setting is not found
+        """
         setting = self.query(SettingModel).filter(
             SettingModel.key == key
         ).first()
@@ -980,7 +1008,10 @@ class SoundforestDB(object):
             return None
 
     def register_sync_target(self, name, synctype, src, dst, flags=None, defaults=False):
-        """Register a sync target"""
+        """Register sync target
+
+        Register new sync target
+        """
 
         existing = self.query(SyncTargetModel).filter(
             SyncTargetModel.name == name
@@ -1008,7 +1039,8 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def register_codec(self, name, extensions, description='', decoders=[], encoders=[], testers=[]):
-        """
+        """Register codec
+
         Register codec with given parameters
         """
         codec = CodecModel(name=name, description=description)
@@ -1033,6 +1065,9 @@ class SoundforestDB(object):
         return codec
 
     def register_tree_type(self, name, description=''):
+        """Register tree type
+
+        """
         existing = self.query(TreeTypeModel).filter(
             TreeTypeModel.name == name
         ).first()
@@ -1042,6 +1077,9 @@ class SoundforestDB(object):
         self.add(TreeTypeModel(name=name, description=description))
 
     def unregister_tree_type(self, name, description=''):
+        """Unregister tree type
+
+        """
         existing = self.query(TreeTypeModel).filter(
             TreeTypeModel.name == name
         ).first()
@@ -1051,6 +1089,9 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def register_playlist_tree(self, path, name='Playlists'):
+        """Register playlist tree
+
+        """
         existing = self.query(PlaylistTreeModel).filter(
             PlaylistTreeModel.path == path
         ).first()
@@ -1060,6 +1101,9 @@ class SoundforestDB(object):
         self.add(PlaylistTreeModel(path=path, name=name))
 
     def unregister_playlist_tree(self, path):
+        """Unregister playlist tree
+
+        """
         existing = self.query(PlaylistTreeModel).filter(
             PlaylistTreeModel.path == path
         ).first()
@@ -1069,7 +1113,9 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def register_prefix(self, path):
-        """Register a prefix"""
+        """Register path prefix
+
+        """
         if isinstance(path, str):
             path = unicode(path, 'utf-8')
 
@@ -1082,7 +1128,9 @@ class SoundforestDB(object):
         self.add(PrefixModel(path=path))
 
     def unregister_prefix(self, path):
-        """Unregister a prefix"""
+        """Unregister path prefix
+
+        """
         existing = self.query(PrefixModel).filter(
             PrefixModel.path == path
         ).first()
@@ -1092,7 +1140,9 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def register_tree(self, path, description='', tree_type='songs'):
-        """Register tree"""
+        """Register tree
+
+        """
         if isinstance(path, str):
             path = unicode(path, 'utf-8')
 
@@ -1106,7 +1156,9 @@ class SoundforestDB(object):
         self.add(TreeModel(path=path, description=description, type=tt))
 
     def unregister_tree(self, path, description=''):
-        """Unregister tree"""
+        """Unregister tree
+
+        """
         existing = self.query(TreeModel).filter(
             TreeModel.path == path
         ).first()
@@ -1116,46 +1168,65 @@ class SoundforestDB(object):
         self.delete(existing)
 
     def get_codec(self, name):
-        """Return codec matching name"""
+        """Return codec matching name
+
+        """
         return self.query(CodecModel).filter(
             CodecModel.name == name
         ).first()
 
     def get_tree_type(self, name):
-        """Return tree type matching name"""
+        """Return tree type matching name
+
+        """
         return self.query(TreeTypeModel).filter(
             TreeTypeModel.name == name
         ).first()
 
     def get_tree(self, path, tree_type='songs'):
-        """Return tree matching path"""
+        """Return tree matching path
+
+        """
         return self.query(TreeModel).filter(
             TreeModel.path == path
         ).first()
 
     def get_album(self, path):
-        """Return album matching path"""
+        """Return album matching path
+
+        """
         return self.query(AlbumModel).filter(
             AlbumModel.directory == path
         ).first()
 
     def get_track(self, path):
-        """Return trach matching path"""
+        """Return trach matching path
+
+        """
         return self.query(TrackModel).filter(
             TrackModel.directory == os.path.dirname(path),
             TrackModel.filename == os.path.basename(path),
         ).first()
 
     def get_playlist_tree(self, path):
+        """Get playlist tree
+
+        """
         return self.query(PlaylistTreeModel).filter(
             PlaylistTreeModel.path == path
         ).first()
 
     def get_playlist(self, path):
-        """Get playlist by path"""
+        """Get playlist by path
+        """
         return self.query(PlaylistModel).filter(
             PlaylistModel.path == path
         ).first()
 
     def match_tracks_by_tree_prefix(self, path):
+        """Match tracks
+
+        Return tracks matching path prefix
+        """
         return self.query(TrackModel).filter(TrackModel.directory.like('%{0}%'.format(path))).all()
+

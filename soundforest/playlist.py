@@ -81,7 +81,7 @@ class Playlist(list):
 
 class m3uPlaylist(Playlist):
     def __init__(self, name, config=None, folder=None, unique=True):
-        Playlist.__init__(self, name, unique)
+        super(m3uPlaylist, self).__init__(name, unique)
 
         if os.path.isfile(name):
             path = os.path.realpath(name)
