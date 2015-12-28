@@ -158,7 +158,7 @@ class TracksCommand(SoundforestCommand):
             for path in args.paths:
                 tracks.extend(self.db.find_tracks(path))
         else:
-            for tree in self.db.tress:
+            for tree in self.db.trees:
                 tracks.extend(tree.tracks)
 
         for track in tracks:
