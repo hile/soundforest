@@ -389,7 +389,6 @@ class Track(AudioFileFormat):
 
         return self.file_tags
 
-    @property
     def relative_path(self):
         return self.prefixes.relative_path(os.path.realpath(self.path))
 
