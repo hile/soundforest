@@ -244,13 +244,13 @@ class TagParser(dict):
         Sort keys with STANDARD_TAG_ORDER list
         """
         values = []
-        for k in STANDARD_TAG_ORDER:
-            if k in keys:
-                values.append(k)
+        for key in STANDARD_TAG_ORDER:
+            if key in keys:
+                values.append(key)
 
-        for k in keys:
-            if k not in STANDARD_TAG_ORDER:
-                values.append(k)
+        for key in keys:
+            if key not in STANDARD_TAG_ORDER:
+                values.append(key)
 
         return values
 
@@ -269,9 +269,12 @@ class TagParser(dict):
         """
         Return file tag keys mapped with tag_map.
         """
-        return self.sort_keys(
-            [self.__field2tag__(k) for k in self.entry.keys()]
-        )
+        keys = []
+        for key in self.entry.keys():
+            key = self.__field2tag__(key)
+            if key is not None:
+                keys.append(key)
+        return self.sort_keys(keys)
 
     def items(self):
         """

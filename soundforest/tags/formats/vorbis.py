@@ -169,7 +169,8 @@ class vorbis(TagParser):
         Return tag names sorted with self.sort_keys()
         """
 
-        keys = TagParser.keys(self)
+        keys = super(vorbis, self).keys()
+
         if 'TOTALTRACKS' in keys:
             keys.remove('TOTALTRACKS')
 

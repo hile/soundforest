@@ -306,7 +306,8 @@ class aac(TagParser):
 
         Itunes internal tags are ignored from results
         """
-        keys = TagParser.keys(self)
+        keys = super(aac, self).keys()
+
         if 'trkn' in keys:
             keys.extend(['tracknumber', 'totaltracks'])
             keys.remove('trkn')
@@ -334,7 +335,7 @@ class aac(TagParser):
         Save AAC tags to the file
         """
         try:
-            TagParser.save(self)
+            super(aac, self).save()
         except MP4MetadataValueError, emsg:
             raise TagError(emsg)
         self.modified = False

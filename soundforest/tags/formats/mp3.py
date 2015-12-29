@@ -319,4 +319,4 @@ class mp3(TagParser):
         """
         Save mp3 tags to the file
         """
-        TagParser.save(self)
+        super(mp3, self).save()

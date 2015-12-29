@@ -191,7 +191,8 @@ class flac(TagParser):
         """
         Return tag names sorted with self.sort_keys()
         """
-        keys = TagParser.keys(self)
+        keys = super(flac, self).keys()
+
         if 'TOTALTRACKS' in keys:
             keys.remove('TOTALTRACKS')
         if 'TOTALDISKS' in keys:
