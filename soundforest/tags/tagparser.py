@@ -40,7 +40,6 @@ class TagParser(dict):
     """
 
     def __init__(self, codec, path, tag_map=None):
-        dict.__init__(self)
         self.codec = codec
         self.path = normalized(os.path.realpath(path))
         self.tag_map = tag_map is not None and tag_map or {}
@@ -49,6 +48,9 @@ class TagParser(dict):
 
         self.albumart_obj = None
         self.supports_albumart = False
+
+    def __repr__(self):
+        return '{0}: {1}'.format(self.codec, self.path)
 
     def __getattr__(self, attr):
         try:
@@ -174,9 +176,6 @@ class TagParser(dict):
         if tag in STANDARD_TAG_MAP:
             return STANDARD_TAG_MAP[tag]['label']
         return tag
-
-    def __repr__(self):
-        return '{0}: {1}'.format(self.codec, self.path)
 
     @property
     def mtime(self):
@@ -414,6 +413,7 @@ class TagParser(dict):
         except IOError, (ecode, emsg):
             raise TagError(emsg)
 
+
 class TrackAlbumart(object):
     """
     Parent class for common albumart operations
@@ -533,6 +533,7 @@ class TrackNumberingTag(object):
         If total is None but value is set, set total==value.
         """
         raise NotImplementedError('save_tag must be implemented in child class')
+
 
 def Tags(path, fileformat=None):
     """
