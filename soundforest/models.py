@@ -618,7 +618,6 @@ class AlbumModel(Base, BasePathNamedModel):
     def path(self):
         return self.directory
 
-    @property
     def relative_path(self):
         path = self.directory
         if self.tree and path[:len(self.tree.path)] == self.tree.path:
@@ -726,7 +725,6 @@ class TrackModel(Base, BasePathNamedModel):
     def path(self):
         return os.path.join(self.directory, self.filename)
 
-    @property
     def relative_path(self):
         path = os.path.join(self.directory, self.filename)
         if self.tree and path[:len(self.tree.path)] == self.tree.path:
