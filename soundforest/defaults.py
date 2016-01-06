@@ -69,14 +69,25 @@ DEFAULT_CODECS = {
     ],
   },
 
-  'vorbis': {
+  'ogg': {
     'description': 'Ogg Vorbis',
-    'extensions': ['ogg', 'oga'],
+    'extensions': [ 'ogg', 'oga', ],
     'encoders': [
       'oggenc --quiet -q 7 -o OUTFILE FILE',
     ],
     'decoders': [
       'oggdec --quiet -o OUTFILE FILE',
+    ],
+  },
+
+  'opus': {
+    'description': 'Opus in vorbis container',
+    'extensions': [ 'opus', ],
+    'encoders': [
+      'opusenc--quiet FILE OUTFILE',
+    ],
+    'decoders': [
+      'opusdec --quiet FILE OUTFILE',
     ],
   },
 

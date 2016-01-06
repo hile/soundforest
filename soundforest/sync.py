@@ -2,7 +2,6 @@
 """Tree synchronization
 
 Parsing of syncing options
-
 """
 
 import os
@@ -14,7 +13,7 @@ from subprocess import Popen, PIPE
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 from soundforest.cli import ScriptThread, ScriptThreadManager
-from soundforest.config import ConfigDB
+from soundforest.database import ConfigDB
 from soundforest.log import SoundforestLogger
 from soundforest.tree import Tree, Track, TreeError
 
@@ -159,7 +158,7 @@ class FilesystemSyncThread(SyncThread):
                         self.copy_track(track.path, dst_track.path)
 
                     except SyncError, emsg:
-                        print emsg
+                        self.log.info(emsg)
                         continue
 
 
@@ -176,7 +175,6 @@ class RsyncThread(SyncThread):
 
     def run(self):
         command = ['rsync', '-av'] + self.flags + ['{0}/'.format(self.src), '{0}/'.format(self.dst)]
-        print 'running ', ' '.join(command)
 
         try:
             self.log.info('Running: {0}'.format(' '.join(command)))

@@ -10,8 +10,8 @@ import tempfile
 
 from subprocess import Popen, PIPE
 
-from soundforest import normalized, SoundforestError, CommandPathCache
-from soundforest.config import ConfigDB
+from soundforest import path_string, SoundforestError, CommandPathCache
+from soundforest.database import ConfigDB
 from soundforest.defaults import SOUNDFOREST_CACHE_DIR
 from soundforest.log import SoundforestLogger
 from soundforest.metadata import Metadata
@@ -51,11 +51,11 @@ def match_codec(path):
     if ext == '':
         ext = path
 
-    if ext in db.codecs.keys():
-        return db.codecs[ext]
+    if ext in db.codec_configuration.keys():
+        return db.codec_configuration[ext]
 
-    for codec in db.codecs.values():
-        if ext in [e.extension for e in codec.extensions]:
+    for codec in db.codec_configuration.values():
+        if ext in [value.extension for value in codec.extensions]:
             return codec
 
     return None
@@ -67,43 +67,6 @@ def match_metadata(path):
         return None
 
     return m
-
-class path_string(unicode):
-    def __init__(self, path):
-        if isinstance(path, unicode):
-            super(path_string, self).__init__(normalized(path).encode('utf-8'))
-        else:
-            super(path_string, self).__init__(normalized(path))
-
-    @property
-    def exists(self):
-        if os.path.isdir(self) or os.path.isfile(self):
-            return True
-        return False
-
-    @property
-    def isdir(self):
-        return os.path.isdir(self)
-
-    @property
-    def isfile(self):
-        return os.path.isfile(self)
-
-    @property
-    def no_ext(self):
-        return os.path.splitext(self)[0]
-
-    @property
-    def directory(self):
-        return os.path.dirname(self)
-
-    @property
-    def filename(self):
-        return os.path.basename(self)
-
-    @property
-    def extension(self):
-        return os.path.splitext(self)[1][1:]
 
 
 class AudioFileFormat(object):

@@ -8,10 +8,11 @@ Tree prefixes configuration
 import os
 import configobj
 
+from soundforest import path_string
+from soundforest.database import ConfigDB
 from soundforest.defaults import SOUNDFOREST_USER_DIR
-from soundforest.config import ConfigDB
 from soundforest.log import SoundforestLogger
-from soundforest.formats import match_codec, path_string
+from soundforest.formats import match_codec
 
 USER_PATH_CONFIG = os.path.join(SOUNDFOREST_USER_DIR, 'paths.conf')
 
@@ -120,21 +121,21 @@ class TreePrefixes(object):
             self.log = SoundforestLogger().default_stream
             self.db = ConfigDB()
 
-            common_prefixes = set(DEFAULT_PATHS + [prefix.path for prefix in self.db.prefixes])
+            common_prefixes = set(DEFAULT_PATHS + [prefix.path for prefix in self.db.tree_prefixes])
 
             for path in common_prefixes:
-                for name, codec in self.db.codecs.items():
+                for name, codec in self.db.codec_configuration.items():
                     prefix_path = os.path.join(path, name)
                     prefix = MusicTreePrefix(prefix_path, [codec.name] + codec.extensions)
-                    self.register_prefix(prefix)
+                    self.add_prefix(prefix)
 
-                if 'm4a' in self.db.codecs.keys():
+                if 'm4a' in self.db.codec_configuration.keys():
                     prefix_path = os.path.join(path, 'm4a')
-                    prefix = MusicTreePrefix(prefix_path, self.db.codecs.extensions('m4a'))
-                    self.register_prefix(prefix)
+                    prefix = MusicTreePrefix(prefix_path, self.db.codec_configuration.extensions('m4a'))
+                    self.add_prefix(prefix)
 
-            itunes_prefix = MusicTreePrefix(ITUNES_MUSIC, self.db.codecs.extensions('m4a'))
-            self.register_prefix(itunes_prefix)
+            itunes_prefix = MusicTreePrefix(ITUNES_MUSIC, self.db.codec_configuration.extensions('m4a'))
+            self.add_prefix(itunes_prefix)
             self.load_user_config()
 
         def load_user_config(self):
@@ -170,12 +171,12 @@ class TreePrefixes(object):
                             continue
 
                         for path in reversed(paths):
-                            prefix = MusicTreePrefix(path, self.db.codecs.extensions('aac'))
+                            prefix = MusicTreePrefix(path, self.db.codec_configuration.extensions('aac'))
 
                             if codec_name == 'itunes':
-                                self.register_prefix(prefix, prepend=False)
+                                self.add_prefix(prefix, prepend=False)
                             else:
-                                self.register_prefix(prefix, prepend=True)
+                                self.add_prefix(prefix, prepend=True)
 
             except IOError, (ecode, emsg):
                 raise PrefixError('Error reading {0}: {1}'.format(USER_PATH_CONFIG, emsg))
@@ -190,7 +191,7 @@ class TreePrefixes(object):
 
             raise IndexError('Prefix is not registered')
 
-        def register_prefix(self, prefix, extensions=[], prepend=False):
+        def add_prefix(self, prefix, extensions=[], prepend=False):
             if isinstance(prefix, basestring):
                 prefix = MusicTreePrefix(prefix, extensions)
 

@@ -11,14 +11,24 @@ import re
 import shutil
 import time
 
-from soundforest import normalized, SoundforestError, TreeError
+
+from soundforest import normalized, path_string, SoundforestError, TreeError
 from soundforest.log import SoundforestLogger
-from soundforest.formats import AudioFileFormat, path_string, match_codec, match_metadata
+from soundforest.formats import AudioFileFormat, match_codec, match_metadata
 from soundforest.prefixes import TreePrefixes, PrefixError
 from soundforest.metadata import CoverArt
 from soundforest.tags import TagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 from soundforest.tags.tagparser import Tags
+
+
+IGNORED_TREE_FOLDER_NAMES = (
+    '.fseventsd',
+    '.Spotlight-V100/',
+    '.DocumentRevisions-V100/',
+    '.Trashes',
+    '.vol',
+)
 
 
 class IterableTrackFolder(object):
@@ -179,10 +189,14 @@ class Tree(IterableTrackFolder):
         self.relative_dirs = []
 
         for (root, dirs, files) in os.walk(self.path, topdown=True):
+            if os.path.basename(root) in IGNORED_TREE_FOLDER_NAMES:
+                continue
+
             if files:
-                self.files.extend((root, x) for x in files)
-                for x in files:
-                    self.paths[os.path.join(root, x)] = True
+                self.files.extend((root, filename) for filename in files if filename != '')
+                for filename in files:
+                    self.paths[os.path.join(root, filename)] = True
+
             elif not dirs:
                 self.empty_dirs.append(root)
 
@@ -220,10 +234,20 @@ class Tree(IterableTrackFolder):
     def realpaths(self):
         return dict((normalized(os.path.realpath(v)), True) for v in self.paths.keys())
 
+    def relative_path(self, item):
+        """Item relative path
+
+        Returns relative path of item in tree
+        """
+        if hasattr(item, 'path'):
+            return self.path.relative_path(item.path)
+        else:
+            return self.path.relative_path(item)
+
     def as_albums(self):
         if not self.has_been_iterated:
             self.load()
-        return [Album(path) for path in sorted(set(d[0] for d in self.files))]
+        return [Album(path) for path in sorted(set(d[0] for d in self.files)) if path not in (self.path, '')]
 
     def match(self, path):
         match_path = self.relative_path(path)
@@ -396,6 +420,10 @@ class Track(AudioFileFormat):
 
     def relative_path(self):
         return self.prefixes.relative_path(os.path.realpath(self.path))
+
+    @property
+    def filename_no_extension(self):
+        return os.path.splitext(os.path.basename(self.path))[0]
 
     @property
     def extension(self):

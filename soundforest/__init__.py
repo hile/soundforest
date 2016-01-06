@@ -11,7 +11,7 @@ import unicodedata
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 
-__version__ ='3.7.2'
+__version__ ='4.0.0'
 
 class SoundforestError(Exception):
     pass
@@ -34,6 +34,53 @@ def normalized(path, normalization='NFC'):
         path = unicode(path, 'utf-8')
 
     return unicodedata.normalize(normalization, path)
+
+
+class path_string(unicode):
+    def __init__(self, path):
+        if isinstance(path, unicode):
+            super(path_string, self).__init__(normalized(path).encode('utf-8'))
+        else:
+            super(path_string, self).__init__(normalized(path))
+
+    @property
+    def exists(self):
+        if os.path.isdir(self) or os.path.isfile(self):
+            return True
+        return False
+
+    @property
+    def isdir(self):
+        return os.path.isdir(self)
+
+    @property
+    def isfile(self):
+        return os.path.isfile(self)
+
+    @property
+    def no_ext(self):
+        return os.path.splitext(self)[0]
+
+    @property
+    def directory(self):
+        return os.path.dirname(self)
+
+    @property
+    def filename(self):
+        return os.path.basename(self)
+
+    @property
+    def extension(self):
+        return os.path.splitext(self)[1][1:]
+
+    def relative_path(self, path):
+        """Return relative path
+
+        Return item's relative path.
+        """
+        if path[:len(self)] != self:
+            raise ValueError('{0} path is not relative to {1}'.format(path, self))
+        return path[len(self):].lstrip('/')
 
 
 class CommandPathCache(list):
@@ -86,3 +133,4 @@ class CommandPathCache(list):
             return versions[0]
         else:
             return None
+

@@ -13,9 +13,12 @@ from soundforest import models, TreeError, SoundforestError
 from soundforest.log import SoundforestLogger
 from soundforest.defaults import DEFAULT_CODECS, DEFAULT_TREE_TYPES
 
+from sqlalchemy.orm.exc import NoResultFound
+
 FIELD_CONVERT_MAP = {
     'threads': lambda x: int(x)
 }
+
 
 class ConfigDB(object):
     """ConfigDB
@@ -54,8 +57,8 @@ class ConfigDB(object):
                 self.add(treetypes)
                 self.commit()
 
-            self.codecs = CodecConfiguration(db=self)
-            self.sync = SyncConfiguration(db=self)
+            self.codec_configuration = CodecConfiguration(db=self)
+            self.sync_configuration = SyncConfiguration(db=self)
 
         def get(self, key):
             entry = self.session.query(models.SettingModel).filter(models.SettingModel.key==key).first()
@@ -101,7 +104,7 @@ class ConfigDB(object):
         def values(self):
             return [s.value for s in self.session.query(models.SettingModel).all()]
 
-    def update_tree(self, tree, update_checksum=True, progresslog=False):
+    def update_tree(self, tree, update_checksum=False, progresslog=False):
         """
         Update tracks in database from loaded tree instance
         """
@@ -109,7 +112,8 @@ class ConfigDB(object):
 
         db_tree = self.get_tree(tree.path)
         albums = tree.as_albums()
-        album_paths = [a.path for a in albums]
+
+        album_paths = [album.path for album in albums]
         track_paths = tree.realpaths
 
         processed = 0
@@ -117,56 +121,62 @@ class ConfigDB(object):
         self.log.debug('{0} update tree'.format(tree.path))
         for album in albums:
 
+            album_relative_path = tree.relative_path(album.path)
+            if not album_relative_path:
+                raise SoundforestError('{0} album relative path is empty: {1}'.format(tree.path, album.path))
+
             db_album = self.query(models.AlbumModel).filter(
                 models.AlbumModel.tree == db_tree,
-                models.AlbumModel.directory == album.path
+                models.AlbumModel.directory == album_relative_path
             ).first()
 
             if db_album is None:
-                self.log.debug('{0} add album {1}'.format(tree.path, album.path))
+                self.log.debug('{0} add album {1}'.format(tree.path, album_relative_path))
                 db_album = models.AlbumModel(
                     tree=db_tree,
-                    directory=album.path,
+                    directory=album_relative_path,
                     mtime=album.mtime
                 )
-                self.add(db_album)
 
             elif db_album.mtime != album.mtime:
-                self.log.debug('{0} update album mtime {1}'.format(tree.path, album.relative_path()))
+                self.log.debug('{0} update album mtime {1}'.format(tree.path, album_relative_path))
                 db_album.mtime = album.mtime
 
-            self.log.debug('{0} update album tracks {1}'.format(tree.path, album.relative_path()))
+            self.update_album_path_components(db_album)
+
+            self.log.debug('{0} update album tracks {1}'.format(tree.path, album_relative_path))
             for track in album:
                 db_track = self.query(models.TrackModel).filter(
-                    models.TrackModel.directory == track.path.directory,
-                    models.TrackModel.filename == track.path.filename,
+                    models.TrackModel.directory == track.directory,
+                    models.TrackModel.name == track.filename_no_extension,
+                    models.TrackModel.extension == track.extension,
                 ).first()
 
                 if db_track is None:
-                    self.log.debug('{0} add track {1}'.format(tree.path, track.relative_path()))
+                    self.log.debug('{0} add track {1}'.format(tree.path, tree.relative_path(track)))
                     db_track = models.TrackModel(
                         tree=db_tree,
                         album=db_album,
                         directory=track.directory,
-                        filename=track.filename,
+                        name=track.filename_no_extension,
                         extension=track.extension,
                         mtime=track.mtime,
                         deleted=False,
                     )
-                    if self.update_track(track, update_checksum=update_checksum):
+                    if self.update_track(track, update_checksum, db_track=db_track):
                         added +=1
                     else:
                         errors +=1
 
                 elif db_track.mtime != track.mtime:
-                    self.log.debug('{0} update track {1}'.format(tree.path, track.relative_path()))
-                    if self.update_track(track, update_checksum=update_checksum):
+                    self.log.debug('{0} update track {1}'.format(tree.path, tree.relative_path(track)))
+                    if self.update_track(track, update_checksum):
                         updated += 1
                     else:
                         errors +=1
 
                 elif not db_track.checksum and update_checksum:
-                    self.log.debug('{0} update checksum {1}'.format(tree.path, track.relative_path()))
+                    self.log.debug('{0} update checksum {1}'.format(tree.path, tree.relative_path(track)))
                     if self.update_track_checksum(track) is not None:
                         updated += 1
                     else:
@@ -187,18 +197,17 @@ class ConfigDB(object):
             self.delete(album)
 
         self.log.debug('{0} check for removed tracks'.format(tree.path))
-        for track in db_tree.tracks:
-            if track.path in track_paths or track.exists:
+        for db_track in db_tree.tracks:
+            if db_track.path in track_paths or db_track.exists:
                 continue
 
-            self.log.debug('{0} remove track {1}'.format(tree.path, track.relative_path()))
-            self.delete(track)
+            self.log.debug('{0} remove track {1}'.format(tree.path, db_track.relative_path()))
+            self.delete(db_track)
             deleted += 1
 
         self.commit()
 
-        if errors > 0:
-            self.log.debug('Total {0:d} errors updating tree'.format(errors))
+        self.log.debug('{0} {1:d} added, {2:d} updated, {3:d} deleted, {4:d} errors'.format(tree.path, added, updated, deleted, errors,))
 
         return added, updated, deleted, processed, errors
 
@@ -220,8 +229,52 @@ class ConfigDB(object):
 
         return []
 
-    def update_track(self, track, update_checksum=False):
-        db_track = self.get_track(track.path)
+    def update_album_path_components(self, album):
+        parts = album.directory.split(os.sep)
+
+        if not parts:
+            return
+
+        parent = None
+        component = None
+        for level, name in enumerate(parts):
+
+            if name == '':
+                continue
+
+            try:
+                component = self.query(models.AlbumPathComponentModel).filter(
+                    models.AlbumPathComponentModel.tree==album.tree,
+                    models.AlbumPathComponentModel.parent==parent,
+                    models.AlbumPathComponentModel.name==name,
+                    models.AlbumPathComponentModel.level==level,
+                ).one()
+
+                if component.name != name:
+                    component.name = name
+
+            except NoResultFound:
+                component = models.AlbumPathComponentModel(tree=album.tree, parent=parent, level=level, name=name)
+                self.add(component)
+
+            parent = component
+
+        album.parent = component.parent
+
+        for invalid in self.query(models.AlbumPathComponentModel).filter(
+            models.AlbumPathComponentModel.tree==album.tree,
+            models.AlbumPathComponentModel.name==name,
+            level>len(parts),
+        ):
+            self.delete(invalid)
+
+    def update_track(self, track, update_checksum=False, db_track=None):
+        if db_track is None:
+            db_track = self.get_track(track.path)
+
+        if db_track is None:
+            self.log.debug('ERROR updating track {0}: not found in database'.format(track.path))
+
         db_track.mtime = track.mtime
 
         oldtags = self.query(models.TrackModel).filter(models.TagModel.track == db_track)
@@ -238,6 +291,7 @@ class ConfigDB(object):
             if isinstance(value, list):
                 value = value[0]
             self.add(models.TagModel(track=db_track, tag=tag, value=value))
+
         self.commit()
 
         if update_checksum:
@@ -289,7 +343,7 @@ class SyncConfiguration(ConfigDBDictionary):
     def __init__(self, db):
         super(SyncConfiguration, self).__init__(db)
 
-        for target in self.db.registered_sync_targets:
+        for target in self.db.sync_targets:
             self[target.name] = target.as_dict()
 
     @property
@@ -300,8 +354,8 @@ class SyncConfiguration(ConfigDBDictionary):
     def default_targets(self):
         return [k for k in self.keys() if self[k]['defaults']]
 
-    def create_sync_target(self, name, synctype, src, dst, flags=None, defaults=False):
-        self[name] = self.db.register_sync_target(name, synctype, src, dst, flags, defaults)
+    def add_sync_target(self, name, synctype, src, dst, flags=None, defaults=False):
+        self[name] = self.db.add_sync_target(name, synctype, src, dst, flags, defaults)
 
 
 class CodecConfiguration(ConfigDBDictionary):
@@ -318,14 +372,14 @@ class CodecConfiguration(ConfigDBDictionary):
         self.load()
 
     def load(self):
-        for codec in self.db.registered_codecs:
+        for codec in self.db.codecs:
             self[str(codec.name)] = codec
 
         for name, settings in DEFAULT_CODECS.items():
             if name  in self.keys():
                 continue
 
-            codec = self.db.register_codec(name, **settings)
+            codec = self.db.add_codec(name, **settings)
             self[str(codec.name)] = codec
 
     def extensions(self, codec):

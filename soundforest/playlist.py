@@ -4,7 +4,7 @@ import os
 import codecs
 import logging
 
-from soundforest import normalized
+from soundforest import normalized, path_string
 
 class PlaylistError(Exception):
     pass
@@ -17,9 +17,6 @@ class Playlist(list):
         self.modified = False
         self.path = None
 
-    def __str__(self):
-        return self.path
-
     def __repr__(self):
         return self.path
 
@@ -27,6 +24,18 @@ class Playlist(list):
         if list.__len__(self) == 0:
             self.read()
         return list.__len__(self)
+
+    @property
+    def directory(self):
+        return self.path.directory
+
+    @property
+    def filename(self):
+        return self.path.filename
+
+    @property
+    def extension(self):
+        return self.path.extension
 
     @property
     def exists(self):
@@ -92,9 +101,7 @@ class m3uPlaylist(Playlist):
             else:
                 path = os.path.join('{0}.m3u'.format(self.name))
 
-        self.path = normalized(os.path.realpath(path))
-        self.filename = os.path.basename(self.path)
-        self.folder = os.path.dirname(self.path)
+        self.path = path_string(path)
 
     def read(self):
         if not self.exists:
@@ -163,7 +170,7 @@ class m3uPlaylist(Playlist):
 
 class m3uPlaylistDirectory(list):
     def __init__(self, path=None):
-        self.path = path
+        self.path = path_string(path)
         if not os.path.isdir(self.path):
             raise PlaylistError('No such directory: {0}'.format(self.path))
 
@@ -204,4 +211,11 @@ class m3uPlaylistDirectory(list):
             pass
 
         raise IndexError('Invalid m3uPlaylistDirectory index {0}'.format(item))
+
+    def relative_path(self, item):
+        print self.path.relative_path(item)
+        if hasattr(item, 'path'):
+            return self.path.relative_path(item.path)
+        else:
+            return self.path.relative_path(item)
 

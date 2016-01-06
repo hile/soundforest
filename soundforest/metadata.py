@@ -122,13 +122,13 @@ class Metadata(list):
         """
         Register instances of the MetadataFileType classes in the module
         """
-        self.register_metadata(CoverArt())
-        self.register_metadata(m3uPlaylist())
-        self.register_metadata(AbletonAnalysisFile())
-        self.register_metadata(PDFBooklet())
-        self.register_metadata(OSXSystemFile())
+        self.add_metadata(CoverArt())
+        self.add_metadata(m3uPlaylist())
+        self.add_metadata(AbletonAnalysisFile())
+        self.add_metadata(PDFBooklet())
+        self.add_metadata(OSXSystemFile())
 
-    def register_metadata(self, metadata_class):
+    def add_metadata(self, metadata_class):
         """
         Register instance of a MetadataFileType class
         """

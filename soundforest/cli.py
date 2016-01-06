@@ -18,7 +18,7 @@ import threading
 import subprocess
 
 from setproctitle import setproctitle
-from soundforest.config import ConfigDB
+from soundforest.database import ConfigDB
 from soundforest.log import SoundforestLogger
 
 def xterm_title(value, max_length=74, bypass_term_check=False):

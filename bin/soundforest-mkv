@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+import os
+
+from soundforest.cli import Script, ScriptCommand
+from soundforest.converters.matroska import Matroska, ConverterError
+
+
+class MatroskaCommand(ScriptCommand):
+    def parse_args(self, args):
+        args = super(MatroskaCommand, self).parse_args(args)
+
+        args.files = []
+        if 'paths' in args:
+            try:
+                for path in args.paths:
+                    args.files.append(Matroska(path))
+            except ConverterError, emsg:
+                self.exit(1, 'error loading {0}: {1}'.format(path, emsg))
+
+        return args
+
+class ConvertCommand(MatroskaCommand):
+    def run(self, args):
+        args = self.parse_args(args)
+
+        for container in args.files:
+            for track in container.audiotracks:
+                self.message('{0} export track {1} to {2}'.format(
+                    container.path,
+                    track.id,
+                    args.output_directory,
+                ))
+
+
+class DetailsCommand(MatroskaCommand):
+    def print_track(self, track):
+        if track.section.keys() or track.section.children:
+            self.message(track.section.name)
+
+        for key, value in track.section.items():
+            self.message('  {0}={1}'.format(key, value))
+
+        for child in track.section.children:
+            self.print_section(child)
+
+    def print_section(self, section):
+        if section.keys() or section.children:
+            self.message(section.name)
+
+        for key, value in section.items():
+            self.message('  {0}={1}'.format(key, value))
+
+        for child in section.children:
+            self.print_section(child)
+
+    def run(self, args):
+        args = self.parse_args(args)
+
+        for container in args.files:
+
+            self.message(container.path)
+
+            for track in container.videotracks:
+                self.print_track(track)
+
+            for track in container.audiotracks:
+                self.print_track(track)
+
+            for tag in container.tags:
+                self.print_section(tag)
+
+script = Script()
+
+c = script.add_subcommand(ConvertCommand('export', 'Export audio from matroska files'))
+c.add_argument('-o', '--output-directory', default=os.getcwd(), help='Output file directory')
+c.add_argument('paths', nargs='*', help='Filenames to process')
+
+c = script.add_subcommand(DetailsCommand('details', 'Show some mkvinfo details'))
+c.add_argument('paths', nargs='*', help='Filenames to process')
+
+args = script.run()
