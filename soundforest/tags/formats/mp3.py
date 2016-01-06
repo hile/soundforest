@@ -192,7 +192,7 @@ class mp3(TagParser):
             return [unicode('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [unicode('{0:d}'.format(self.disk_numbering.total)]
+            return [unicode('{0:d}'.format(self.disk_numbering.total))]
 
         if item[:5] == 'APIC:':
             return self.albumart_obj
