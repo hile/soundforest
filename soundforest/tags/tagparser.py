@@ -397,7 +397,7 @@ class TagParser(dict):
         try:
             for attr in ('track_numbering', 'disk_numbering'):
                 try:
-                    tag = super(TagParser, self).getattr(attr)
+                    tag = getattr(self, attr)
                     tag.save_tag()
                 except ValueError, emsg:
                     logger.debug('Error processing {0}: {1}'.format(attr, emsg))
