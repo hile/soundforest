@@ -1,15 +1,3 @@
-#
-# vim: noexpandtab, tabstop=4
-#
-
-VERSION= $(shell awk -F\' '/^VERSION/ {print $$2}' setup.py)
-
-SYSTEM= $(shell uname -s)
-ifeq ($(SYSTEM),Darwin)
-INSTALL_FLAGS='--no-user-cfg'
-else
-INSTALL_FLAGS=
-endif
 
 all: build
 
