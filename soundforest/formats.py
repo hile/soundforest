@@ -20,10 +20,13 @@ logger = SoundforestLogger().default_stream
 
 TAG_PARSERS = {
     'm4a':      'soundforest.tags.formats.aac.aac',
-    'm4r':      'soundforest.tags.formats.aac.aac',
     'mp3':      'soundforest.tags.formats.mp3.mp3',
     'flac':     'soundforest.tags.formats.flac.flac',
     'vorbis':   'soundforest.tags.formats.vorbis.vorbis',
+}
+TAG_EXTENSION_ALIASES = {
+    'm4r':      'm4a',
+    'ogg':      'vorbis',
 }
 
 PATH_CACHE = CommandPathCache()
@@ -144,17 +147,20 @@ class AudioFileFormat(object):
         return tempfile.mktemp(dir=dir, prefix=prefix, suffix=suffix)
 
     def get_tag_parser(self):
-        if self.codec is None or self.codec.name not in TAG_PARSERS.keys():
+        if self.codec is None:
             return None
 
-        try:
+        if self.codec.name in TAG_PARSERS.keys():
             classpath = TAG_PARSERS[self.codec.name]
-            module_path = '.'.join(classpath.split('.')[:-1])
-            class_name = classpath.split('.')[-1]
-            m = __import__(module_path, globals(), fromlist=[class_name])
+        else:
+            try:
+                classpath = TAG_PARSERS[TAG_EXTENSION_ALIASES[self.codec.name]]
+            except KeyError:
+                return None
 
-        except KeyError, emsg:
-            return None
+        module_path = '.'.join(classpath.split('.')[:-1])
+        class_name = classpath.split('.')[-1]
+        m = __import__(module_path, globals(), fromlist=[class_name])
 
         return getattr(m, class_name)
 
