@@ -19,13 +19,6 @@ from soundforest.tags.constants import STANDARD_TAG_ORDER, STANDARD_TAG_MAP
 from soundforest.tags.xmltag import XMLTags, XMLTagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
-__all__ = (
-    'aac',
-    'flac',
-    'mp3',
-    'vorbis'
-)
-
 YEAR_FORMATTERS = [
     lambda x: unicode('{0}'.format(int(x), 'utf-8')),
     lambda x: unicode('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'), 'utf-8')),
@@ -402,10 +395,8 @@ class TagParser(dict):
                 except ValueError, emsg:
                     logger.debug('Error processing {0}: {1}'.format(attr, emsg))
 
-            if not self.modified:
-                return
-
-            self.entry.save()
+            if self.modified:
+                self.entry.save()
 
         except OSError, (ecode, emsg):
             raise TagError(emsg)
