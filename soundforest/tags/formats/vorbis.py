@@ -135,7 +135,7 @@ class vorbis(TagParser):
         if item == 'totaldisks':
             return [unicode('{0:d}'.format(self.disk_numbering.total))]
 
-        super(vorbis, self).__getitem__(item)
+        return super(vorbis, self).__getitem__(item)
 
     def __delitem__(self, item):
         try:
@@ -162,7 +162,7 @@ class vorbis(TagParser):
                 self.modified = True
 
     def __field2tag__(self, field):
-        super(vorbis, self).__field2tag__(field.upper())
+        return super(vorbis, self).__field2tag__(field.upper())
 
     def keys(self):
         """
@@ -195,7 +195,12 @@ class vorbis(TagParser):
 
         return [x for x in self.sort_keys(keys)]
 
+    def items(self):
+        return [(key, self[key]) for key in self.keys()]
+
     def has_key(self,  tag):
+        if tag is None:
+            return False
         return tag.lower() in self.keys()
 
     def set_tag(self, item, value):
