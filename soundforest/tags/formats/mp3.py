@@ -314,9 +314,3 @@ class mp3(TagParser):
         frame = encode_frame(item, value)
         self.entry.tags.add(frame)
         self.modified = True
-
-    def save(self):
-        """
-        Save mp3 tags to the file
-        """
-        super(mp3, self).save()
