@@ -212,7 +212,7 @@ def parsedate(value):
         try:
             tval = time.strptime(value, fmt)
             break
-        except ValueError, emsg:
+        except ValueError:
             continue
     return tval
 

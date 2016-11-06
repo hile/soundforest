@@ -164,17 +164,17 @@ class AlbumArt(object):
         if os.path.isfile(path):
             try:
                 os.unlink(path)
-            except IOError, (ecode, emsg):
-                raise AlbumArtError('Error removing existing file {0}: {1}'.format(path, emsg))
+            except IOError as e:
+                raise AlbumArtError('Error removing existing file {0}: {1}'.format(path, e))
 
         try:
             self.__image.save(path, fileformat)
-        except IOError, emsg:
-            raise AlbumArtError('Error saving {0}: {1}'.format(path, emsg))
+        except IOError as e:
+            raise AlbumArtError('Error saving {0}: {1}'.format(path, e))
 
     def fetch(self, url):
         res = requests.get(url)
-        if res.status_code!=200:
+        if res.status_code != 200:
             raise AlbumArtError('Error fetching url {0} (returns {1})'.format(url, res.status_code))
 
         if 'content-type' not in res.headers:

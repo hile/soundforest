@@ -123,8 +123,8 @@ class m3uPlaylist(Playlist):
                         continue
 
                     self.append(filepath)
-        except IOError, (ecode, emsg):
-            raise PlaylistError('Error reading {0}: {1}'.format(self.path, emsg))
+        except IOError as e:
+            raise PlaylistError('Error reading {0}: {1}'.format(self.path, e))
 
     def write(self):
         pl_dir = os.path.dirname(self.path)
@@ -133,11 +133,10 @@ class m3uPlaylist(Playlist):
             try:
                 os.makedirs(pl_dir)
 
-            except OSError, (ecode, emsg):
-                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir))
-
-            except IOError, (ecode, emsg):
-                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir))
+            except OSError as e:
+                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir, e))
+            except IOError as e:
+                raise PlaylistError('Error creating directory {0}: {1}'.format(pl_dir, e))
 
         if not self.modified:
             return
@@ -148,11 +147,10 @@ class m3uPlaylist(Playlist):
                 fd.write('{0}\n'.format(filename))
             fd.close()
 
-        except IOError, (ecode, emsg):
-            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, emsg))
-
-        except OSError, (ecode, emsg):
-            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, emsg))
+        except IOError as e:
+            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, e))
+        except OSError as e:
+            raise PlaylistError('Error writing playlist {0}: {1}'.format(self.path, e))
 
     def remove(self):
         if not os.path.isfile(self.path):
@@ -161,11 +159,10 @@ class m3uPlaylist(Playlist):
         try:
             os.unlink(self.path)
 
-        except OSError, (ecode, emsg):
-            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, emsg))
-
-        except oError, (ecode, emsg):
-            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, emsg))
+        except IOError as e:
+            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, e))
+        except OSError as e:
+            raise PlaylistError('Error removing playlist {0}: {1}'.format(self.path, e))
 
 
 class m3uPlaylistDirectory(list):
@@ -213,7 +210,6 @@ class m3uPlaylistDirectory(list):
         raise IndexError('Invalid m3uPlaylistDirectory index {0}'.format(item))
 
     def relative_path(self, item):
-        print self.path.relative_path(item)
         if hasattr(item, 'path'):
             return self.path.relative_path(item.path)
         else:

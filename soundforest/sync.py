@@ -105,11 +105,11 @@ class FilesystemSyncThread(SyncThread):
         try:
             shutil.copyfile(src, dst)
 
-        except IOError, (ecode, emsg):
-            raise SyncError('Error writing to {0}: {1}'.format(dst, emsg))
+        except IOError as e:
+            raise SyncError('Error writing to {0}: {1}'.format(dst, e))
 
-        except OSError, (ecode, emsg):
-            raise SyncError('Error writing to {0}: {1}'.format(dst, emsg))
+        except OSError as e:
+            raise SyncError('Error writing to {0}: {1}'.format(dst, e))
 
     def run(self):
         if not os.path.isdir(self.src_tree.path):
@@ -132,8 +132,8 @@ class FilesystemSyncThread(SyncThread):
                     self.log.debug('Create directory: {0}'.format(dst_album_path))
                     os.makedirs(dst_album_path)
 
-                except OSError, (ecode, emsg):
-                    self.log.info('Error creating directory {0}: {1}'.format(dst_album_path, emsg))
+                except OSError as e:
+                    self.log.info('Error creating directory {0}: {1}'.format(dst_album_path, e))
                     continue
 
             for track in album:
@@ -157,8 +157,8 @@ class FilesystemSyncThread(SyncThread):
                     try:
                         self.copy_track(track.path, dst_track.path)
 
-                    except SyncError, emsg:
-                        self.log.info(emsg)
+                    except SyncError as e:
+                        self.log.info(e)
                         continue
 
 

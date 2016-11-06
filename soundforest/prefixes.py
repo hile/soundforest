@@ -178,8 +178,8 @@ class TreePrefixes(object):
                             else:
                                 self.add_prefix(prefix, prepend=True)
 
-            except IOError, (ecode, emsg):
-                raise PrefixError('Error reading {0}: {1}'.format(USER_PATH_CONFIG, emsg))
+            except IOError as e:
+                raise PrefixError('Error reading {0}: {1}'.format(USER_PATH_CONFIG, e))
 
         def index(self, prefix):
             if not isinstance(prefix, MusicTreePrefix):

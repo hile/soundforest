@@ -174,8 +174,8 @@ class SoundforestLogger(object):
             logger = self.__get_or_create_logger__(name)
             try:
                 host, path = urllib.splithost(url[url.index(':')+1:])
-            except IndexError, emsg:
-                raise LoggerError('Error parsing URL {0}: {1}'.format(url, emsg))
+            except IndexError as e:
+                raise LoggerError('Error parsing URL {0}: {1}'.format(url, e))
 
             handler = logging.handlers.HTTPHandler(host, url, method)
             if not self.__match_handlers__(logger.handlers, handler):

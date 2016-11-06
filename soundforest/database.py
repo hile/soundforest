@@ -283,8 +283,8 @@ class ConfigDB(object):
 
         try:
             tags = track.tags
-        except TreeError, emsg:
-            self.log.debug('ERROR loading {0}: {1}'.format(track.path, emsg))
+        except TreeError as e:
+            self.log.debug('ERROR loading {0}: {1}'.format(track.path, e))
             return False
 
         for tag, value in tags.items():

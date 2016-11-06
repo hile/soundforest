@@ -139,10 +139,10 @@ class AudioFileFormat(object):
         if not os.path.isdir(dir):
             try:
                 os.makedirs(dir)
-            except IOError, (ecode, emsg):
-                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, emsg))
-            except OSError, (ecode, emsg):
-                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, emsg))
+            except IOError as e:
+                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, e))
+            except OSError as e:
+                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, e))
 
         return tempfile.mktemp(dir=dir, prefix=prefix, suffix=suffix)
 

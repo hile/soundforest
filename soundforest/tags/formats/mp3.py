@@ -57,8 +57,8 @@ def encode_frame(tag,value):
         tagclass = getattr(m, tag)
         if tagclass is None:
             raise AttributeError
-    except AttributeError, emsg:
-        raise TagError('Error importing ID3 frame {0}: {1}'.format(tag, emsg))
+    except AttributeError as e:
+        raise TagError('Error importing ID3 frame {0}: {1}'.format(tag, e))
     if not isinstance(value, list):
         value = [value]
     return tagclass(encoding=3, text=value)
@@ -85,8 +85,8 @@ class MP3AlbumArt(TrackAlbumart):
         try:
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag].data)
-        except AlbumArtError, emsg:
-            raise TagError('Error reading mp3 albumart tag: {0}'.format(emsg))
+        except AlbumArtError as e:
+            raise TagError('Error reading mp3 albumart tag: {0}'.format(e))
         self.albumart = albumart
 
     def import_albumart(self, albumart):
@@ -229,13 +229,13 @@ class mp3(TagParser):
                 if not isinstance(value, unicode):
                     try:
                         value = '{0:d}'.format(int(str(value)))
-                    except ValueError, emsg:
+                    except ValueError:
                         pass
 
                     try:
                         value = unicode(value, 'utf-8')
-                    except UnicodeDecodeError, emsg:
-                        raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, emsg) )
+                    except UnicodeDecodeError as e:
+                        raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e) )
 
                 values.append(value)
 

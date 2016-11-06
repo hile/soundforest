@@ -123,8 +123,8 @@ class AACAlbumArt(TrackAlbumart):
         try:
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag][0])
-        except AlbumArtError, emsg:
-            raise TagError('Error reading AAC albumart tag: {0}'.format(emsg))
+        except AlbumArtError as e:
+            raise TagError('Error reading AAC albumart tag: {0}'.format(e))
 
         self.albumart = albumart
 
@@ -142,8 +142,8 @@ class AACAlbumArt(TrackAlbumart):
             raise TagError('Unsupported albumart format {0}'.format(self.albumart.get_fileformat() ))
         try:
             tag = MP4Cover(data=self.albumart.dump(), imageformat=img_format)
-        except MP4MetadataValueError, emsg:
-            raise TagError('Error encoding albumart: {0}'.format(emsg))
+        except MP4MetadataValueError as e:
+            raise TagError('Error encoding albumart: {0}'.format(e))
 
         if self.track.entry.has_key(self.tag):
             if self.track.entry[self.tag] != [tag]:
@@ -203,14 +203,14 @@ class aac(TagParser):
 
         try:
             self.entry = MP4(self.path)
-        except IOError, emsg:
-            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
+        except IOError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
-        except MP4StreamInfoError, emsg:
-            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
+        except MP4StreamInfoError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
-        except RuntimeError, emsg:
-            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
+        except RuntimeError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
         except struct.error:
             raise TagError('Invalid tags in {0}'.format(path))
@@ -336,6 +336,6 @@ class aac(TagParser):
         """
         try:
             super(aac, self).save()
-        except MP4MetadataValueError, emsg:
-            raise TagError(emsg)
+        except MP4MetadataValueError as e:
+            raise TagError(e)
         self.modified = False

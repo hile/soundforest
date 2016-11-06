@@ -15,8 +15,8 @@ class MatroskaCommand(ScriptCommand):
             try:
                 for path in args.paths:
                     args.files.append(Matroska(path))
-            except ConverterError, emsg:
-                self.exit(1, 'error loading {0}: {1}'.format(path, emsg))
+            except ConverterError as e:
+                self.exit(1, 'error loading {0}: {1}'.format(path, e))
 
         return args
 

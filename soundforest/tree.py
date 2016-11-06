@@ -134,8 +134,10 @@ class IterableTrackFolder(object):
 
             try:
                 os.rmdir(empty)
-            except OSError, (ecode, emsg):
-                raise TreeError('Error removing empty directory {0}: {1}'.format(empty, emsg))
+            except OSError as e:
+                raise TreeError('Error removing empty directory {0}: {1}'.format(empty, e))
+            except IOError as e:
+                raise TreeError('Error removing empty directory {0}: {1}'.format(empty, e))
 
             # Try to remove parent empty directory
             empty = os.path.dirname(empty)
@@ -331,8 +333,10 @@ class Album(IterableTrackFolder):
         if not os.path.isdir(target.path):
             try:
                 os.makedirs(target.path)
-            except OSError, (ecode, emsg):
-                raise TreeError('Error creating directory {0}: {1}'.format(target.path, emsg))
+            except OSError as e:
+                raise TreeError('Error creating directory {0}: {1}'.format(target.path, e))
+            except IOError as e:
+                raise TreeError('Error creating directory {0}: {1}'.format(target.path, e))
 
         for m in self.metadata:
             dst_path = os.path.join(target.path, os.path.basename(m.path))
@@ -342,8 +346,10 @@ class Album(IterableTrackFolder):
 
             try:
                 shutil.copyfile(m.path, dst_path)
-            except OSError, (ecode, emsg):
-                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, emsg))
+            except OSError as e:
+                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, e))
+            except IOError as e:
+                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, e))
 
         target.load()
         albumart = target.albumart
@@ -413,8 +419,8 @@ class Track(AudioFileFormat):
             try:
                 self.file_tags = Tags(self.path, fileformat=self)
                 self.tags_loaded = True
-            except TagError, emsg:
-                raise TreeError('Error loading tags: {0}'.format(emsg))
+            except TagError as e:
+                raise TreeError('Error loading tags: {0}'.format(e))
 
         return self.file_tags
 
@@ -514,7 +520,7 @@ class Track(AudioFileFormat):
         tempfile_path = self.get_temporary_file(prefix='test', suffix='.wav')
         try:
             cmd = self.get_tester_command(tempfile_path)
-        except TreeError, emsg:
+        except TreeError:
             callback(self, False, errors='No tester available for {0}'.format(self.extension))
             return
 
@@ -527,7 +533,9 @@ class Track(AudioFileFormat):
         if os.path.isfile(tempfile_path):
             try:
                 os.unlink(tempfile_path)
-            except IOError, (ecode, emsg):
-                raise TreeError('Error removing temporary file {0}: {1}'.format(tempfile_path, emsg))
+            except IOError as e:
+                raise TreeError('Error removing temporary file {0}: {1}'.format(tempfile_path, e))
+            except OSError as e:
+                raise TreeError('Error removing temporary file {0}: {1}'.format(tempfile_path, e))
 
         return rv

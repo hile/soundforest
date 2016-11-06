@@ -796,8 +796,8 @@ class PlaylistModel(Base, BaseNamedModel):
 
         try:
             playlist.read()
-        except PlaylistError, emsg:
-            logger.debug('Error reading playlist {0}: {1}'.format(playlist, emsg))
+        except PlaylistError as e:
+            logger.debug('Error reading playlist {0}: {1}'.format(playlist, e))
             return
 
         tracks = []
@@ -858,8 +858,10 @@ class SoundforestDB(object):
             if not os.path.isdir(config_dir):
                 try:
                     os.makedirs(config_dir)
-                except OSError, (ecode, emsg):
-                    raise SoundforestError('Error creating directory: {0}'.format(config_dir))
+                except IOError as e:
+                    raise SoundforestError('Error creating directory {0}: {1}'.format(config_dir, e))
+                except OSError as e:
+                    raise SoundforestError('Error creating directory {0}: {1}'.format(config_dir, e))
 
             engine = create_engine('sqlite:///{0}'.format(path), encoding='utf-8', echo=debug)
 

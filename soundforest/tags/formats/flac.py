@@ -146,10 +146,10 @@ class flac(TagParser):
 
         try:
             self.entry = FLAC(path)
-        except IOError, emsg:
-            raise TagError('Error opening }0}: {1}'.format(path, str(emsg)))
+        except IOError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
         except FLACNoHeaderError, emsg:
-            raise TagError('Error opening }0}: {1}'.format(path, str(emsg)))
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
         self.albumart_obj = None
         self.track_numbering = FLACNumberingTag(self, 'TRACKNUMBER')

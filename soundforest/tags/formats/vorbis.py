@@ -116,10 +116,10 @@ class vorbis(TagParser):
 
         try:
             self.entry = OggVorbis(path)
-        except IOError, emsg:
-            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
-        except OggVorbisHeaderError, emsg:
-            raise TagError('Error opening {0}: {1}'.format(path, str(emsg)))
+        except IOError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+        except OggVorbisHeaderError as e:
+            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
         self.albumart_obj = None
         self.track_numbering = VorbisNumberingTag(self, 'TRACKNUMBER')

@@ -160,22 +160,22 @@ class PlaylistsCommand(SoundforestCommand):
             for playlist in args.paths:
                 try:
                     self.db.add_playlist(playlist)
-                except SoundforestError, emsg:
-                    self.message(emsg)
+                except SoundforestError as e:
+                    self.message(e)
 
         if args.action == 'update':
             for playlist in args.paths:
                 try:
                     self.db.update_playlist(playlist)
-                except SoundforestError, emsg:
-                    self.message(emsg)
+                except SoundforestError as e:
+                    self.message(e)
 
         if args.action == 'delete':
             for playlist in args.paths:
                 try:
                     self.db.delete_playlist(playlist)
-                except SoundforestError, emsg:
-                    self.message(emsg)
+                except SoundforestError as e:
+                    self.message(e)
 
 
 class SyncConfigCommand(SoundforestCommand):
@@ -189,14 +189,14 @@ class SyncConfigCommand(SoundforestCommand):
         if args.action == 'add':
             try:
                 self.db.add_sync_target(args.name, args.type, args.src, args.dst, args.flags)
-            except SoundforestError, emsg:
-                self.exit(1, emsg)
+            except SoundforestError as e:
+                self.exit(1, e)
 
         if args.action == 'delete':
             try:
                 self.db.delete_sync_target(args.name)
-            except SoundforestError, emsg:
-                self.exit(1, emsg)
+            except SoundforestError as e:
+                self.exit(1, e)
 
 
 class SyncCommand(SoundforestCommand):
@@ -286,8 +286,8 @@ class PrefixCommand(SoundforestCommand):
             for path in args.paths:
                 try:
                     self.db.delete_prefix(path)
-                except SoundforestError, emsg:
-                    self.message(emsg)
+                except SoundforestError as e:
+                    self.message(e)
 
         if args.action == 'list':
             for prefix in self.db.tree_prefixes:
@@ -398,8 +398,8 @@ class TestCommand(SoundforestCommand):
                 try:
                     if Track(path).test(callback=self.testresult) != 0:
                         errors = True
-                except TreeError, emsg:
-                    script.message(emsg)
+                except TreeError as e:
+                    script.message(e)
                     errors = True
 
         if errors:
