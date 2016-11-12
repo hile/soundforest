@@ -11,7 +11,7 @@ import unicodedata
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 
-__version__ ='4.1.0'
+__version__ ='4.1.1'
 
 class SoundforestError(Exception):
     pass

@@ -215,6 +215,9 @@ class ScriptCommand(argparse.ArgumentParser):
     def exit(self, *args, **kwargs):
         self.script.exit(*args, **kwargs)
 
+    def error(self, *args, **kwargs):
+        self.script.error(*args, **kwargs)
+
     def message(self, *args, **kwargs):
         self.script.message(*args, **kwargs)
 
