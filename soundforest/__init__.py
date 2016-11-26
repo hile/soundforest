@@ -11,7 +11,7 @@ import unicodedata
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 
-__version__ ='4.1.1'
+__version__ ='4.1.2'
 
 class SoundforestError(Exception):
     pass
@@ -27,18 +27,15 @@ def normalized(path, normalization='NFC'):
     on other platform return the original string as unicode
     """
     if sys.platform != 'darwin':
-        if not isinstance(path, unicode):
-            return str(path, 'utf-8')
-
+        return type(path)==unicode and path or unicode(path, 'utf-8')
     if not isinstance(path, unicode):
-        path = str(path, 'utf-8')
-
+        path = unicode(path, 'utf-8')
     return unicodedata.normalize(normalization, path)
 
 
 class path_string(str):
     def __init__(self, path):
-        if isinstance(path, str):
+        if isinstance(path, unicode):
             super(path_string, self).__init__(normalized(path).encode('utf-8'))
         else:
             super(path_string, self).__init__(normalized(path))
