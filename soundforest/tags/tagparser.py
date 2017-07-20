@@ -76,8 +76,8 @@ class TagParser(dict):
                     else:
                         try:
                             value = unicode(value, 'utf-8')
-                        except UnicodeDecodeError, emsg:
-                            raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, emsg))
+                        except UnicodeDecodeError as e:
+                            raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e))
 
                 values.append(value)
 
@@ -89,8 +89,8 @@ class TagParser(dict):
         if isinstance(item, AlbumArt):
             try:
                 self.albumart_obj.import_albumart(value)
-            except AlbumArtError, emsg:
-                raise TagError('Error setting albumart: {0}'.format(emsg))
+            except AlbumArtError as e:
+                raise TagError('Error setting albumart: {0}'.format(e))
 
         self.set_tag(item, value)
 
@@ -155,7 +155,7 @@ class TagParser(dict):
                     try:
                         value = fmt(value)
                         break
-                    except ValueError, emsg:
+                    except ValueError:
                         pass
 
             formatted.append(value)
@@ -392,17 +392,17 @@ class TagParser(dict):
                 try:
                     tag = getattr(self, attr)
                     tag.save_tag()
-                except ValueError, emsg:
-                    logger.debug('Error processing {0}: {1}'.format(attr, emsg))
+                except ValueError as e:
+                    logger.debug('Error processing {0}: {1}'.format(attr, e))
 
             if self.modified:
                 self.entry.save()
 
-        except OSError, (ecode, emsg):
-            raise TagError(emsg)
+        except OSError as e:
+            raise TagError(e)
 
-        except IOError, (ecode, emsg):
-            raise TagError(emsg)
+        except IOError as e:
+            raise TagError(e)
 
 
 class TrackAlbumart(object):

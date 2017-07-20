@@ -148,7 +148,7 @@ class flac(TagParser):
             self.entry = FLAC(path)
         except IOError as e:
             raise TagError('Error opening {0}: {1}'.format(path, str(e)))
-        except FLACNoHeaderError, emsg:
+        except FLACNoHeaderError as e:
             raise TagError('Error opening {0}: {1}'.format(path, str(e)))
 
         self.albumart_obj = None
