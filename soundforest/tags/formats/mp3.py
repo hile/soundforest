@@ -107,7 +107,7 @@ class MP3NumberingTag(TrackNumberingTag):
     def __init__(self, track, tag):
         super(MP3NumberingTag, self).__init__(track, tag)
 
-        if not self.track.entry.has_key(self.tag):
+        if self.tag not in self.track.entry:
             return
 
         try:
@@ -139,7 +139,7 @@ class MP3NumberingTag(TrackNumberingTag):
             raise ValueError('Total is smaller than number')
 
         value = '{0:d}/{1:d}'.format(value, total)
-        if self.track.entry.tags.has_key(self.tag):
+        if self.tag in self.track.entry.tags:
             old_value = self.track.entry.tags[self.tag]
             if value == old_value:
                 return
@@ -200,7 +200,7 @@ class mp3(TagParser):
         fields = self.__tag2fields__(item)
 
         for field in fields:
-            if not self.entry.has_key(field):
+            if field not in self.entry:
                 continue
 
             tag = self.entry[field]
@@ -247,7 +247,7 @@ class mp3(TagParser):
         tags = self.__tag2fields__(item)
         item = tags[0]
         for t in tags:
-            if self.entry.tags.has_key(t):
+            if t in self.entry.tags:
                 del(self.entry.tags[t])
                 self.modified = True
 
@@ -296,16 +296,16 @@ class mp3(TagParser):
         tags = self.__tag2fields__(item)
         item = tags[0]
         for tag in tags[1:]:
-            if self.entry.tags.has_key(tag):
+            if tag in self.entry.tags:
                 del(self.entry.tags[tag])
 
-        if MP3_TAG_FORMATTERS.has_key(item):
+        if item in MP3_TAG_FORMATTERS:
             value = MP3_TAG_FORMATTERS[item](value)
         else:
             if not isinstance(value, unicode):
                 value = unicode(value, 'utf-8')
 
-        if self.entry.has_key(item):
+        if item in self.entry:
             old_value = self.entry[item]
             if value == old_value:
                 return

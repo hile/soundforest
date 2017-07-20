@@ -86,7 +86,7 @@ class VorbisNumberingTag(TrackNumberingTag):
         if not isinstance(track, vorbis):
             raise TagError('Track is not instance of vorbis')
 
-        if not self.track.entry.has_key(self.tag):
+        if self.tag not in self.track.entry:
             return
 
         value = self.track.entry[self.tag]
@@ -239,7 +239,7 @@ class vorbis(TagParser):
         item = tags[0]
 
         for tag in tags:
-            if self.entry.has_key(tag):
+            if tag in self.entry:
                 if tag.lower() in OGG_MULTIPLE_VALUES_TAGS:
                     value = set(self.entry[tag] + value)
 
@@ -247,7 +247,7 @@ class vorbis(TagParser):
 
         entries =[]
         for v in value:
-            if VORBIS_TAG_FORMATTERS.has_key(item):
+            if item in VORBIS_TAG_FORMATTERS:
                 entries.append(VORBIS_TAG_FORMATTERS[item](v))
 
             else:

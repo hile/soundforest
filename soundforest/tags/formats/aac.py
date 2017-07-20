@@ -117,7 +117,7 @@ class AACAlbumArt(TrackAlbumart):
         super(AACAlbumArt, self).__init__(track)
 
         self.tag = AAC_ALBUMART_TAG
-        if not self.track.entry.has_key(self.tag):
+        if self.tag not in self.track.entry:
             return
 
         try:
@@ -145,7 +145,7 @@ class AACAlbumArt(TrackAlbumart):
         except MP4MetadataValueError as e:
             raise TagError('Error encoding albumart: {0}'.format(e))
 
-        if self.track.entry.has_key(self.tag):
+        if self.tag in self.track.entry:
             if self.track.entry[self.tag] != [tag]:
                 del self.track.entry[self.tag]
             else:
@@ -163,7 +163,7 @@ class AACIntegerTuple(TrackNumberingTag):
     def __init__(self, track, tag):
         super(AACIntegerTuple, self).__init__(track, tag)
 
-        if not self.track.entry.has_key(self.tag):
+        if self.tag not in self.track.entry:
             return
 
         self.value, self.total = self.track.entry[self.tag][0]
@@ -284,12 +284,12 @@ class aac(TagParser):
             tags = self.__tag2fields__(item)
             item = tags[0]
             for tag in tags[1:]:
-                if self.entry.has_key(tag):
+                if tag in self.entry:
                     del self.entry[tag]
 
             entries =[]
             for v in value:
-                if AAC_TAG_FORMATTERS.has_key(item):
+                if item in AAC_TAG_FORMATTERS:
                     formatted = AAC_TAG_FORMATTERS[item](v)
                     entries.append(formatted)
                 else:
@@ -321,14 +321,6 @@ class aac(TagParser):
                 if tag in keys:
                     keys.remove(tag)
         return self.sort_keys(keys)
-
-    def has_key(self, key):
-        """Extended has_key
-
-        Extend has_key with tracknumber info
-
-        """
-        return key in self.keys()
 
     def save(self):
         """

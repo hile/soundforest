@@ -115,7 +115,7 @@ class FLACNumberingTag(TrackNumberingTag):
     def __init__(self, track, tag):
         super(FLACNumberingTag, self).__init__(track, tag)
 
-        if not self.track.entry.has_key(self.tag):
+        if self.tag not in self.track.entry:
             return
 
         value = self.track.entry[self.tag]
@@ -240,7 +240,7 @@ class flac(TagParser):
         item = tags[0]
 
         for tag in tags:
-            if self.entry.has_key(tag):
+            if tag in self.entry:
                 if tag in OGG_MULTIPLE_VALUES_TAGS and value not in self.entry[tag]:
                     value = self.entry[tag] + value
 
@@ -248,7 +248,7 @@ class flac(TagParser):
 
         entries =[]
         for v in value:
-            if FLAC_TAG_FORMATTERS.has_key(item):
+            if item in FLAC_TAG_FORMATTERS:
                 entries.append(FLAC_TAG_FORMATTERS[item](v))
             else:
                 if not isinstance(v, unicode):

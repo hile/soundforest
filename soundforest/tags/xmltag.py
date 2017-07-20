@@ -31,7 +31,7 @@ XML_EXPORT_FIELDS = [
 ]
 
 def XMLTrackNumberField(details):
-    if details.has_key('totaltracks'):
+    if 'totaltracks' in details:
         node = E('tracknumber',
             track=details['tracknumber'][0],
             total=details['totaltracks'][0]

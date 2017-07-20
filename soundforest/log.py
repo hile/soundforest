@@ -58,7 +58,7 @@ class SoundforestLogger(object):
     def __init__(self, name=None):
         name = name is not None and name or self.__class__.__name__
 
-        if not SoundforestLogger.__instances.has_key(name):
+        if name not in SoundforestLogger.__instances:
             SoundforestLogger.__instances[name] = SoundforestLogger.LoggerInstance(name)
 
         self.__dict__['_SoundforestLogger__instances'] = SoundforestLogger.__instances
