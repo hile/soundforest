@@ -6,7 +6,7 @@ Abstraction for album art image format processing
 
 import os
 import requests
-import StringIO
+from io import BytesIO
 
 from PIL import ImageFile
 
@@ -136,12 +136,12 @@ class AlbumArt(object):
 
     def dump(self):
         """
-        Returns bytes from the image with StringIO.StringIO read() call
+        Returns bytes from the image with BytesIO   read() call
         """
         if not self.is_loaded():
             raise AlbumArtError('AlbumArt not yet initialized.')
 
-        s = StringIO.StringIO()
+        s = BytesIO()
         self.__image.save(s, self.get_fileformat())
         s.seek(0)
         return s.read()

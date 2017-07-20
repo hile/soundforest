@@ -99,8 +99,8 @@ class IterableTrackFolder(object):
         Lazy loader of the iterable item
         """
         iterable = getattr(self, self.__iterable)
-        iterable.__delslice__(0, len(iterable))
-        self.invalid_paths.__delslice__(0, len(self.invalid_paths))
+        del iterable[0:len(iterable)]
+        del self.invalid_paths[0:len(self.invalid_paths)]
 
     def relative_path(self, item=None):
         """Item relative path
@@ -171,10 +171,35 @@ class Tree(IterableTrackFolder):
 
         return super(Tree, self).__len__()
 
-    def __cmp_file_path__(self, a, b):
-        if a[0] != b[0]:
-            return cmp(a[0], b[0])
-        return cmp(a[1], b[1])
+    def __cmp_file_path__(self):
+        class K(object):
+            def __init__(self, obj, *args):
+                self.obj = obj
+            def __lt__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] < other.obj[1]
+                return self.obj[0] < other.obj[0]
+            def __gt__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] > other.obj[1]
+                return self.obj[0] > other.obj[0]
+            def __eq__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] == other.obj[1]
+                return self.obj[0] == other.obj[0]
+            def __le__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] <= other.obj[1]
+                return self.obj[0] <= other.obj[0]
+            def __ge__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] >= other.obj[1]
+                return self.obj[0] >= other.obj[0]
+            def __ne__(self, other):
+                if self.obj[0] == other.obj[0]:
+                    return self.obj[1] != other.obj[1]
+                return self.obj[0] != other.obj[0]
+        return K
 
     def load(self):
         """Load the albums and songs in the tree"""
@@ -183,7 +208,7 @@ class Tree(IterableTrackFolder):
             raise TreeError('Not a directory: {0}'.format(self.path))
 
         self.log.debug('{0} load tree'.format(self.path))
-        start = long(time.mktime(time.localtime()))
+        start = int(time.mktime(time.localtime()))
 
         super(Tree, self).load()
         self.paths = {}
@@ -203,9 +228,9 @@ class Tree(IterableTrackFolder):
                 self.empty_dirs.append(root)
 
         self.relative_dirs = set(self.relative_path(x[0]) for x in self.files)
-        self.files.sort(lambda x, y: self.__cmp_file_path__(x, y))
+        self.files.sort(key=self.__cmp_file_path__())
 
-        stop = long(time.mktime(time.localtime()))
+        stop = int(time.mktime(time.localtime()))
         self.log.debug('loaded {0:d} files in {1:d} seconds'.format(len(self.files), (stop-start)))
 
     def filter_tracks(self, regexp=None, re_path=True, re_file=True, as_tracks=False):
