@@ -9,6 +9,7 @@ import os
 import base64
 import json
 import logging
+import sys
 from datetime import datetime
 
 from soundforest import normalized
@@ -20,9 +21,9 @@ from soundforest.tags.xmltag import XMLTags, XMLTagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 YEAR_FORMATTERS = [
-    lambda x: unicode('{0}'.format(int(x), 'utf-8')),
-    lambda x: unicode('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'), 'utf-8')),
-    lambda x: unicode('{0}'.format(datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'), 'utf-8')),
+    lambda x: str('{0}'.format(int(x), 'utf-8')),
+    lambda x: str('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'), 'utf-8')),
+    lambda x: str('{0}'.format(datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'), 'utf-8')),
 ]
 
 logger = SoundforestLogger().default_stream
@@ -53,7 +54,7 @@ class TagParser(dict):
 
     def __getitem__(self, item):
         """
-        Return tags formatted to unicode, decimal.Decimal or
+        Return tags formatted to strings, decimal.Decimal or
         other supported types.
         Does not include albumart images, which are accessed
         via self.albumart attribute
@@ -69,13 +70,13 @@ class TagParser(dict):
 
             values = []
             for value in tag:
-                if not isinstance(value, unicode):
+                if not isinstance(value, str):
                     if isinstance(value, int):
-                        value = unicode('{0:d}'.format(value))
+                        value = str('{0:d}'.format(value))
 
                     else:
                         try:
-                            value = unicode(value, 'utf-8')
+                            value = str(value, 'utf-8')
                         except UnicodeDecodeError as e:
                             raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e))
 
@@ -146,7 +147,7 @@ class TagParser(dict):
             return None
 
         for value in tags:
-            if not isinstance(value, basestring):
+            if not isinstance(value, str):
                 continue
 
             if tag=='year':

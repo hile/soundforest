@@ -1231,7 +1231,7 @@ class SoundforestDB(object):
 
         """
         if isinstance(path, str):
-            path = unicode(path, 'utf-8')
+            path = str(path, 'utf-8')
 
         existing = self.query(TreePrefixModel).filter(
             TreePrefixModel.path == path

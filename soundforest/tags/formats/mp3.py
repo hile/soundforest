@@ -176,23 +176,23 @@ class mp3(TagParser):
 
     def __getitem__(self, item):
         """
-        Return tags formatted to unicode, decimal.Decimal or
+        Return tags formatted to str, decimal.Decimal or
         other supported types.
         Does not include albumart images, which are accessed
         by self.__getattr__('albumart')
         """
         if item == 'tracknumber':
 
-            return [unicode('{0:d}'.format(self.track_numbering.value))]
+            return [str('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [unicode('{0:d}'.format(self.track_numbering.total))]
+            return [str('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [unicode('{0:d}'.format(self.disk_numbering.value))]
+            return [str('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [unicode('{0:d}'.format(self.disk_numbering.total))]
+            return [str('{0:d}'.format(self.disk_numbering.total))]
 
         if item[:5] == 'APIC:':
             return self.albumart_obj
@@ -226,14 +226,14 @@ class mp3(TagParser):
                 if not matched:
                     raise TagError('Error parsing {0}: {1}'.format(tag, dir(value)))
 
-                if not isinstance(value, unicode):
+                if not isinstance(value, str):
                     try:
                         value = '{0:d}'.format(int(str(value)))
                     except ValueError:
                         pass
 
                     try:
-                        value = unicode(value, 'utf-8')
+                        value = str(value, 'utf-8')
                     except UnicodeDecodeError as e:
                         raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e) )
 
@@ -302,8 +302,8 @@ class mp3(TagParser):
         if item in MP3_TAG_FORMATTERS:
             value = MP3_TAG_FORMATTERS[item](value)
         else:
-            if not isinstance(value, unicode):
-                value = unicode(value, 'utf-8')
+            if not isinstance(value, str):
+                value = str(value, 'utf-8')
 
         if item in self.entry:
             old_value = self.entry[item]

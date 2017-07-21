@@ -157,16 +157,16 @@ class flac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [unicode('{0:d}'.format(self.track_numbering.value))]
+            return [str('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [unicode('{0:d}'.format(self.track_numbering.total))]
+            return [str('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [unicode('{0:d}'.format(self.disk_numbering.value))]
+            return [str('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [unicode('{0:d}'.format(self.disk_numbering.total))]
+            return [str('{0:d}'.format(self.disk_numbering.total))]
 
         return super(flac, self).__getitem__(item)
 
@@ -216,7 +216,7 @@ class flac(TagParser):
 
     def set_tag(self, item, value):
         """
-        All flac tags are unicode strings, and there can be multiple
+        All flac tags are str strings, and there can be multiple
         tags with same name.
         We do special precessing for track and disk numbering.
         """
@@ -251,8 +251,8 @@ class flac(TagParser):
             if item in FLAC_TAG_FORMATTERS:
                 entries.append(FLAC_TAG_FORMATTERS[item](v))
             else:
-                if not isinstance(v, unicode):
-                    v = unicode(v, 'utf-8')
+                if not isinstance(v, str):
+                    v = str(v, 'utf-8')
                 entries.append(v)
         self.entry[item] = entries
         self.modified = True

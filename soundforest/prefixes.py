@@ -52,13 +52,7 @@ class MusicTreePrefix(object):
             if hasattr(ext, 'extension'):
                 ext = ext.extension
 
-            elif not isinstance(ext, str):
-                raise PrefixError('Extensions must be a list of strings')
-
-            if not isinstance(ext, str):
-                ext = str(ext, 'utf-8')
-
-            if self.extensions.count(ext)==0:
+            if self.extensions.count(ext) == 0:
                 self.extensions.append(ext)
 
     def __repr__(self):
@@ -83,8 +77,8 @@ class MusicTreePrefix(object):
         return False
 
     def match_extension(self, extension):
-        if not isinstance(extension, unicode):
-            extension = unicode(extension, 'utf-8')
+        if not isinstance(extension, str):
+            extension = str(extension, 'utf-8')
         return extension in self.extensions
 
     def relative_path(self, path):

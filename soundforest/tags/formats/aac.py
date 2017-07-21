@@ -222,16 +222,16 @@ class aac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [unicode('{0:d}'.format(self.track_numbering.value))]
+            return [str('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [unicode('{0:d}'.format(self.track_numbering.total))]
+            return [str('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [unicode('{0:d}'.format(self.disk_numbering.value))]
+            return [str('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [unicode('{0:d}'.format(self.disk_numbering.total))]
+            return [str('{0:d}'.format(self.disk_numbering.total))]
 
         if item == 'unknown_tags':
             keys = []
@@ -293,8 +293,8 @@ class aac(TagParser):
                     formatted = AAC_TAG_FORMATTERS[item](v)
                     entries.append(formatted)
                 else:
-                    if not isinstance(v, unicode):
-                        v = unicode(v, 'utf-8')
+                    if not isinstance(v, str):
+                        v = str(v, 'utf-8')
                     entries.append(v)
             self.entry[item] = entries
 
