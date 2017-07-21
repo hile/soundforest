@@ -8,7 +8,7 @@ Flac file tag parser
 from mutagen.flac import FLAC
 from mutagen.flac import Picture, FLACNoHeaderError
 
-from soundforest.tags import TagError
+from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
@@ -157,16 +157,16 @@ class flac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [str('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [str('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [str('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [str('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
 
         return super(flac, self).__getitem__(item)
 
@@ -251,8 +251,6 @@ class flac(TagParser):
             if item in FLAC_TAG_FORMATTERS:
                 entries.append(FLAC_TAG_FORMATTERS[item](v))
             else:
-                if not isinstance(v, str):
-                    v = str(v, 'utf-8')
-                entries.append(v)
+                entries.append(format_unicode_string_value(v))
         self.entry[item] = entries
         self.modified = True

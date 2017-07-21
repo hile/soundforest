@@ -10,7 +10,7 @@ import struct
 
 from mutagen.mp4 import MP4, MP4Cover, MP4StreamInfoError, MP4MetadataValueError
 
-from soundforest.tags import TagError
+from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
@@ -222,16 +222,16 @@ class aac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [str('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [str('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [str('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [str('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
 
         if item == 'unknown_tags':
             keys = []
@@ -293,9 +293,7 @@ class aac(TagParser):
                     formatted = AAC_TAG_FORMATTERS[item](v)
                     entries.append(formatted)
                 else:
-                    if not isinstance(v, str):
-                        v = str(v, 'utf-8')
-                    entries.append(v)
+                    entries.append(format_unicode_string_value(v))
             self.entry[item] = entries
 
         self.modified = True

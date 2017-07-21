@@ -78,6 +78,11 @@ class Script(object):
         self.db = ConfigDB()
         self.name = os.path.basename(sys.argv[0])
 
+        # Use the hack to set everything as unicode on python2
+        if sys.version_info.major < 3:
+            reload(sys)
+            sys.setdefaultencoding('utf-8')
+
         setproctitle('%s %s' % (self.name, ' '.join(sys.argv[1:])))
         signal.signal(signal.SIGINT, self.SIGINT)
 

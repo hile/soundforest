@@ -7,7 +7,7 @@ Vorbis file tag parser
 
 from mutagen.oggvorbis import OggVorbis, OggVorbisHeaderError
 
-from soundforest.tags import TagError
+from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
@@ -127,13 +127,13 @@ class vorbis(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [str('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
         if item == 'totaltracks':
-            return [str('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
         if item == 'disknumber':
-            return [str('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
-            return [str('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
 
         return super(vorbis, self).__getitem__(item)
 
@@ -251,9 +251,7 @@ class vorbis(TagParser):
                 entries.append(VORBIS_TAG_FORMATTERS[item](v))
 
             else:
-                if not isinstance(v, str):
-                    v = str(v, 'utf-8')
-                entries.append(v)
+                entries.append(format_unicode_string_value(v))
 
         self.entry[item] = entries
         self.modified = True

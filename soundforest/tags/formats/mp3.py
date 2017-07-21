@@ -10,7 +10,7 @@ from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from mutagen.id3 import error as ID3Error
 
-from soundforest.tags import TagError
+from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
@@ -183,16 +183,16 @@ class mp3(TagParser):
         """
         if item == 'tracknumber':
 
-            return [str('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [str('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [str('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [str('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
 
         if item[:5] == 'APIC:':
             return self.albumart_obj
@@ -228,12 +228,12 @@ class mp3(TagParser):
 
                 if not isinstance(value, str):
                     try:
-                        value = '{0:d}'.format(int(str(value)))
+                        value = '{0:d}'.format(int(format_unicode_string_value(value)))
                     except ValueError:
                         pass
 
                     try:
-                        value = str(value, 'utf-8')
+                        value = format_unicode_string_value(value)
                     except UnicodeDecodeError as e:
                         raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e) )
 
@@ -302,8 +302,7 @@ class mp3(TagParser):
         if item in MP3_TAG_FORMATTERS:
             value = MP3_TAG_FORMATTERS[item](value)
         else:
-            if not isinstance(value, str):
-                value = str(value, 'utf-8')
+            value = format_unicode_string_value(value)
 
         if item in self.entry:
             old_value = self.entry[item]

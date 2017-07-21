@@ -15,15 +15,15 @@ from datetime import datetime
 from soundforest import normalized
 from soundforest.log import SoundforestLogger
 from soundforest.formats import AudioFileFormat
-from soundforest.tags import TagError
+from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.constants import STANDARD_TAG_ORDER, STANDARD_TAG_MAP
 from soundforest.tags.xmltag import XMLTags, XMLTagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 YEAR_FORMATTERS = [
-    lambda x: str('{0}'.format(int(x), 'utf-8')),
-    lambda x: str('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'), 'utf-8')),
-    lambda x: str('{0}'.format(datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'), 'utf-8')),
+    lambda x: format_unicode_string_value('{0}'.format(int(x))),
+    lambda x: format_unicode_string_value('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'))),
+    lambda x: format_unicode_string_value('{0}'.format(datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'))),
 ]
 
 logger = SoundforestLogger().default_stream
@@ -70,18 +70,10 @@ class TagParser(dict):
 
             values = []
             for value in tag:
-                if not isinstance(value, str):
-                    if isinstance(value, int):
-                        value = str('{0:d}'.format(value))
-
-                    else:
-                        try:
-                            value = str(value, 'utf-8')
-                        except UnicodeDecodeError as e:
-                            raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e))
-
-                values.append(value)
-
+                try:
+                    values.append(format_unicode_string_value(value))
+                except ValueError as e:
+                    raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e))
             return values
 
         raise KeyError('No such tag: {0}'.format(fields))
@@ -147,8 +139,12 @@ class TagParser(dict):
             return None
 
         for value in tags:
-            if not isinstance(value, str):
-                continue
+            if sys.version_info.major >= 3:
+                if not isinstance(value, str):
+                    continue
+            else:
+                if not isinstance(value, unicode):
+                    continue
 
             if tag=='year':
                 # Try to clear extra date details from year
