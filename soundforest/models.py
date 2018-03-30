@@ -10,12 +10,14 @@ import hashlib
 import base64
 import json
 import pytz
+import sys
+
 from datetime import datetime
 
 from sqlite3 import Connection as SQLite3Connection
-from sqlalchemy import create_engine, event, \
-                       Column, ForeignKey, Integer, Boolean, String, Date, \
-                       UniqueConstraint, Index
+from sqlalchemy import (create_engine, event,
+                        Column, ForeignKey, Integer, Boolean, String,
+                        Date, UniqueConstraint, Index )
 from sqlalchemy.engine import reflection
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
@@ -32,6 +34,7 @@ DEFAULT_DATABASE = os.path.join(SOUNDFOREST_USER_DIR, 'soundforest.sqlite')
 
 Base = declarative_base()
 
+
 class SafeUnicode(TypeDecorator):
     """SafeUnicode columns
 
@@ -41,8 +44,9 @@ class SafeUnicode(TypeDecorator):
     impl = Unicode
 
     def process_bind_param(self, value, dialect):
-        if isinstance(value, str):
-            value = value.decode('utf-8')
+        if sys.version_info.major < 3:
+            if isinstance(value, str):
+                value = value.decode('utf-8')
         return value
 
 
