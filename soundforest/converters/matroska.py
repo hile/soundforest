@@ -112,7 +112,7 @@ class SegmentSection(EBMLSection):
         self.information = None
 
     def __repr__(self):
-        return 'Segment {0} bytes'.format(self.size)
+        return 'Segment {} bytes'.format(self.size)
 
 
 class SeekHeadSection(EBMLSection):
@@ -217,7 +217,7 @@ class Track(object):
 
         for key in ( 'type', 'tracknumber', ):
             if key not in self.section:
-                raise ValueError('Missing key {0}: {1}'.format(key, self.section.items()))
+                raise ValueError('Missing key {}: {}'.format(key, self.section.items()))
 
     def __repr__(self):
         return '{0} {1} {2}'.format(self.matroska.path, self.section['tracknumber'], self.codec)
@@ -262,7 +262,7 @@ class AudioTrack(Track):
         try:
             return AUDIO_FORMAT_MAP[self.section['codec']]
         except KeyError:
-            raise ValueError('Unknown audio format: {0}'.format(self.section['codec']))
+            raise ValueError('Unknown audio format: {}'.format(self.section['codec']))
 
     def extract(self, directory):
         """Extract audio
@@ -282,7 +282,7 @@ class AudioTrack(Track):
             'mkvextract',
             'tracks',
             self.matroska.path,
-            '{0:d}:{1}'.format(self.id, outputfile),
+            '{:d}:{}'.format(self.id, outputfile),
         )
         p = Popen(cmd, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)
         p.wait()

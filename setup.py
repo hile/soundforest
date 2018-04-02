@@ -14,6 +14,7 @@ setup(
     author = 'Ilkka Tuohela',
     author_email = 'hile@iki.fi',
     license = 'PSF',
+    python_requires='>=3.4',
     url = 'https://github.com/hile/soundforest',
     packages = find_packages(),
     scripts = glob.glob('bin/*'),

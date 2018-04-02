@@ -8,7 +8,7 @@ from soundforest.converters.matroska import Matroska, ConverterError
 
 class MatroskaCommand(ScriptCommand):
     def parse_args(self, args):
-        args = super(MatroskaCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         args.files = []
         if 'paths' in args:
@@ -16,7 +16,7 @@ class MatroskaCommand(ScriptCommand):
                 for path in args.paths:
                     args.files.append(Matroska(path))
             except ConverterError as e:
-                self.exit(1, 'error loading {0}: {1}'.format(path, e))
+                self.exit(1, 'error loading {}: {}'.format(path, e))
 
         return args
 
@@ -26,7 +26,7 @@ class ConvertCommand(MatroskaCommand):
 
         for container in args.files:
             for track in container.audiotracks:
-                self.message('{0} export track {1} to {2}'.format(
+                self.message('{} export track {} to {}'.format(
                     container.path,
                     track.id,
                     args.output_directory,
@@ -39,7 +39,7 @@ class DetailsCommand(MatroskaCommand):
             self.message(track.section.name)
 
         for key, value in track.section.items():
-            self.message('  {0}={1}'.format(key, value))
+            self.message('  {}={}'.format(key, value))
 
         for child in track.section.children:
             self.print_section(child)
@@ -49,7 +49,7 @@ class DetailsCommand(MatroskaCommand):
             self.message(section.name)
 
         for key, value in section.items():
-            self.message('  {0}={1}'.format(key, value))
+            self.message('  {}={}'.format(key, value))
 
         for child in section.children:
             self.print_section(child)

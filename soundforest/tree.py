@@ -138,9 +138,9 @@ class IterableTrackFolder(object):
             try:
                 os.rmdir(empty)
             except OSError as e:
-                raise TreeError('Error removing empty directory {0}: {1}'.format(empty, e))
+                raise TreeError('Error removing empty directory {}: {}'.format(empty, e))
             except IOError as e:
-                raise TreeError('Error removing empty directory {0}: {1}'.format(empty, e))
+                raise TreeError('Error removing empty directory {}: {}'.format(empty, e))
 
             # Try to remove parent empty directory
             empty = os.path.dirname(empty)
@@ -208,9 +208,9 @@ class Tree(IterableTrackFolder):
         """Load the albums and songs in the tree"""
 
         if not os.path.isdir(self.path):
-            raise TreeError('Not a directory: {0}'.format(self.path))
+            raise TreeError('Not a directory: {}'.format(self.path))
 
-        self.log.debug('{0} load tree'.format(self.path))
+        self.log.debug('{} load tree'.format(self.path))
         start = int(time.mktime(time.localtime()))
 
         super(Tree, self).load()
@@ -234,7 +234,10 @@ class Tree(IterableTrackFolder):
         self.files.sort(key=self.__cmp_file_path__())
 
         stop = int(time.mktime(time.localtime()))
-        self.log.debug('loaded {0:d} files in {1:d} seconds'.format(len(self.files), (stop-start)))
+        self.log.debug('loaded {:d} files in {:d} seconds'.format(
+            len(self.files),
+            (stop-start)
+        ))
 
     def filter_tracks(self, regexp=None, re_path=True, re_file=True, as_tracks=False):
         if not len(self.files):
@@ -249,7 +252,9 @@ class Tree(IterableTrackFolder):
             if isinstance(regexp, basestring):
                 regexp = re.compile(regexp)
 
-            tracks = [track for track in tracks if re_path and regexp.match(track[0]) or re_file and regexp.match(track[1])]
+            tracks = [
+                track for track in tracks if re_path and regexp.match(track[0]) or re_file and regexp.match(track[1])
+            ]
 
         if as_tracks:
             return [Track(os.path.join(t[0], t[1])) for t in tracks]
@@ -348,7 +353,7 @@ class Album(IterableTrackFolder):
 
         for m in self.metadata:
             if not hasattr(m, 'metadata'):
-                raise TreeError('Invalid object types in self.metadata: {0}'.format(m))
+                raise TreeError('Invalid object types in self.metadata: {}'.format(m))
             if isinstance(m.metadata, CoverArt):
                 return AlbumArt(m.path)
 
@@ -362,9 +367,9 @@ class Album(IterableTrackFolder):
             try:
                 os.makedirs(target.path)
             except OSError as e:
-                raise TreeError('Error creating directory {0}: {1}'.format(target.path, e))
+                raise TreeError('Error creating directory {}: {}'.format(target.path, e))
             except IOError as e:
-                raise TreeError('Error creating directory {0}: {1}'.format(target.path, e))
+                raise TreeError('Error creating directory {}: {}'.format(target.path, e))
 
         for m in self.metadata:
             dst_path = os.path.join(target.path, os.path.basename(m.path))
@@ -375,9 +380,9 @@ class Album(IterableTrackFolder):
             try:
                 shutil.copyfile(m.path, dst_path)
             except OSError as e:
-                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, e))
+                self.script.exit(1, 'Error writing file {}: {}'.format(dst_path, e))
             except IOError as e:
-                self.script.exit(1, 'Error writing file {0}: {1}'.format(dst_path, e))
+                self.script.exit(1, 'Error writing file {}: {}'.format(dst_path, e))
 
         target.load()
         albumart = target.albumart
@@ -388,11 +393,11 @@ class Album(IterableTrackFolder):
                     continue
 
                 if not tags.supports_albumart:
-                    self.log.debug('albumart not supported: {0}'.format(track.path))
+                    self.log.debug('albumart not supported: {}'.format(track.path))
                     continue
 
                 if tags.set_albumart(albumart):
-                    self.log.debug('albumart: {0}'.format(track))
+                    self.log.debug('albumart: {}'.format(track))
                     tags.save()
 
 
@@ -406,7 +411,7 @@ class MetaDataFile(object):
         if metadata is None:
             metadata = match_metadata(path)
             if metadata is None:
-                raise TreeError('Not a metadata file: {0}'.format(path))
+                raise TreeError('Not a metadata file: {}'.format(path))
 
         self.path = path_string(path)
 
@@ -436,7 +441,7 @@ class Track(AudioFileFormat):
 
         self.prefixes = TreePrefixes()
         if self.codec is None:
-            raise TreeError('Not a music file: {0}'.format(self.path))
+            raise TreeError('Not a audio file: {}'.format(self.path))
 
         self.tags_loaded = False
         self.file_tags = None
@@ -448,7 +453,7 @@ class Track(AudioFileFormat):
                 self.file_tags = Tags(self.path, fileformat=self)
                 self.tags_loaded = True
             except TagError as e:
-                raise TreeError('Error loading tags: {0}'.format(e))
+                raise TreeError('Error loading tags: {}'.format(e))
 
         return self.file_tags
 
@@ -501,14 +506,14 @@ class Track(AudioFileFormat):
 
     def get_decoder_command(self, wav_path=None):
         if wav_path is None:
-            wav_path = '{0}.wav'.format(os.path.splitext(self.path)[0])
+            wav_path = '{}.wav'.format(os.path.splitext(self.path)[0])
         if wav_path == self.path:
             raise TreeError('Trying to encode to itself')
 
         try:
             decoder = self.get_available_decoders()[0]
         except IndexError:
-            raise TreeError('No available decoders for {0}'.format(self.path))
+            raise TreeError('No available decoders for {}'.format(self.path))
 
         decoder = decoder.split()
         decoder[decoder.index('OUTFILE')] = wav_path
@@ -517,14 +522,14 @@ class Track(AudioFileFormat):
 
     def get_encoder_command(self, wav_path=None):
         if wav_path is None:
-            wav_path = '{0}.wav'.format(os.path.splitext(self.path)[0])
+            wav_path = '{}.wav'.format(os.path.splitext(self.path)[0])
         if wav_path == self.path:
             raise TreeError('Trying to encode to itself')
 
         try:
             encoder = self.get_available_encoders()[0]
         except IndexError:
-            raise TreeError('No available encoders for {0}'.format(self.path))
+            raise TreeError('No available encoders for {}'.format(self.path))
 
         encoder = encoder.split()
         encoder[encoder.index('OUTFILE')] = self.path
@@ -535,7 +540,7 @@ class Track(AudioFileFormat):
         try:
             tester = self.get_available_testers()[0]
         except IndexError:
-            raise TreeError('No available testers for {0}'.format(self.path))
+            raise TreeError('No available testers for {}'.format(self.path))
 
         tester = tester.split()
         tester[tester.index('FILE')] = self.path
@@ -549,7 +554,7 @@ class Track(AudioFileFormat):
         try:
             cmd = self.get_tester_command(tempfile_path)
         except TreeError:
-            callback(self, False, errors='No tester available for {0}'.format(self.extension))
+            callback(self, False, errors='No tester available for {}'.format(self.extension))
             return
 
         rv, stdout, stderr = self.execute(cmd)
@@ -562,8 +567,8 @@ class Track(AudioFileFormat):
             try:
                 os.unlink(tempfile_path)
             except IOError as e:
-                raise TreeError('Error removing temporary file {0}: {1}'.format(tempfile_path, e))
+                raise TreeError('Error removing temporary file {}: {}'.format(tempfile_path, e))
             except OSError as e:
-                raise TreeError('Error removing temporary file {0}: {1}'.format(tempfile_path, e))
+                raise TreeError('Error removing temporary file {}: {}'.format(tempfile_path, e))
 
         return rv

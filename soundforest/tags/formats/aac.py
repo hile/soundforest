@@ -124,7 +124,7 @@ class AACAlbumArt(TrackAlbumart):
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag][0])
         except AlbumArtError as e:
-            raise TagError('Error reading AAC albumart tag: {0}'.format(e))
+            raise TagError('Error reading AAC albumart tag: {}'.format(e))
 
         self.albumart = albumart
 
@@ -139,11 +139,13 @@ class AACAlbumArt(TrackAlbumart):
         try:
             img_format = AAC_ALBUMART_PIL_FORMAT_MAP[self.albumart.get_fileformat()]
         except KeyError:
-            raise TagError('Unsupported albumart format {0}'.format(self.albumart.get_fileformat() ))
+            raise TagError('Unsupported albumart format {}'.format(
+                self.albumart.get_fileformat(),
+            ))
         try:
             tag = MP4Cover(data=self.albumart.dump(), imageformat=img_format)
         except MP4MetadataValueError as e:
-            raise TagError('Error encoding albumart: {0}'.format(e))
+            raise TagError('Error encoding albumart: {}'.format(e))
 
         if self.tag in self.track.entry:
             if self.track.entry[self.tag] != [tag]:
@@ -204,16 +206,16 @@ class aac(TagParser):
         try:
             self.entry = MP4(self.path)
         except IOError as e:
-            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+            raise TagError('Error opening {}: {}'.format(path, str(e)))
 
         except MP4StreamInfoError as e:
-            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+            raise TagError('Error opening {}: {}'.format(path, str(e)))
 
         except RuntimeError as e:
-            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+            raise TagError('Error opening {}: {}'.format(path, str(e)))
 
         except struct.error:
-            raise TagError('Invalid tags in {0}'.format(path))
+            raise TagError('Invalid tags in {}'.format(path))
 
         self.supports_albumart = True
         self.albumart_obj = AACAlbumArt(self)
@@ -222,16 +224,16 @@ class aac(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.total))]
 
         if item == 'unknown_tags':
             keys = []

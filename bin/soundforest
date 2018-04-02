@@ -19,7 +19,7 @@ from soundforest.tree import Tree, Track, Album
 
 class SoundforestCommand(ScriptCommand):
     def parse_args(self, args):
-        args = super(SoundforestCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if 'paths' in args and args.paths:
             paths = []
@@ -44,18 +44,25 @@ class SoundforestCommand(ScriptCommand):
 
 class ChecksumCommand(SoundforestCommand):
     def verify(self, track):
-        db_track = self.db.get_track(track.path)
+        try:
+            db_track = self.db.get_track(track.path)
+        except SoundforestError as e:
+            self.error(e)
+            return
 
         if db_track is not None:
             status = db_track.checksum == track.checksum and 'OK' or 'NOK'
         else:
             status = 'NOTFOIND'
-        self.message('{0:8} {1}'.format(status, track.path))
+        self.message('{:8} {}'.format(status, track.path))
 
     def update(self, track):
-        checksum = self.db.update_track_checksum(track)
+        try:
+            checksum = self.db.update_track_checksum(track)
+        except SoundforestError as e:
+            self.error(e)
         if checksum is not None:
-            self.message('{0:24} {1}'.format(checksum, track.path))
+            self.message('{:24} {}'.format(checksum, track.path))
 
     def process(self, action, track):
         if action == 'update':
@@ -64,7 +71,7 @@ class ChecksumCommand(SoundforestCommand):
             self.verify(track)
 
     def run(self, args):
-        args = super(ChecksumCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         for path in args.paths:
             realpath = os.path.realpath(path)
@@ -80,33 +87,38 @@ class ChecksumCommand(SoundforestCommand):
 
 class CodecsCommand(SoundforestCommand):
     def run(self, args):
-        args = super(CodecsCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'list':
-            for name, codec in self.db.codec_configuration.items():
-                self.message('{0} ({1})'.format(codec, codec.description))
+            try:
+                configuration = self.db.codec_configuration
+            except SoundforestError as e:
+                self.exit(1, e)
+
+            for name, codec in configuration.items():
+                self.message('{} ({})'.format(codec, codec.description))
                 self.message('Extensions')
-                self.message('  {0}'.format(','.join(x.extension for x in codec.extensions)))
+                self.message('  {}'.format(','.join(x.extension for x in codec.extensions)))
 
                 self.message('Decoders')
                 for decoder in codec.decoders:
-                    self.message('  {0}'.format(decoder.command))
+                    self.message('  {}'.format(decoder.command))
 
                 self.message('Encoders')
                 for encoder in codec.encoders:
-                    self.message('  {0}'.format(encoder.command))
+                    self.message('  {}'.format(encoder.command))
 
                 if codec.testers:
                     self.message('Testers')
                     for tester in codec.testers:
-                        self.message('  {0}'.format(tester.command))
+                        self.message('  {}'.format(tester.command))
 
                 self.message('')
 
 
 class ConfigCommand(SoundforestCommand):
     def parse_args(self, args):
-        args = super(ConfigCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'set':
             settings = []
@@ -114,7 +126,7 @@ class ConfigCommand(SoundforestCommand):
                 try:
                     key, value = setting.split('=', 1)
                 except ValueError:
-                    self.exit(1, 'Error parsing setting from {0}'.format(setting))
+                    self.exit(1, 'Error parsing setting from {}'.format(setting))
                 settings.append((key, value))
             args.settings = settings
 
@@ -124,37 +136,53 @@ class ConfigCommand(SoundforestCommand):
         args = self.parse_args(args)
 
         if args.action == 'list':
-            for setting in self.db.settings:
-                self.message('{0:16s} {1}'.format(setting.key, setting.value))
+            try:
+                for setting in self.db.settings:
+                    self.message('{:16s} {}'.format(setting.key, setting.value))
+            except SoundforestError as e:
+                self.exit(1, e)
 
         if args.action == 'set':
-            for key, value in args.settings:
-                self.db.add_setting(key, value)
+            try:
+                for key, value in args.settings:
+                    self.db.add_setting(key, value)
+            except SoundforestError as e:
+                self.exit(1, e)
 
         if args.action == 'delete':
-            for key in args.settings:
-                self.db.delete_setting(key)
+            try:
+                for key in args.settings:
+                    self.db.delete_setting(key)
+            except SoundforestError as e:
+                self.exit(1, e)
 
 
 class PlaylistsCommand(SoundforestCommand):
     def run(self, args):
-        args = super(PlaylistsCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'list':
             if args.paths:
                 playlists = []
                 for path in args.paths:
-                    for playlist in self.db.playlists:
+                    try:
+                        playlists = self.db.playlists
+                    except SoundforestError as e:
+                        self.exit(1, e)
+                    for playlist in playlists:
                         names = ( os.path.basename(path), os.path.splitext(os.path.basename(path))[0], )
                         if os.path.dirname(path) == playlist.directory and playlist.name in names:
                             playlists.append(playlist)
             else:
-                playlists = self.db.playlists
+                try:
+                    playlists = self.db.playlists
+                except SoundforestError as e:
+                    self.exit(1, e)
 
             for playlist in playlists:
                 self.message(playlist)
                 for path in playlist.tracks:
-                    self.message('  {0}'.format(path))
+                    self.message('  {}'.format(path))
 
         if args.action == 'add':
             for playlist in args.paths:
@@ -180,9 +208,14 @@ class PlaylistsCommand(SoundforestCommand):
 
 class SyncConfigCommand(SoundforestCommand):
     def run(self, args):
-        args = super(SyncConfigCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'list':
+            try:
+                sync_targets = self.db.sync_targets
+            except SoundforestError as e:
+                self.exit(1, e)
+
             for s in self.db.sync_targets:
                 self.message(s)
 
@@ -202,26 +235,31 @@ class SyncConfigCommand(SoundforestCommand):
 class SyncCommand(SoundforestCommand):
 
     def run(self, args):
-        args = super(SyncCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         self.manager = SyncManager(threads=args.threads, delete=args.delete, debug=args.debug)
 
         if args.list:
-            for name, settings in self.db.sync.items():
+            try:
+                sync = self.db.sync
+            except SoundforestError as e:
+                self.exit(1, e)
+
+            for name, settings in sync.items():
                 if args.paths and name not in args.paths:
                     continue
 
-                self.message('{0}'.format(name))
-                self.message('  Type:        {0}'.format(settings['type']))
-                self.message('  Source:      {0}'.format(settings['src']))
-                self.message('  Destination: {0}'.format(settings['dst']))
-                self.message('  Flags:       {0}'.format(settings['flags']))
+                self.message('{}'.format(name))
+                self.message('  Type:        {}'.format(settings['type']))
+                self.message('  Source:      {}'.format(settings['src']))
+                self.message('  Destination: {}'.format(settings['dst']))
+                self.message('  Flags:       {}'.format(settings['flags']))
 
             script.exit(0)
 
         if args.directories:
             if len([d for d in args.paths if os.path.isdir(d)]) != 2:
-                self.script.exit(1, 'Directory sync requires two existing directory paths')
+                self.exit(1, 'Directory sync requires two existing directory paths')
 
             src = Tree(args.paths[0])
             dst = Tree(args.paths[1])
@@ -236,40 +274,52 @@ class SyncCommand(SoundforestCommand):
             for arg in args.paths:
                 target = self.manager.parse_target(arg)
                 if not target:
-                    self.script.exit(1, 'No such target: {0}'.format(arg))
+                    self.exit(1, 'No such target: {}'.format(arg))
 
                 self.manager.enqueue(target)
 
         else:
+            try:
+                targets = self.db.sync_targets
+            except SoundforestError as e:
+                self.exit(1, e)
+
             for target in self.db.sync_targets:
                 self.manager.enqueue(target.as_dict())
 
         if len(self.manager):
             self.manager.run()
         else:
-            self.script.exit(1, 'No sync targets found')
+            self.exit(1, 'No sync targets found')
 
 
 class TagsCommand(SoundforestCommand):
     def run(self, args):
-        args = super(TagsCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'list':
-            if args.tree:
-                trees = [self.db.get_tree(args.tree)]
-            else:
-                trees = self.db.trees
+            try:
+                if args.tree:
+                    trees = [self.db.get_tree(args.tree)]
+                else:
+                    trees = self.db.trees
+            except SoundforestError as e:
+                self.exit(1, e)
 
             for tree in trees:
                 for path in args.paths:
-                    for track in tree.filter_tracks(self.db.session, path):
+                    try:
+                        filtered_tracks = tree.filter_tracks(self.db.session, path)
+                    except SoundforestError as e:
+                        self.error(e)
+                    for track in filtered_tracks:
                         for entry in track.tags:
-                            self.message('  {0} = {1}'.format(entry.tag, entry.value))
+                            self.message('  {} = {}'.format(entry.tag, entry.value))
 
 
 class PrefixCommand(SoundforestCommand):
     def run(self, args):
-        args = super(PrefixCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'match':
             prefixes = TreePrefixes()
@@ -280,17 +330,24 @@ class PrefixCommand(SoundforestCommand):
 
         if args.action == 'add':
             for path in args.paths:
-                self.db.add_prefix(path)
+                try:
+                    self.db.add_prefix(path)
+                except SoundforestError as e:
+                    self.exit(1, e)
 
         if args.action == 'delete':
             for path in args.paths:
                 try:
                     self.db.delete_prefix(path)
                 except SoundforestError as e:
-                    self.message(e)
+                    self.exit(1, e)
 
         if args.action == 'list':
-            for prefix in self.db.tree_prefixes:
+            try:
+                tree_prefixes = self.db.tree_prefixes
+            except SoundforestError as e:
+                self.exit(1, e)
+            for prefix in tree_prefixes:
                 if args.paths and not self.match_prefix(prefix.path, args.paths):
                     continue
 
@@ -299,7 +356,7 @@ class PrefixCommand(SoundforestCommand):
 
 class TracksCommand(SoundforestCommand):
     def run(self, args):
-        args = super(TracksCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         tracks = []
         if args.paths:
@@ -312,36 +369,45 @@ class TracksCommand(SoundforestCommand):
         for track in tracks:
             if args.action == 'list':
                 if args.checksum:
-                    self.message('{0} {1}'.format(track.checksum, track.relative_path()))
+                    self.message('{} {}'.format(track.checksum, track.relative_path()))
                 else:
                     self.message(track.relative_path())
 
             if args.action == 'tags':
                 self.message(track.relative_path())
                 for tag in track.tags:
-                    self.message('  {0}={1}'.format(tag.tag, tag.value))
+                    self.message('  {}={}'.format(tag.tag, tag.value))
 
 
 class TreeCommand(SoundforestCommand):
     def run(self, args):
-        args = super(TreeCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.tree_type and args.tree_type not in script.db.tree_types:
-            self.script.exit(1, 'Unsupported tree type: {0}'.format(args.tree_type))
+            self.exit(1, 'Unsupported tree type: {}'.format(args.tree_type))
 
         if args.action == 'add':
             for path in args.paths:
-                self.db.add_tree(path, tree_type=args.tree_type)
+                try:
+                    self.db.add_tree(path, tree_type=args.tree_type)
+                except SoundforestError as e:
+                    self.error(e)
 
         if args.action == 'delete':
             for path in args.paths:
-                self.db.delete_tree(path)
+                try:
+                    self.db.delete_tree(path)
+                except SoundforestError as e:
+                    self.error(e)
 
         if args.action == 'update':
             for tree in self.db.trees:
                 if args.paths and tree.path not in args.paths:
                     continue
-                self.db.update_tree(Tree(tree.path))
+                try:
+                    self.db.update_tree(Tree(tree.path), update_checksum=args.checksums)
+                except TreeError as e:
+                    self.error(e)
 
         if args.action == 'list':
             for tree in self.db.trees:
@@ -351,33 +417,39 @@ class TreeCommand(SoundforestCommand):
                 if args.paths and not self.match_path(tree.path, args.paths):
                     continue
 
-                self.message( tree)
+                self.message(tree)
 
 
 class TreeTypesCommand(SoundforestCommand):
     def run(self, args):
-        args = super(TreeTypesCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if args.action == 'list':
             for treetype in self.db.tree_types:
-                self.message( '{0:14s} {1}'.format(treetype.name, treetype.description))
+                self.message( '{:14s} {}'.format(treetype.name, treetype.description))
 
         if args.action == 'add':
             for treetype in args.types:
-                self.db.add_tree_type(treetype)
+                try:
+                    self.db.add_tree_type(treetype)
+                except SoundforestError as e:
+                    self.error(e)
 
         if args.action == 'delete':
             for treetype in args.types:
-                self.db.delete_tree_type(treetype)
+                try:
+                    self.db.delete_tree_type(treetype)
+                except SoundforestError as e:
+                    self.error(e)
 
 
 class TestCommand(SoundforestCommand):
     def testresult(self, track, result, errors='', stdout=None, stderr=None):
         if not result:
-            self.message( '{0} {1}{2}'.format('NOK', track.path, errors and ': {0}'.format(errors) or ''))
+            self.message( '{} {}{}'.format('NOK', track.path, errors and ': {0}'.format(errors) or ''))
 
     def parse_args(self, args):
-        args = super(TestCommand, self).parse_args(args)
+        args = super().parse_args(args)
 
         if not args.paths:
             self.exit(1, 'No paths to test provided')
@@ -464,6 +536,7 @@ c.add_argument('types', nargs='*', help='Tree type names to process')
 
 c = script.add_subcommand(TreeCommand('tree', description='Tree database manipulations'))
 c.add_argument('-t', '--tree-type', help='Type of audio files in tree')
+c.add_argument('-c', '--checksums', action='store_true', help='Update track checksums')
 c.add_argument('action', choices=('list', 'update', 'add', 'delete'), help='Tree database action')
 c.add_argument('paths', nargs='*', help='Paths to trees to process')
 

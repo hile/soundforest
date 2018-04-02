@@ -88,7 +88,7 @@ class ConfigDB(object):
                 try:
                     value = FIELD_CONVERT_MAP[key](value)
                 except ValueError:
-                    raise SoundforestError('Invalid data in configuration for field {0}'.format(key))
+                    raise SoundforestError('Invalid data in configuration for field {}'.format(key))
 
             return value
 
@@ -123,7 +123,10 @@ class ConfigDB(object):
 
             album_relative_path = tree.relative_path(album.path)
             if not album_relative_path:
-                raise SoundforestError('{0} album relative path is empty: {1}'.format(tree.path, album.path))
+                raise SoundforestError('{} album relative path is empty: {}'.format(
+                    tree.path,
+                    album.path,
+                ))
 
             db_album = self.query(models.AlbumModel).filter(
                 models.AlbumModel.tree == db_tree,
@@ -131,7 +134,10 @@ class ConfigDB(object):
             ).first()
 
             if db_album is None:
-                self.log.debug('{0} add album {1}'.format(tree.path, album_relative_path))
+                self.log.debug('{} add album {}'.format(
+                    tree.path,
+                    album_relative_path,
+                ))
                 db_album = models.AlbumModel(
                     tree=db_tree,
                     directory=album_relative_path,
@@ -139,12 +145,18 @@ class ConfigDB(object):
                 )
 
             elif db_album.mtime != album.mtime:
-                self.log.debug('{0} update album mtime {1}'.format(tree.path, album_relative_path))
+                self.log.debug('{} update album mtime {}'.format(
+                    tree.path,
+                    album_relative_path
+                ))
                 db_album.mtime = album.mtime
 
             self.update_album_path_components(db_album)
 
-            self.log.debug('{0} update album tracks {1}'.format(tree.path, album_relative_path))
+            self.log.debug('{} update album tracks {}'.format(
+                tree.path,
+                album_relative_path,
+            ))
             for track in album:
                 db_track = self.query(models.TrackModel).filter(
                     models.TrackModel.directory == track.directory,
@@ -153,7 +165,10 @@ class ConfigDB(object):
                 ).first()
 
                 if db_track is None:
-                    self.log.debug('{0} add track {1}'.format(tree.path, tree.relative_path(track)))
+                    self.log.debug('{} add track {}'.format(
+                        tree.path,
+                        tree.relative_path(track),
+                    ))
                     db_track = models.TrackModel(
                         tree=db_tree,
                         album=db_album,
@@ -169,14 +184,20 @@ class ConfigDB(object):
                         errors +=1
 
                 elif db_track.mtime != track.mtime:
-                    self.log.debug('{0} update track {1}'.format(tree.path, tree.relative_path(track)))
+                    self.log.debug('{} update track {}'.format(
+                        tree.path,
+                        tree.relative_path(track),
+                    ))
                     if self.update_track(track, update_checksum):
                         updated += 1
                     else:
                         errors +=1
 
                 elif not db_track.checksum and update_checksum:
-                    self.log.debug('{0} update checksum {1}'.format(tree.path, tree.relative_path(track)))
+                    self.log.debug('{} update checksum {}'.format(
+                        tree.path,
+                        tree.relative_path(track),
+                    ))
                     if self.update_track_checksum(track) is not None:
                         updated += 1
                     else:
@@ -184,30 +205,45 @@ class ConfigDB(object):
 
                 processed += 1
                 if progresslog and processed % 1000 == 0:
-                    self.log.debug('{0} processed {1:d} tracks'.format(tree.path, processed))
+                    self.log.debug('{} processed {:d} tracks'.format(
+                        tree.path,
+                        processed,
+                    ))
 
             self.commit()
 
-        self.log.debug('{0} check for removed albums'.format(tree.path))
+        self.log.debug('{} check for removed albums'.format(tree.path))
         for album in db_tree.albums:
             if album.path in album_paths or album.exists:
                 continue
 
-            self.log.debug('{0} remove album {1}'.format(tree.path, album.relative_path()))
+            self.log.debug('{} remove album {}'.format(
+                tree.path,
+                album.relative_path(),
+            ))
             self.delete(album)
 
-        self.log.debug('{0} check for removed tracks'.format(tree.path))
+        self.log.debug('{} check for removed tracks'.format(tree.path))
         for db_track in db_tree.tracks:
             if db_track.path in track_paths or db_track.exists:
                 continue
 
-            self.log.debug('{0} remove track {1}'.format(tree.path, db_track.relative_path()))
+            self.log.debug('{} remove track {}'.format(
+                tree.path,
+                db_track.relative_path(),
+            ))
             self.delete(db_track)
             deleted += 1
 
         self.commit()
 
-        self.log.debug('{0} {1:d} added, {2:d} updated, {3:d} deleted, {4:d} errors'.format(tree.path, added, updated, deleted, errors,))
+        self.log.debug('{} {:d} added, {:d} updated, {:d} deleted, {:d} errors'.format(
+            tree.path,
+            added,
+            updated,
+            deleted,
+            errors,
+        ))
 
         return added, updated, deleted, processed, errors
 
@@ -273,7 +309,9 @@ class ConfigDB(object):
             db_track = self.get_track(track.path)
 
         if db_track is None:
-            self.log.debug('ERROR updating track {0}: not found in database'.format(track.path))
+            self.log.debug('ERROR updating track {}: not found in database'.format(
+                track.path,
+            ))
 
         db_track.mtime = track.mtime
 
@@ -284,13 +322,17 @@ class ConfigDB(object):
         try:
             tags = track.tags
         except TreeError as e:
-            self.log.debug('ERROR loading {0}: {1}'.format(track.path, e))
+            self.log.debug('ERROR loading {}: {}'.format(
+                track.path,
+                e,
+            ))
             return False
 
-        for tag, value in tags.items():
-            if isinstance(value, list):
-                value = value[0]
-            self.add(models.TagModel(track=db_track, tag=tag, value=value))
+        if tags:
+            for tag, value in tags.items():
+                if isinstance(value, list):
+                    value = value[0]
+                self.add(models.TagModel(track=db_track, tag=tag, value=value))
 
         self.commit()
 

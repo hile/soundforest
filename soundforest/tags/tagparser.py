@@ -21,9 +21,13 @@ from soundforest.tags.xmltag import XMLTags, XMLTagError
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 YEAR_FORMATTERS = [
-    lambda x: format_unicode_string_value('{0}'.format(int(x))),
-    lambda x: format_unicode_string_value('{0}'.format(datetime.strptime(x, '%Y-%m-%d').strftime('%Y'))),
-    lambda x: format_unicode_string_value('{0}'.format(datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'))),
+    lambda x: format_unicode_string_value('{}'.format(int(x))),
+    lambda x: format_unicode_string_value('{}'.format(
+        datetime.strptime(x, '%Y-%m-%d').strftime('%Y')
+    )),
+    lambda x: format_unicode_string_value('{}'.format(
+        datetime.strptime(x, '%Y-%m-%dT%H:%M:%SZ').strftime('%Y'))
+    ),
 ]
 
 logger = SoundforestLogger().default_stream
@@ -44,13 +48,13 @@ class TagParser(dict):
         self.supports_albumart = False
 
     def __repr__(self):
-        return '{0}: {1}'.format(self.codec, self.path)
+        return '{}: {}'.format(self.codec, self.path)
 
     def __getattr__(self, attr):
         try:
             return self[attr]
         except KeyError:
-            raise AttributeError('No such TagParser attribute: {0}'.format(attr))
+            raise AttributeError('No such TagParser attribute: {}'.format(attr))
 
     def __getitem__(self, item):
         """
@@ -73,17 +77,21 @@ class TagParser(dict):
                 try:
                     values.append(format_unicode_string_value(value))
                 except ValueError as e:
-                    raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e))
+                    raise TagError('Error decoding {} tag {}: {}'.format(
+                        self.path,
+                        field,
+                        e,
+                    ))
             return values
 
-        raise KeyError('No such tag: {0}'.format(fields))
+        raise KeyError('No such tag: {}'.format(fields))
 
     def __setitem__(self, item, value):
         if isinstance(item, AlbumArt):
             try:
                 self.albumart_obj.import_albumart(value)
             except AlbumArtError as e:
-                raise TagError('Error setting albumart: {0}'.format(e))
+                raise TagError('Error setting albumart: {}'.format(e))
 
         self.set_tag(item, value)
 
@@ -192,7 +200,7 @@ class TagParser(dict):
 
     def remove_tag(self, item):
         if not self.has_key(item):
-            raise TagError('No such tag: {0}'.format(item))
+            raise TagError('No such tag: {}'.format(item))
         del self[tag]
 
     def get_tag(self, item):
@@ -200,11 +208,11 @@ class TagParser(dict):
         Return tag from file. Raises TagError if tag is not found.
         """
         if not self.has_key(item):
-            raise TagError('No such tag: {0}'.format(item))
+            raise TagError('No such tag: {}'.format(item))
 
         value = self.__normalized_tag__(item)
         if value is None:
-            raise TagError('No such string tag: {0}'.format(item))
+            raise TagError('No such string tag: {}'.format(item))
 
         return value
 
@@ -390,7 +398,7 @@ class TagParser(dict):
                     tag = getattr(self, attr)
                     tag.save_tag()
                 except ValueError as e:
-                    logger.debug('Error processing {0}: {1}'.format(attr, e))
+                    logger.debug('Error processing {}: {}'.format(attr, e))
 
             if self.modified:
                 self.entry.save()
@@ -474,10 +482,10 @@ class TrackNumberingTag(object):
 
     def __repr__(self):
         if self.total is not None:
-            return '{0:d}/{0:d}'.format(self.value, self.total)
+            return '{:d}/{:d}'.format(self.value, self.total)
 
         elif self.value is not None:
-            return '{0}'.format(self.value)
+            return '{}'.format(self.value)
 
         else:
             return None
@@ -489,7 +497,7 @@ class TrackNumberingTag(object):
         if attr == 'total':
             return self.f_total
 
-        raise AttributeError('No such TrackNumberingTag attribute: {0}'.format(attr))
+        raise AttributeError('No such TrackNumberingTag attribute: {}'.format(attr))
 
     def __setattr__(self, attr, value):
         if attr in ['value', 'total']:
@@ -530,7 +538,7 @@ def Tags(path, fileformat=None):
     soundforest.tags.formats, initialized automatically by this class.
     """
     if not os.path.isfile(path):
-        raise TagError('No such file: {0}'.format(path))
+        raise TagError('No such file: {}'.format(path))
 
     path = normalized(os.path.realpath(path))
 
@@ -545,7 +553,7 @@ def Tags(path, fileformat=None):
         raise TagError('Attempting to load audio tags from metadata file')
 
     if fileformat.codec is None:
-        raise TagError('Unsupported audio file: {0}'.format(path))
+        raise TagError('Unsupported audio file: {}'.format(path))
 
     tag_parser = fileformat.get_tag_parser()
     if tag_parser is None:

@@ -75,10 +75,23 @@ class BasePathNamedModel(object):
     Base name comparable with path
     """
 
-    def __cmp__(self, other):
-        if isinstance(other, basestring):
-            return cmp(self.path, other)
-        return 0
+    def __eq__(self, other):
+        return self.path == other
+
+    def __ne__(self, other):
+        return self.path != other
+
+    def __lt__(self, other):
+        return self.path < other
+
+    def __gt__(self, other):
+        return self.path > other
+
+    def __le__(self, other):
+        return self.path <= other
+
+    def __ge__(self, other):
+        return self.path >= other
 
 
 class BaseNamedModel(object):
@@ -87,10 +100,23 @@ class BaseNamedModel(object):
     Base name comparable with name string
     """
 
-    def __cmp__(self, other):
-        if isinstance(other, basestring):
-            return cmp(self.name, other)
-        return 0
+    def __eq__(self, other):
+        return self.name == other
+
+    def __ne__(self, other):
+        return self.name != other
+
+    def __lt__(self, other):
+        return self.name < other
+
+    def __gt__(self, other):
+        return self.name > other
+
+    def __le__(self, other):
+        return self.name <= other
+
+    def __ge__(self, other):
+        return self.name >= other
 
 
 class SettingModel(Base):
@@ -125,8 +151,12 @@ class SyncTargetModel(Base, BaseNamedModel):
     defaults = Column(Boolean)
 
     def __repr__(self):
-        return '{0} {1} from {2} to {3} (flags {4})'.format(
-            self.name, self.type, self.src, self.dst, self.flags
+        return '{} {} from {} to {} (flags {})'.format(
+            self.name,
+            self.type,
+            self.src,
+            self.dst,
+            self.flags,
         )
 
     def as_dict(self):
@@ -161,7 +191,9 @@ class CodecModel(Base, BaseNamedModel):
             ExtensionModel.extension == extension
         ).first()
         if existing:
-            raise SoundforestError('ExtensionModel already registered: {0}'.format(extension))
+            raise SoundforestError('ExtensionModel already registered: {}'.format(
+                extension
+            ))
 
         session.add(ExtensionModel(codec=self, extension=extension))
         session.commit()
@@ -171,7 +203,9 @@ class CodecModel(Base, BaseNamedModel):
             ExtensionModel.extension == extension
         ).first()
         if not existing:
-            raise SoundforestError('ExtensionModel was not registered: {0}'.format(extension))
+            raise SoundforestError('ExtensionModel was not registered: {}'.format(
+                extension
+            ))
 
         session.delete(existing)
         session.commit()
@@ -182,7 +216,9 @@ class CodecModel(Base, BaseNamedModel):
             DecoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('DecoderModel already registered: {0}'.format(command))
+            raise SoundforestError('DecoderModel already registered: {}'.format(
+                command
+            ))
 
         session.add(DecoderModel(codec=self, command=command))
         session.commit()
@@ -193,7 +229,9 @@ class CodecModel(Base, BaseNamedModel):
             DecoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('DecoderModel was not registered: {0}'.format(command))
+            raise SoundforestError('DecoderModel was not registered: {}'.format(
+                command
+            ))
 
         session.delete(existing)
         session.commit()
@@ -204,7 +242,9 @@ class CodecModel(Base, BaseNamedModel):
             EncoderModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('EncoderModel already registered: {0}'.format(command))
+            raise SoundforestError('EncoderModel already registered: {}'.format(
+                command
+            ))
 
         session.add(EncoderModel(codec=self, command=command))
         session.commit()
@@ -215,7 +255,9 @@ class CodecModel(Base, BaseNamedModel):
             EncoderModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('EncoderModel was not registered: {0}'.format(command))
+            raise SoundforestError('EncoderModel was not registered: {}'.format(
+                command
+            ))
 
         session.delete(existing)
         session.commit()
@@ -226,7 +268,9 @@ class CodecModel(Base, BaseNamedModel):
             TesterModel.command == command
         ).first()
         if existing:
-            raise SoundforestError('File tester already registered: {0}'.format(command))
+            raise SoundforestError('File tester already registered: {}'.format(
+                command
+            ))
 
         session.add(TesterModel(codec=self, command=command))
         session.commit()
@@ -237,7 +281,9 @@ class CodecModel(Base, BaseNamedModel):
             TesterModel.command == command
         ).first()
         if not existing:
-            raise SoundforestError('File tester was not registered: {0}'.format(command))
+            raise SoundforestError('File tester was not registered: {}'.format(
+                command
+            ))
 
         session.delete(existing)
         session.commit()
@@ -289,7 +335,10 @@ class TesterModel(Base):
     )
 
     def __repr__(self):
-        return '{0} format tester: {1}'.format(self.codec.name, self.command)
+        return '{0} format tester: {}'.format(
+            self.codec.name,
+            self.command,
+        )
 
 
 class DecoderModel(Base):
@@ -314,7 +363,10 @@ class DecoderModel(Base):
     )
 
     def __repr__(self):
-        return '{0} decoder: {1}'.format(self.codec.name, self.command)
+        return '{} decoder: {}'.format(
+            self.codec.name,
+            self.command,
+        )
 
 
 class EncoderModel(Base):
@@ -339,7 +391,10 @@ class EncoderModel(Base):
     )
 
     def __repr__(self):
-        return '{0} encoder: {1}'.format(self.codec.name, self.command)
+        return '{} encoder: {}'.format(
+            self.codec.name,
+            self.command,
+        )
 
 
 class TreeTypeModel(Base, BaseNamedModel):
@@ -410,7 +465,7 @@ class TreeModel(Base, BasePathNamedModel):
 
     def tag_count(self, session):
         return session.query(TagModel).filter(
-            TrackModel.tree == self).filter(
+            TrackModel.tree == self).filter
             TagModel.track_id == TrackModel.id
         ).count()
 
@@ -423,14 +478,14 @@ class TreeModel(Base, BasePathNamedModel):
         return session.query(TrackModel).filter(
             TrackModel.tree == self).filter(
             TagModel.track_id == TrackModel.id).filter(
-            TagModel.value.like('%{0}%'.format(match))
+            TagModel.value.like('%{}%'.format(match))
         ).all()
 
     def filter_tracks(self, session, path):
         res = session.query(TrackModel).filter(TrackModel.tree == self)
         return res.filter(
-            TrackModel.directory.like('%{0}%'.format(path)) |
-            TrackModel.name.like('%{0}%'.format(path))
+            TrackModel.directory.like('%{}%'.format(path)) |
+            TrackModel.name.like('%{}%'.format(path))
         ).all()
 
     def to_json(self):
@@ -510,7 +565,7 @@ class AlbumModel(Base, BasePathNamedModel):
         tval = datetime.fromtimestamp(self.mtime).replace(tzinfo=pytz.utc)
 
         if tz is not None:
-            if isinstance(tz, basestring):
+            if isinstance(tz, str):
                 tval = tval.astimezone(pytz.timezone(tz))
             else:
                 tval = tval.astimezone(tz)
@@ -568,7 +623,10 @@ class AlbumPathComponentModel(Base, BasePathNamedModel):
     )
 
     def __repr__(self):
-        return '{0} {1}'.format(self.level, self.name)
+        return '{} {}'.format(
+            self.level,
+            self.name,
+        )
 
 
 class AlbumArtModel(Base):
@@ -592,7 +650,9 @@ class AlbumArtModel(Base):
     )
 
     def __repr__(self):
-        return 'AlbumArtModel for {0}'.format(self.album.path)
+        return 'AlbumArtModel for {}'.format(
+            self.album.path,
+        )
 
 
 class TrackModel(Base, BasePathNamedModel):
@@ -639,7 +699,10 @@ class TrackModel(Base, BasePathNamedModel):
 
     @property
     def path(self):
-        return os.path.join(self.directory, '{0}.{1}'.format(self.name, self.extension))
+        return os.path.join(self.directory, '{}.{}'.format(
+            self.name,
+            self.extension,
+        ))
 
     def relative_path(self):
         path = self.path
@@ -659,7 +722,7 @@ class TrackModel(Base, BasePathNamedModel):
         tval = datetime.fromtimestamp(self.mtime).replace(tzinfo=pytz.utc)
 
         if tz is not None:
-            if isinstance(tz, basestring):
+            if isinstance(tz, str):
                 tval = tval.astimezone(pytz.timezone(tz))
             else:
                 tval = tval.astimezone(tz)
@@ -704,7 +767,10 @@ class TagModel(Base):
     )
 
     def __repr__(self):
-        return '{0}={1}'.format(self.tag, self.value)
+        return '{}={}'.format(
+            self.tag,
+            self.value,
+        )
 
 
 class PlaylistTreeModel(Base, BaseNamedModel):
@@ -721,7 +787,10 @@ class PlaylistTreeModel(Base, BaseNamedModel):
     path = Column(SafeUnicode, unique=True)
 
     def __repr__(self):
-        return '{0}: {1}'.format(self.name, self.path)
+        return '{}: {}'.format(
+            self.name,
+            self.path,
+        )
 
     @property
     def exists(self):
@@ -789,7 +858,10 @@ class PlaylistModel(Base, BaseNamedModel):
     )
 
     def __repr__(self):
-        return '{0}: {1:d} tracks'.format(os.sep.join([self.directory, self.name]), len(self.tracks))
+        return '{}: {:d} tracks'.format(
+            os.sep.join([self.directory, self.name]),
+            len(self.tracks),
+        )
 
     def __len__(self):
         return len(self.tracks)
@@ -801,7 +873,9 @@ class PlaylistModel(Base, BaseNamedModel):
         try:
             playlist.read()
         except PlaylistError as e:
-            logger.debug('Error reading playlist {0}: {1}'.format(playlist, e))
+            logger.debug('Error reading playlist {}: {}'.format(
+                playlist, e,
+            ))
             return
 
         tracks = []
@@ -840,7 +914,10 @@ class PlaylistTrackModel(Base, BasePathNamedModel):
     )
 
     def __repr__(self):
-        return '{0:d} {1}'.format(self.position, self.path)
+        return '{:d} {}'.format(
+            self.position,
+            self.path,
+        )
 
 
 class SoundforestDB(object):
@@ -863,11 +940,21 @@ class SoundforestDB(object):
                 try:
                     os.makedirs(config_dir)
                 except IOError as e:
-                    raise SoundforestError('Error creating directory {0}: {1}'.format(config_dir, e))
+                    raise SoundforestError('Error creating directory {}: {}'.format(
+                        config_dir,
+                        e,
+                    ))
                 except OSError as e:
-                    raise SoundforestError('Error creating directory {0}: {1}'.format(config_dir, e))
+                    raise SoundforestError('Error creating directory {}: {}'.format(
+                        config_dir,
+                        e,
+                    ))
 
-            engine = create_engine('sqlite:///{0}'.format(path), encoding='utf-8', echo=debug)
+            engine = create_engine(
+                'sqlite:///{}'.format(path),
+                encoding='utf-8',
+                echo=debug
+            )
 
         event.listen(engine, 'connect', self._fk_pragma_on_connect)
         Base.metadata.create_all(engine)
@@ -876,7 +963,9 @@ class SoundforestDB(object):
         indexes = (
         )
         inspector = reflection.Inspector.from_engine(engine)
-        existing_index_names = [index['name'] for table in inspector.get_table_names() for index in inspector.get_indexes(table)]
+        existing_index_names = [
+            index['name'] for table in inspector.get_table_names() for index in inspector.get_indexes(table)
+        ]
         for index in indexes:
             if index.name not in existing_index_names:
                 index.create(bind=engine)
@@ -1073,7 +1162,7 @@ class SoundforestDB(object):
             SyncTargetModel.name == name
         ).first()
         if existing:
-            raise SoundforestError('Sync target was already registered: {0}'.format(name))
+            raise SoundforestError('Sync target was already registered: {}'.format(name))
 
         target = SyncTargetModel(
             name=name,
@@ -1090,7 +1179,7 @@ class SoundforestDB(object):
     def delete_sync_target(self, name):
         existing = self.query(SyncTargetModel).filter(SyncTargetModel.name == name).first()
         if not existing:
-            raise SoundforestError('Sync target was not registered: {0}'.format(name))
+            raise SoundforestError('Sync target was not registered: {}'.format(name))
 
         self.delete(existing)
 
@@ -1128,7 +1217,7 @@ class SoundforestDB(object):
             TreeTypeModel.name == name
         ).first()
         if existing:
-            raise SoundforestError('Tree type was already registered: {0}'.format(name))
+            raise SoundforestError('Tree type was already registered: {}'.format(name))
 
         self.add(TreeTypeModel(name=name, description=description))
 
@@ -1140,7 +1229,7 @@ class SoundforestDB(object):
             TreeTypeModel.name == name
         ).first()
         if not existing:
-            raise SoundforestError('Tree type was not registered: {0}'.format(name))
+            raise SoundforestError('Tree type was not registered: {}'.format(name))
 
         self.delete(existing)
 
@@ -1151,7 +1240,7 @@ class SoundforestDB(object):
         if os.path.isdir(os.path.realpath(path)):
             existing = self.query(PlaylistTreeModel).filter(PlaylistTreeModel.path==path).first()
             if existing is not None:
-                raise SoundforestError('Playlist source is already in database: {0}'.format(path))
+                raise SoundforestError('Playlist source is already in database: {}'.format(path))
 
             tree = PlaylistTreeModel(path=path, name=name)
             self.add(tree)
@@ -1168,7 +1257,7 @@ class SoundforestDB(object):
                 PlaylistModel.extension == extension,
             ).first()
             if existing is not None:
-                raise SoundforestError('Playlist is already in database: {0}'.format(path))
+                raise SoundforestError('Playlist is already in database: {}'.format(path))
 
             playlist = PlaylistModel(directory=directory, name=name, extension=extension)
             playlist.update(self, m3uPlaylist(path))
@@ -1181,7 +1270,7 @@ class SoundforestDB(object):
                 PlaylistTreeModel.path == path
             ).first()
             if existing is None:
-                raise SoundforestError('Playlist tree not found: {0}'.format(path))
+                raise SoundforestError('Playlist tree not found: {}'.format(path))
 
             existing.update(self, m3uPlaylistDirectory(path))
 
@@ -1196,7 +1285,7 @@ class SoundforestDB(object):
                 PlaylistModel.extension == extension,
             ).first()
             if existing is None:
-                raise SoundforestError('Playlist not found: {0}'.format(path))
+                raise SoundforestError('Playlist not found: {}'.format(path))
 
             existing.update(self, m3uPlaylist(path))
 
@@ -1210,7 +1299,7 @@ class SoundforestDB(object):
                 PlaylistTreeModel.path == path
             ).first()
             if existing is None:
-                raise SoundforestError('Playlist tree not found: {0}'.format(path))
+                raise SoundforestError('Playlist tree not found: {}'.format(path))
 
             self.delete(existing)
 
@@ -1226,7 +1315,7 @@ class SoundforestDB(object):
             ).first()
 
             if existing is None:
-                raise SoundforestError('Playlist not found: {0}'.format(path))
+                raise SoundforestError('Playlist not found: {}'.format(path))
 
             self.delete(existing)
 
@@ -1234,14 +1323,11 @@ class SoundforestDB(object):
         """Register path prefix
 
         """
-        if isinstance(path, str):
-            path = str(path, 'utf-8')
-
         existing = self.query(TreePrefixModel).filter(
             TreePrefixModel.path == path
         ).first()
         if existing:
-            raise SoundforestError('TreePrefix was already registered: {0}'.format(path))
+            raise SoundforestError('TreePrefix was already registered: {}'.format(path))
 
         self.add(TreePrefixModel(path=path))
 
@@ -1253,7 +1339,7 @@ class SoundforestDB(object):
             TreePrefixModel.path == path
         ).first()
         if not existing:
-            raise SoundforestError('TreePrefix was not registered: {0}'.format(path))
+            raise SoundforestError('TreePrefix was not registered: {}'.format(path))
 
         self.delete(existing)
 
@@ -1261,14 +1347,11 @@ class SoundforestDB(object):
         """Register tree
 
         """
-        if isinstance(path, str):
-            path = unicode(path, 'utf-8')
-
         existing = self.query(TreeModel).filter(
             TreeModel.path == path
         ).first()
         if existing:
-            raise SoundforestError('Tree was already registered: {0}'.format(path))
+            raise SoundforestError('Tree was already registered: {}'.format(path))
 
         tt = self.get_tree_type(tree_type)
         self.add(TreeModel(path=path, description=description, type=tt))
@@ -1281,7 +1364,7 @@ class SoundforestDB(object):
             TreeModel.path == path
         ).first()
         if not existing:
-            raise SoundforestError('Tree was not registered: {0}'.format(path))
+            raise SoundforestError('Tree was not registered: {}'.format(path))
 
         self.delete(existing)
 
@@ -1346,5 +1429,7 @@ class SoundforestDB(object):
 
         Return tracks matching path prefix
         """
-        return self.query(TrackModel).filter(TrackModel.directory.like('%{0}%'.format(path))).all()
+        return self.query(TrackModel).filter(
+            TrackModel.directory.like('%{0}%'.format(path))
+        ).all()
 

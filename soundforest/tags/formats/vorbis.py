@@ -104,7 +104,7 @@ class VorbisNumberingTag(TrackNumberingTag):
         """
         value = self.__repr__()
         if value is not None:
-            self.track.entry[self.tag] = '{0}'.format(value)
+            self.track.entry[self.tag] = '{}'.format(value)
             self.track.modified = True
 
 class vorbis(TagParser):
@@ -117,9 +117,9 @@ class vorbis(TagParser):
         try:
             self.entry = OggVorbis(path)
         except IOError as e:
-            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+            raise TagError('Error opening {}: {}'.format(path, str(e)))
         except OggVorbisHeaderError as e:
-            raise TagError('Error opening {0}: {1}'.format(path, str(e)))
+            raise TagError('Error opening {}: {}'.format(path, str(e)))
 
         self.albumart_obj = None
         self.track_numbering = VorbisNumberingTag(self, 'TRACKNUMBER')
@@ -127,13 +127,13 @@ class vorbis(TagParser):
 
     def __getitem__(self, item):
         if item == 'tracknumber':
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.value))]
         if item == 'totaltracks':
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.total))]
         if item == 'disknumber':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.value))]
         if item == 'totaldisks':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.total))]
 
         return super(vorbis, self).__getitem__(item)
 

@@ -109,7 +109,7 @@ class Script(object):
         """
         Parse SIGINT signal by quitting the program cleanly with exit code 1
         """
-        for t in filter(lambda t: t.name!='MainThread', threading.enumerate()):
+        for t in [t for t in threading.enumerate() if t.name!='MainThread']:
             t.join()
         self.exit(1)
 
@@ -119,7 +119,7 @@ class Script(object):
         Poll interval is time to wait between checks for threads
         """
         while True:
-            active = filter(lambda t: t.name!='MainThread', threading.enumerate())
+            active = [t for t in threading.enumerate() if t.name!='MainThread']
             if not len(active):
                 break
             time.sleep(poll_interval)
@@ -133,7 +133,7 @@ class Script(object):
             self.message(message)
 
         while True:
-            active = filter(lambda t: t.name!='MainThread', threading.enumerate())
+            active = [t for t in threading.enumerate() if t.name!='MainThread']
             if not len(active):
                 break
             time.sleep(1)

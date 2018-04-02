@@ -11,7 +11,8 @@ import unicodedata
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 
-__version__ ='4.3.0'
+__version__ ='4.3.2'
+
 
 class SoundforestError(Exception):
     pass
@@ -77,7 +78,7 @@ class path_string(str):
         Return item's relative path.
         """
         if path[:len(self)] != self:
-            raise ValueError('{0} path is not relative to {1}'.format(path, self))
+            raise ValueError('{} path is not relative to {}'.format(path, self))
         return path[len(self):].lstrip('/')
 
 

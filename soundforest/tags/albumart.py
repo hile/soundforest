@@ -80,7 +80,9 @@ class AlbumArt(object):
             self.__mimetype = PIL_MIME_MAP[self.__image.format]
         except KeyError:
             self.__image = None
-            raise AlbumArtError('Unsupported PIL image format: {0}'.format(self.__image.format))
+            raise AlbumArtError('Unsupported PIL image format: {}'.format(
+                self.__image.format,
+            ))
 
         if self.__image.mode != 'RGB':
             self.__image = self.__image.convert('RGB')
@@ -96,9 +98,11 @@ class AlbumArt(object):
         Import albumart from file
         """
         if not os.path.isfile(path):
-            raise AlbumArtError('No such file: {0}'.format(path))
+            raise AlbumArtError('No such file: {}'.format(path))
         if not os.access(path, os.R_OK):
-            raise AlbumArtError('No permissions to read file: {0}'.format(path))
+            raise AlbumArtError('No permissions to read file: {}'.format(
+                path,
+            ))
 
         self.__parse_image(open(path, 'r').read())
 
@@ -165,28 +169,43 @@ class AlbumArt(object):
             try:
                 os.unlink(path)
             except IOError as e:
-                raise AlbumArtError('Error removing existing file {0}: {1}'.format(path, e))
+                raise AlbumArtError('Error removing existing file {}: {}'.format(
+                    path,
+                    e,
+                ))
 
         try:
             self.__image.save(path, fileformat)
         except IOError as e:
-            raise AlbumArtError('Error saving {0}: {1}'.format(path, e))
+            raise AlbumArtError('Error saving {}: {}'.format(
+                path,
+                e,
+            ))
 
     def fetch(self, url):
         res = requests.get(url)
         if res.status_code != 200:
-            raise AlbumArtError('Error fetching url {0} (returns {1})'.format(url, res.status_code))
+            raise AlbumArtError('Error fetching url {} (returns {})'.format(
+                url,
+                res.status_code,
+            ))
 
         if 'content-type' not in res.headers:
             raise AlbumArtError('Response did not include content type header')
 
         try:
-            content_type = res.headers['content-type']
+            content_type = res.headers.get('content-type', None)
+            if not content_type:
+                raise AlbumArtError('Response missing content-type header')
             (prefix, extension) = content_type.split('/', 1)
             if prefix!='image':
-                raise AlbumArtError('Content type of data is not supported: {0}'.format(content_type))
+                raise AlbumArtError('Content type of data is not supported: {}'.format(
+                    content_type,
+                ))
 
         except ValueError:
-            raise AlbumArtError('Error parsing content type {0}'.format(res.headers['content-type']))
+            raise AlbumArtError('Error parsing content type {}'.format(
+                res.headers.get('content-type', None)
+            ))
 
         return self.import_data(res.content)

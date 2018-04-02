@@ -58,10 +58,11 @@ def encode_frame(tag,value):
         if tagclass is None:
             raise AttributeError
     except AttributeError as e:
-        raise TagError('Error importing ID3 frame {0}: {1}'.format(tag, e))
+        raise TagError('Error importing ID3 frame {}: {}'.format(tag, e))
     if not isinstance(value, list):
         value = [value]
     return tagclass(encoding=3, text=value)
+
 
 class MP3AlbumArt(TrackAlbumart):
     """
@@ -74,10 +75,7 @@ class MP3AlbumArt(TrackAlbumart):
         super(MP3AlbumArt, self).__init__(track)
 
         try:
-            self.tag = filter(lambda k:
-                k[:5]=='APIC:',
-                self.track.entry.keys()
-            )[0]
+            self.tag = [k for k in self.track.entry.keys() if k[:5]=='APIC:'][0]
         except IndexError:
             self.tag = None
             return
@@ -86,7 +84,7 @@ class MP3AlbumArt(TrackAlbumart):
             albumart = AlbumArt()
             albumart.import_data(self.track.entry[self.tag].data)
         except AlbumArtError as e:
-            raise TagError('Error reading mp3 albumart tag: {0}'.format(e))
+            raise TagError('Error reading mp3 albumart tag: {}'.format(e))
         self.albumart = albumart
 
     def import_albumart(self, albumart):
@@ -99,6 +97,7 @@ class MP3AlbumArt(TrackAlbumart):
         frame = APIC(0, albumart.mimetype, 0, '', albumart.dump())
         self.track.entry.tags.add(frame)
         self.track.modified = True
+
 
 class MP3NumberingTag(TrackNumberingTag):
     """
@@ -120,7 +119,7 @@ class MP3NumberingTag(TrackNumberingTag):
             self.value = int(self.value)
             self.total = int(self.total)
         except ValueError:
-            raise TagError('Unsupported tag value for {0}: {1}'.format(
+            raise TagError('Unsupported tag value for {}: {}'.format(
                 self.tag,
                 self.track.entry[self.tag].text[0]),
             )
@@ -138,7 +137,7 @@ class MP3NumberingTag(TrackNumberingTag):
         if total < value:
             raise ValueError('Total is smaller than number')
 
-        value = '{0:d}/{1:d}'.format(value, total)
+        value = '{:d}/{:d}'.format(value, total)
         if self.tag in self.track.entry.tags:
             old_value = self.track.entry.tags[self.tag]
             if value == old_value:
@@ -148,6 +147,7 @@ class MP3NumberingTag(TrackNumberingTag):
         frame = encode_frame(self.tag, value)
         self.track.entry.tags.add(frame)
         self.track.modified = True
+
 
 class mp3(TagParser):
     """
@@ -159,11 +159,11 @@ class mp3(TagParser):
         try:
             self.entry = MP3(self.path, ID3=ID3)
         except IOError:
-            raise TagError('No ID3 header in {0}'.format(self.path))
+            raise TagError('No ID3 header in {}'.format(self.path))
         except ID3NoHeaderError:
-            raise TagError('No ID3 header in {0}'.format(self.path))
+            raise TagError('No ID3 header in {}'.format(self.path))
         except RuntimeError:
-            raise TagError('Runtime error loading {0}'.format(self.path))
+            raise TagError('Runtime error loading {}'.format(self.path))
 
         try:
             self.entry.add_tags()
@@ -183,16 +183,16 @@ class mp3(TagParser):
         """
         if item == 'tracknumber':
 
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.value))]
 
         if item == 'totaltracks':
-            return [format_unicode_string_value('{0:d}'.format(self.track_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.track_numbering.total))]
 
         if item == 'disknumber':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.value))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.value))]
 
         if item == 'totaldisks':
-            return [format_unicode_string_value('{0:d}'.format(self.disk_numbering.total))]
+            return [format_unicode_string_value('{:d}'.format(self.disk_numbering.total))]
 
         if item[:5] == 'APIC:':
             return self.albumart_obj
@@ -224,24 +224,24 @@ class mp3(TagParser):
                     continue
 
                 if not matched:
-                    raise TagError('Error parsing {0}: {1}'.format(tag, dir(value)))
+                    raise TagError('Error parsing {}: {}'.format(tag, dir(value)))
 
                 if not isinstance(value, str):
                     try:
-                        value = '{0:d}'.format(int(format_unicode_string_value(value)))
+                        value = '{:d}'.format(int(format_unicode_string_value(value)))
                     except ValueError:
                         pass
 
                     try:
                         value = format_unicode_string_value(value)
                     except UnicodeDecodeError as e:
-                        raise TagError('Error decoding {0} tag {1}: {2}'.format(self.path, field, e) )
+                        raise TagError('Error decoding {} tag {}: {}'.format(self.path, field, e) )
 
                 values.append(value)
 
             return values
 
-        raise KeyError('No such tag: {0}'.format(fields))
+        raise KeyError('No such tag: {}'.format(fields))
 
     def __delitem__(self, item):
         tags = self.__tag2fields__(item)

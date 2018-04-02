@@ -72,7 +72,7 @@ class SyncThread(ScriptThread):
             self.src = os.path.expandvars(src).rstrip(os.sep)
 
         else:
-            raise SyncError('Src is not string or Tree object: {0}'.format(src))
+            raise SyncError('Src is not string or Tree object: {}'.format(src))
 
         if isinstance(dst, Tree):
             self.dst_tree = dst
@@ -83,7 +83,7 @@ class SyncThread(ScriptThread):
             self.dst = os.path.expandvars(dst).rstrip(os.sep)
 
         else:
-            raise SyncError('Dst is not string or Tree object: {0}'.format(dst))
+            raise SyncError('Dst is not string or Tree object: {}'.format(dst))
 
     def run(self):
         raise NotImplementedError('Must be implemented in inheriting class')
@@ -97,7 +97,7 @@ class FilesystemSyncThread(SyncThread):
             try:
                 rename = RENAME_CALLBACKS[rename]
             except KeyError:
-                raise SyncError('Unknown rename callback: {0}'.format(rename))
+                raise SyncError('Unknown rename callback: {}'.format(rename))
 
         self.rename = rename
 
@@ -106,17 +106,17 @@ class FilesystemSyncThread(SyncThread):
             shutil.copyfile(src, dst)
 
         except IOError as e:
-            raise SyncError('Error writing to {0}: {1}'.format(dst, e))
+            raise SyncError('Error writing to {}: {}'.format(dst, e))
 
         except OSError as e:
-            raise SyncError('Error writing to {0}: {1}'.format(dst, e))
+            raise SyncError('Error writing to {}: {}'.format(dst, e))
 
     def run(self):
         if not os.path.isdir(self.src_tree.path):
-            raise SyncError('Source not available while syncing: {0}'.format(self.src_tree.path))
+            raise SyncError('Source not available while syncing: {}'.format(self.src_tree.path))
 
         if not os.path.isdir(self.dst_tree.path):
-            raise SyncError('Destination not available while syncing: {0}'.format(self.dst_tree.path))
+            raise SyncError('Destination not available while syncing: {}'.format(self.dst_tree.path))
 
         src = self.src_tree
         dst = self.dst_tree
@@ -129,11 +129,11 @@ class FilesystemSyncThread(SyncThread):
 
             if not os.path.isdir(dst_album_path):
                 try:
-                    self.log.debug('Create directory: {0}'.format(dst_album_path))
+                    self.log.debug('Create directory: {}'.format(dst_album_path))
                     os.makedirs(dst_album_path)
 
                 except OSError as e:
-                    self.log.info('Error creating directory {0}: {1}'.format(dst_album_path, e))
+                    self.log.info('Error creating directory {}: {}'.format(dst_album_path, e))
                     continue
 
             for track in album:
@@ -146,11 +146,11 @@ class FilesystemSyncThread(SyncThread):
 
                 modified = False
                 if not os.path.isfile(dst_track.path):
-                    self.log.info('{0:6d} new: {1}'.format(i, dst_track.path))
+                    self.log.info('{:6d} new: {}'.format(i, dst_track.path))
                     modified = True
 
                 elif track.size != dst_track.size:
-                    self.log.info('{0:6d} modified: {1}'.format(i, dst_track.path))
+                    self.log.info('{:6d} modified: {}'.format(i, dst_track.path))
                     modified = True
 
                 if modified:
@@ -174,10 +174,10 @@ class RsyncThread(SyncThread):
         self.flags = flags
 
     def run(self):
-        command = ['rsync', '-av'] + self.flags + ['{0}/'.format(self.src), '{0}/'.format(self.dst)]
+        command = ['rsync', '-av'] + self.flags + ['{}/'.format(self.src), '{}/'.format(self.dst)]
 
         try:
-            self.log.info('Running: {0}'.format(' '.join(command)))
+            self.log.info('Running: {}'.format(' '.join(command)))
 
             p = Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             rval = None
@@ -190,13 +190,13 @@ class RsyncThread(SyncThread):
                 rval = p.poll()
 
             if rval != 0:
-                self.log.info('Error running command {0}: {1}'.format(self, p.stderr.read()))
+                self.log.info('Error running command {}: {}'.format(self, p.stderr.read()))
 
         except KeyboardInterrupt:
             self.log.debug('Rsync interrupted')
             raise KeyboardInterrupt
 
-        self.log.info('Finished: {0}'.format(' '.join(command)))
+        self.log.info('Finished: {}'.format(' '.join(command)))
 
 
 class SyncManager(ScriptThreadManager):
@@ -250,7 +250,7 @@ class SyncManager(ScriptThreadManager):
 
         sync_type = config.get('type', None)
         if sync_type not in ['rsync', 'directory']:
-            raise SyncError('Unknown sync type in config: {0}'.format(sync_type))
+            raise SyncError('Unknown sync type in config: {}'.format(sync_type))
 
         if 'delete' not in config:
             config['delete'] = self.delete
@@ -272,7 +272,7 @@ class SyncManager(ScriptThreadManager):
                 time.sleep(0.5)
                 continue
 
-            index = '{0:d}/{1:d}'.format(total-len(self)+1, total)
+            index = '{:d}/{:d}'.format(total-len(self)+1, total)
             t = self.get_entry_handler(index, self.pop(0))
             t.start()
 

@@ -92,7 +92,7 @@ class MusicTreePrefix(object):
         if realpath[:len(mypath)] == mypath:
             return path_string(realpath[len(mypath):].lstrip(os.sep))
 
-        raise PrefixError('Prefix does not match: {0}'.format(path))
+        raise PrefixError('Prefix does not match: {}'.format(path))
 
 
 class TreePrefixes(object):
@@ -148,7 +148,7 @@ class TreePrefixes(object):
                             (codec_name, paths) = [x.strip() for x in line.split('=', 1)]
                             paths = [x.strip() for x in paths.split(',')]
                         except ValueError:
-                            self.log.debug('Error parsing line: {0}'.format(line))
+                            self.log.debug('Error parsing line: {}'.format(line))
                             continue
 
                         user_codecs[codec_name] = paths
@@ -173,7 +173,10 @@ class TreePrefixes(object):
                                 self.add_prefix(prefix, prepend=True)
 
             except IOError as e:
-                raise PrefixError('Error reading {0}: {1}'.format(USER_PATH_CONFIG, e))
+                raise PrefixError('Error reading {}: {}'.format(
+                    USER_PATH_CONFIG,
+                    e,
+                ))
 
         def index(self, prefix):
             if not isinstance(prefix, MusicTreePrefix):

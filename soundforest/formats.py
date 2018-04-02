@@ -140,9 +140,9 @@ class AudioFileFormat(object):
             try:
                 os.makedirs(dir)
             except IOError as e:
-                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, e))
+                raise SoundforestError('Error creating directory {}: {}'.format(SOUNDFOREST_CACHE_DIR, e))
             except OSError as e:
-                raise SoundforestError('Error creating directory {0}: {1}'.format(SOUNDFOREST_CACHE_DIR, e))
+                raise SoundforestError('Error creating directory {}: {}'.format(SOUNDFOREST_CACHE_DIR, e))
 
         return tempfile.mktemp(dir=dir, prefix=prefix, suffix=suffix)
 
@@ -183,13 +183,13 @@ class AudioFileFormat(object):
         return filter_available_command_list(self.codec.testers)
 
     def execute(self, args):
-        self.log.debug('running: {0}'.format(' '.join(args)))
+        self.log.debug('running: {}'.format(' '.join(args)))
         p = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         (stdout, stderr) = p.communicate()
 
         if stdout:
-            self.log.debug('output:\n{0}'.format(stdout))
+            self.log.debug('output:\n{}'.format(stdout))
         if stderr:
-            self.log.debug('errors:\n{0}'.format(stderr))
+            self.log.debug('errors:\n{}'.format(stderr))
 
         return p.returncode, stdout, stderr
