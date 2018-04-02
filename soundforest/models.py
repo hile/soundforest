@@ -465,7 +465,8 @@ class TreeModel(Base, BasePathNamedModel):
 
     def tag_count(self, session):
         return session.query(TagModel).filter(
-            TrackModel.tree == self).filter
+            TrackModel.tree == self
+        ).filter(
             TagModel.track_id == TrackModel.id
         ).count()
 
@@ -476,8 +477,10 @@ class TreeModel(Base, BasePathNamedModel):
 
         """
         return session.query(TrackModel).filter(
-            TrackModel.tree == self).filter(
-            TagModel.track_id == TrackModel.id).filter(
+            TrackModel.tree == self
+        ).filter(
+            TagModel.track_id == TrackModel.id
+        ).filter(
             TagModel.value.like('%{}%'.format(match))
         ).all()
 
