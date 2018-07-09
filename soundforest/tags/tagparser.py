@@ -6,10 +6,7 @@ Tag metadata reader and writer classes
 """
 
 import os
-import base64
 import json
-import logging
-import sys
 from datetime import datetime
 
 from soundforest import normalized
@@ -17,7 +14,7 @@ from soundforest.log import SoundforestLogger
 from soundforest.formats import AudioFileFormat
 from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.constants import STANDARD_TAG_ORDER, STANDARD_TAG_MAP
-from soundforest.tags.xmltag import XMLTags, XMLTagError
+from soundforest.tags.xmltag import XMLTags
 from soundforest.tags.albumart import AlbumArt, AlbumArtError
 
 YEAR_FORMATTERS = [
@@ -31,6 +28,7 @@ YEAR_FORMATTERS = [
 ]
 
 logger = SoundforestLogger().default_stream
+
 
 class TagParser(dict):
     """
@@ -147,14 +145,10 @@ class TagParser(dict):
             return None
 
         for value in tags:
-            if sys.version_info.major >= 3:
-                if not isinstance(value, str):
-                    continue
-            else:
-                if not isinstance(value, unicode):
-                    continue
+            if not isinstance(value, str):
+                continue
 
-            if tag=='year':
+            if tag == 'year':
                 # Try to clear extra date details from year
                 for fmt in YEAR_FORMATTERS:
                     try:
@@ -199,15 +193,15 @@ class TagParser(dict):
         return self.albumart.import_albumart(albumart)
 
     def remove_tag(self, item):
-        if not self.has_key(item):
+        if item not in self:
             raise TagError('No such tag: {}'.format(item))
-        del self[tag]
+        del self[item]
 
     def get_tag(self, item):
         """
         Return tag from file. Raises TagError if tag is not found.
         """
-        if not self.has_key(item):
+        if item not in self:
             raise TagError('No such tag: {}'.format(item))
 
         value = self.__normalized_tag__(item)
@@ -295,13 +289,10 @@ class TagParser(dict):
         tags = []
         for tag in self.keys():
             values = self.__normalized_tag__(tag)
-
             if values is None:
                 continue
-
-            tags.append(value)
-
-        return tags
+            tags.extend(values)
+        return tag
 
         return [self[k] for k, v in self.keys()]
 
@@ -333,12 +324,6 @@ class TagParser(dict):
             indent=indent,
             sort_keys=True
         )
-
-    def get_unknown_tags(self):
-        """
-        Must be implemented in child if needed: return empty list here
-        """
-        return []
 
     def update_tags(self, data):
         if not isinstance(data, dict):
@@ -437,14 +422,6 @@ class TrackAlbumart(object):
         if self.albumart is None:
             return False
         return True
-
-    def as_base64_tag(self):
-        """
-        Return albumart image data as base64_tag tag
-        """
-        if self.albumart is None:
-            raise TagError('Albumart is not loaded')
-        return base64_tag(base64.b64encode(self.albumart.dump()))
 
     def import_albumart(self, albumart):
         """

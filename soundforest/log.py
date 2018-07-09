@@ -7,14 +7,9 @@ Soundforest debug and file logging facilities
 import os
 import sys
 import fnmatch
-import re
 import urllib
-import bz2
-import gzip
 import logging
 import logging.handlers
-
-from datetime import datetime, timedelta
 
 from soundforest import SoundforestError
 
@@ -25,11 +20,11 @@ DEFAULT_LOGSIZE_LIMIT = 2**20
 DEFAULT_LOG_BACKUPS = 10
 
 DEFAULT_SYSLOG_FORMAT = '%(message)s'
-DEFAULT_SYSLOG_LEVEL =  logging.handlers.SysLogHandler.LOG_WARNING
+DEFAULT_SYSLOG_LEVEL = logging.handlers.SysLogHandler.LOG_WARNING
 DEFAULT_SYSLOG_FACILITY = logging.handlers.SysLogHandler.LOG_USER
 
 # Mapping to set syslog handler levels via same classes as normal handlers
-LOGGING_LEVEL_NAMES = ( 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL' )
+LOGGING_LEVEL_NAMES = ('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
 SYSLOG_LEVEL_MAP = {
     logging.handlers.SysLogHandler.LOG_DEBUG:   logging.DEBUG,
     logging.handlers.SysLogHandler.LOG_NOTICE:  logging.INFO,
@@ -45,7 +40,8 @@ if sys.platform == 'linux2' or fnmatch.fnmatch(sys.platform, '*bsd*'):
 elif sys.platform == 'darwin':
     DEFAULT_SYSLOG_ADDRESS = '/var/run/syslog'
 else:
-    DEFAULT_SYSLOG_ADDRESS = ( 'localhost', 514 )
+    DEFAULT_SYSLOG_ADDRESS = ('localhost', 514)
+
 
 class SoundforestLogger(object):
     """SoundforestLogger
@@ -55,6 +51,7 @@ class SoundforestLogger(object):
 
     """
     __instances = {}
+
     def __init__(self, name=None):
         name = name is not None and name or self.__class__.__name__
 
@@ -83,7 +80,7 @@ class SoundforestLogger(object):
         def __get_or_create_logger__(self, name):
             if name not in self.keys():
                 for logging_manager in logging.Logger.manager.loggerDict.values():
-                    if hasattr(logging_manager, 'name') and logging_manager.name==name:
+                    if hasattr(logging_manager, 'name') and logging_manager.name == name:
                         self[name] = logging.getLogger(name)
                         break
 
@@ -98,19 +95,19 @@ class SoundforestLogger(object):
                     return False
 
                 if isinstance(a, logging.StreamHandler):
-                    for k in ('stream', 'name',):
+                    for k in ('stream', 'name'):
                         if getattr(a, k) != getattr(b, k):
                             return False
                     return True
 
                 if isinstance(a, logging.handlers.SysLogHandler):
-                    for k in ( 'address', 'facility', ):
+                    for k in ('address', 'facility'):
                         if getattr(a, k) != getattr(b, k):
                             return False
                     return True
 
                 if isinstance(a, logging.handlers.HTTPHandler):
-                    for k in ( 'host', 'url', 'method', ):
+                    for k in ('host', 'url', 'method'):
                         if getattr(a, k) != getattr(b, k):
                             return False
                     return True
@@ -118,10 +115,10 @@ class SoundforestLogger(object):
                 return True
 
             if not isinstance(handler, logging.Handler):
-                raise LoggerError('Not an instance of logging.Handler: {0}'.format(handler))
+                raise SoundforestError('Not an instance of logging.Handler: {0}'.format(handler))
 
             if not isinstance(handler_list, list):
-                raise LoggerError('BUG handler_list must be a list instance')
+                raise SoundforestError('BUG handler_list must be a list instance')
 
             for match in handler_list:
                 if match_handler(match, handler):
@@ -149,18 +146,17 @@ class SoundforestLogger(object):
                 logger.addHandler(handler)
 
         def register_syslog_handler(self, name,
-                address=DEFAULT_SYSLOG_ADDRESS,
-                facility=DEFAULT_SYSLOG_FACILITY,
-                default_level=DEFAULT_SYSLOG_LEVEL,
-                socktype=None,
-                logformat=None,
-            ):
+                                    address=DEFAULT_SYSLOG_ADDRESS,
+                                    facility=DEFAULT_SYSLOG_FACILITY,
+                                    default_level=DEFAULT_SYSLOG_LEVEL,
+                                    socktype=None,
+                                    logformat=None):
 
             if logformat is None:
                 logformat = DEFAULT_SYSLOG_FORMAT
 
             if default_level not in SYSLOG_LEVEL_MAP.keys():
-                raise LoggerError('Unsupported syslog level value')
+                raise SoundforestError('Unsupported syslog level value')
 
             logger = self.__get_or_create_logger__(name)
             handler = logging.handlers.SysLogHandler(address, facility, socktype)
@@ -175,7 +171,7 @@ class SoundforestLogger(object):
             try:
                 host, path = urllib.splithost(url[url.index(':')+1:])
             except IndexError as e:
-                raise LoggerError('Error parsing URL {0}: {1}'.format(url, e))
+                raise SoundforestError('Error parsing URL {0}: {1}'.format(url, e))
 
             handler = logging.handlers.HTTPHandler(host, url, method)
             if not self.__match_handlers__(logger.handlers, handler):
@@ -183,10 +179,10 @@ class SoundforestLogger(object):
                 logger.setLevel(self.loglevel)
 
         def register_file_handler(self, name, directory,
-                         logformat=None,
-                         timeformat=None,
-                         maxBytes=DEFAULT_LOGSIZE_LIMIT,
-                         backupCount=DEFAULT_LOG_BACKUPS):
+                                  logformat=None,
+                                  timeformat=None,
+                                  maxBytes=DEFAULT_LOGSIZE_LIMIT,
+                                  backupCount=DEFAULT_LOG_BACKUPS):
             """
             Register a common log file handler for rotating file based logs
             """
@@ -200,7 +196,7 @@ class SoundforestLogger(object):
                 try:
                     os.makedirs(directory)
                 except OSError:
-                    raise LoggerError('Error creating directory: {0}'.format(directory))
+                    raise SoundforestError('Error creating directory: {0}'.format(directory))
             logfile = os.path.join(directory, '{0}.log'.format(name))
 
             logger = self.__get_or_create_logger__(name)
@@ -215,10 +211,10 @@ class SoundforestLogger(object):
                 logger.addHandler(handler)
                 logger.setLevel(self.loglevel)
 
-
         @property
         def level(self):
             return self._level
+
         @level.setter
         def level(self, value):
             if not isinstance(value, int):
@@ -240,6 +236,7 @@ class SoundforestLogger(object):
         @property
         def loglevel(self):
             return self.level
+
         @loglevel.setter
         def loglevel(self, value):
             self.level = value

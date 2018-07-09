@@ -192,6 +192,7 @@ DATE_FORMATS = [
     '%Y',
 ]
 
+
 def sorted_tags(tags):
     sorted_tags = []
 
@@ -206,6 +207,7 @@ def sorted_tags(tags):
 
     return sorted_tags
 
+
 def parsedate(value):
     tval = None
     for fmt in DATE_FORMATS:
@@ -215,4 +217,3 @@ def parsedate(value):
         except ValueError:
             continue
     return tval
-

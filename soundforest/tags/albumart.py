@@ -22,8 +22,10 @@ PIL_MIME_MAP = {
     'PNG':      'image/png',
 }
 
+
 class AlbumArtError(Exception):
     pass
+
 
 class AlbumArt(object):
     """
@@ -52,8 +54,8 @@ class AlbumArt(object):
         """
 
         if not self.is_loaded():
-            return unicode('Uninitialized AlbumArt object')
-        return unicode('%(mime)s %(width)dx%(height)dpx' % self.get_info())
+            return u'Uninitialized AlbumArt object'
+        return '%(mime)s %(width)dx%(height)dpx' % self.get_info()
 
     def __len__(self):
         """
@@ -110,7 +112,7 @@ class AlbumArt(object):
         """
         Boolean test to see if album art image is loaded
         """
-        return self.__image != None
+        return self.__image is not None
 
     def get_fileformat(self):
         """
@@ -130,7 +132,7 @@ class AlbumArt(object):
         if colors is None:
             colors = 0
         return {
-            'type': 3, # Album cover
+            'type': 3,  # Album cover
             'mime': self.__mimetype,
             'bytes': len(self),
             'width': int(self.__image.size[0]),
@@ -198,7 +200,7 @@ class AlbumArt(object):
             if not content_type:
                 raise AlbumArtError('Response missing content-type header')
             (prefix, extension) = content_type.split('/', 1)
-            if prefix!='image':
+            if prefix != 'image':
                 raise AlbumArtError('Content type of data is not supported: {}'.format(
                     content_type,
                 ))

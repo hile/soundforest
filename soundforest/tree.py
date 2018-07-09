@@ -4,6 +4,7 @@
 Abstraction of filesystem audio file trees, albums and tracks
 
 """
+from __future__ import unicode_literals
 
 import hashlib
 import os
@@ -11,14 +12,16 @@ import re
 import shutil
 import time
 
+from builtins import str
 
-from soundforest import normalized, path_string, SoundforestError, TreeError
+from soundforest import normalized, path_string, TreeError
+from soundforest.defaults import DEFAULT_CODECS
 from soundforest.log import SoundforestLogger
 from soundforest.formats import AudioFileFormat, match_codec, match_metadata
-from soundforest.prefixes import TreePrefixes, PrefixError
+from soundforest.prefixes import TreePrefixes
 from soundforest.metadata import CoverArt
 from soundforest.tags import TagError
-from soundforest.tags.albumart import AlbumArt, AlbumArtError
+from soundforest.tags.albumart import AlbumArt
 from soundforest.tags.tagparser import Tags
 
 
@@ -178,30 +181,37 @@ class Tree(IterableTrackFolder):
         class K(object):
             def __init__(self, obj, *args):
                 self.obj = obj
+
             def __lt__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] < other.obj[1]
                 return self.obj[0] < other.obj[0]
+
             def __gt__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] > other.obj[1]
                 return self.obj[0] > other.obj[0]
+
             def __eq__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] == other.obj[1]
                 return self.obj[0] == other.obj[0]
+
             def __le__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] <= other.obj[1]
                 return self.obj[0] <= other.obj[0]
+
             def __ge__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] >= other.obj[1]
                 return self.obj[0] >= other.obj[0]
+
             def __ne__(self, other):
                 if self.obj[0] == other.obj[0]:
                     return self.obj[1] != other.obj[1]
                 return self.obj[0] != other.obj[0]
+
         return K
 
     def load(self):
@@ -249,7 +259,7 @@ class Tree(IterableTrackFolder):
             if not re_file and not re_path:
                 raise TreeError('No matches if both re_file and re_path are False')
 
-            if isinstance(regexp, basestring):
+            if isinstance(regexp, str):
                 regexp = re.compile(regexp)
 
             tracks = [
@@ -360,7 +370,7 @@ class Album(IterableTrackFolder):
         return None
 
     def copy_metadata(self, target):
-        if isinstance(target, basestring):
+        if isinstance(target, str):
             target = Album(target)
 
         if not os.path.isdir(target.path):
@@ -494,7 +504,7 @@ class Track(AudioFileFormat):
 
     def get_album_tracks(self):
         path = os.path.dirname(self.path)
-        extensions = CODECS[self.codec]['extensions']
+        extensions = DEFAULT_CODECS[self.codec]['extensions']
         tracks = []
 
         for t in os.listdir(path):

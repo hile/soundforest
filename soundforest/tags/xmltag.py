@@ -3,13 +3,9 @@ XML schema representation of audio file metadata tags
 """
 
 from lxml import etree as ET
-from lxml.etree import XMLSyntaxError
 from lxml.builder import E
 
 from soundforest.tags.constants import parsedate
-
-class XMLTagError(Exception):
-    pass
 
 XML_EXPORT_FIELDS = [
     'path',
@@ -30,17 +26,21 @@ XML_EXPORT_FIELDS = [
     'xid',
 ]
 
+
 def XMLTrackNumberField(details):
     if 'totaltracks' in details:
-        node = E('tracknumber',
+        node = E(
+            'tracknumber',
             track=details['tracknumber'][0],
             total=details['totaltracks'][0]
         )
     else:
-        node = E('tracknumber',
+        node = E(
+            'tracknumber',
             track=details['tracknumber'][0],
         )
     return node
+
 
 def XMLTrackYear(details):
     nodes = []
@@ -52,10 +52,16 @@ def XMLTrackYear(details):
         nodes.append(E('year', '{:d}'.format(value.tm_year)))
     return nodes
 
+
 XML_FIELD_CLASSES = {
     'tracknumber': XMLTrackNumberField,
     'year': XMLTrackYear,
 }
+
+
+class XMLTagError(Exception):
+    pass
+
 
 class XMLTags(dict):
     def __init__(self, data):
@@ -83,7 +89,7 @@ class XMLTags(dict):
 
 class XMLTrackTree(object):
     def __init__(self):
-        self.tracks =  E('tracks')
+        self.tracks = E('tracks')
         self.tree = E('soundforest', self.tracks)
 
     def append(self, xmltags):
@@ -94,4 +100,3 @@ class XMLTrackTree(object):
     def tostring(self):
         self.tracks.set('total', '{:d}'.format(len(self.tracks)))
         return ET.tostring(self.tree, pretty_print=True)
-

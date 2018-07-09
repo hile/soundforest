@@ -9,7 +9,7 @@ from mutagen.flac import FLAC
 from mutagen.flac import Picture, FLACNoHeaderError
 
 from soundforest.tags import TagError, format_unicode_string_value
-from soundforest.tags.albumart import AlbumArt, AlbumArtError
+from soundforest.tags.albumart import AlbumArt
 from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
 from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
 
@@ -75,6 +75,7 @@ FLAC_TAG_FORMATTERS = {
 FLAC_EXTRA_TAGS = {
 }
 
+
 class FLACAlbumart(TrackAlbumart):
     """
     Encoding of flac albumart to flac Picture tags
@@ -106,6 +107,7 @@ class FLACAlbumart(TrackAlbumart):
         self.track.entry.add_picture(p)
         self.track.modified = True
 
+
 class FLACNumberingTag(TrackNumberingTag):
     """
     FLAC tags for storing track or disk numbers.
@@ -136,6 +138,7 @@ class FLACNumberingTag(TrackNumberingTag):
         if value is not None:
             self.track.entry[self.tag] = '{}'.format(value)
             self.track.modified = True
+
 
 class flac(TagParser):
     """
@@ -172,9 +175,9 @@ class flac(TagParser):
 
     def __delitem__(self, item):
         try:
-            item, value = item.split('=', 1)
+            item = item.split('=', 1)[0]
         except ValueError:
-            value = None
+            pass
 
         fields = self.__tag2fields__(item)
         for tag in fields:
@@ -246,7 +249,7 @@ class flac(TagParser):
 
                 del self.entry[tag]
 
-        entries =[]
+        entries = []
         for v in value:
             if item in FLAC_TAG_FORMATTERS:
                 entries.append(FLAC_TAG_FORMATTERS[item](v))

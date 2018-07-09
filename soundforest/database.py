@@ -1,13 +1,11 @@
-# coding=utf-8
-"""Soundforest configuration database
+"""
+Soundforest configuration database
 
 Soundforest configuration database, implementing the database
 classes in soundforest.models for cli scripts.
-
 """
 
 import os
-import hashlib
 
 from soundforest import models, TreeError, SoundforestError
 from soundforest.log import SoundforestLogger
@@ -28,6 +26,7 @@ class ConfigDB(object):
     """
 
     __db_instance = None
+
     def __init__(self, path=None):
         if not ConfigDB.__db_instance:
             ConfigDB.__db_instance = ConfigDB.ConfigInstance(path)
@@ -51,7 +50,7 @@ class ConfigDB(object):
             if not treetypes:
                 treetypes = []
 
-                for name,description in DEFAULT_TREE_TYPES.items():
+                for name, description in DEFAULT_TREE_TYPES.items():
                     treetypes.append(models.TreeTypeModel(name=name, description=description))
 
                 self.add(treetypes)
@@ -61,12 +60,12 @@ class ConfigDB(object):
             self.sync_configuration = SyncConfiguration(db=self)
 
         def get(self, key):
-            entry = self.session.query(models.SettingModel).filter(models.SettingModel.key==key).first()
+            entry = self.session.query(models.SettingModel).filter(models.SettingModel.key == key).first()
 
             return entry is not None and entry.value or None
 
         def set(self, key, value):
-            existing = self.session.query(models.SettingModel).filter(models.SettingModel.key==key).first()
+            existing = self.session.query(models.SettingModel).filter(models.SettingModel.key == key).first()
             if existing:
                 self.session.delete(existing)
 
@@ -179,9 +178,9 @@ class ConfigDB(object):
                         deleted=False,
                     )
                     if self.update_track(track, update_checksum, db_track=db_track):
-                        added +=1
+                        added += 1
                     else:
-                        errors +=1
+                        errors += 1
 
                 elif db_track.mtime != track.mtime:
                     self.log.debug('{} update track {}'.format(
@@ -191,7 +190,7 @@ class ConfigDB(object):
                     if self.update_track(track, update_checksum):
                         updated += 1
                     else:
-                        errors +=1
+                        errors += 1
 
                 elif not db_track.checksum and update_checksum:
                     self.log.debug('{} update checksum {}'.format(
@@ -201,7 +200,7 @@ class ConfigDB(object):
                     if self.update_track_checksum(track) is not None:
                         updated += 1
                     else:
-                        errors +=1
+                        errors += 1
 
                 processed += 1
                 if progresslog and processed % 1000 == 0:
@@ -280,10 +279,10 @@ class ConfigDB(object):
 
             try:
                 component = self.query(models.AlbumPathComponentModel).filter(
-                    models.AlbumPathComponentModel.tree==album.tree,
-                    models.AlbumPathComponentModel.parent==parent,
-                    models.AlbumPathComponentModel.name==name,
-                    models.AlbumPathComponentModel.level==level,
+                    models.AlbumPathComponentModel.tree == album.tree,
+                    models.AlbumPathComponentModel.parent == parent,
+                    models.AlbumPathComponentModel.name == name,
+                    models.AlbumPathComponentModel.level == level,
                 ).one()
 
                 if component.name != name:
@@ -298,9 +297,9 @@ class ConfigDB(object):
         album.parent = component.parent
 
         for invalid in self.query(models.AlbumPathComponentModel).filter(
-            models.AlbumPathComponentModel.tree==album.tree,
-            models.AlbumPathComponentModel.name==name,
-            level>len(parts),
+            models.AlbumPathComponentModel.tree == album.tree,
+            models.AlbumPathComponentModel.name == name,
+            level > len(parts),
         ):
             self.delete(invalid)
 
@@ -354,6 +353,7 @@ class ConfigDB(object):
                 return None
         else:
             return None
+
 
 class ConfigDBDictionary(dict):
     """Configuration database dictionary
@@ -418,7 +418,7 @@ class CodecConfiguration(ConfigDBDictionary):
             self[str(codec.name)] = codec
 
         for name, settings in DEFAULT_CODECS.items():
-            if name  in self.keys():
+            if name in self.keys():
                 continue
 
             codec = self.db.add_codec(name, **settings)

@@ -6,7 +6,6 @@ SQLAlchemy models for soundforest configuration and music tree databases
 """
 
 import os
-import hashlib
 import base64
 import json
 import pytz
@@ -16,15 +15,15 @@ from datetime import datetime
 
 from sqlite3 import Connection as SQLite3Connection
 from sqlalchemy import (create_engine, event,
-                        Column, ForeignKey, Integer, Boolean, String,
-                        Date, UniqueConstraint, Index )
+                        Column, ForeignKey, Integer, Boolean,
+                        String, Date, Index)
 from sqlalchemy.engine import reflection
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.types import TypeDecorator, Unicode
 
-from soundforest import SoundforestError, SOUNDFOREST_USER_DIR
+from soundforest import SoundforestError
+from soundforest.defaults import SOUNDFOREST_USER_DIR
 from soundforest.log import SoundforestLogger
 from soundforest.playlist import m3uPlaylist, m3uPlaylistDirectory
 
@@ -301,9 +300,11 @@ class ExtensionModel(Base):
     id = Column(Integer, primary_key=True)
     extension = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codec.id'), nullable=False)
-    codec = relationship('CodecModel',
+    codec = relationship(
+        'CodecModel',
         single_parent=False,
-        backref=backref('extensions',
+        backref=backref(
+            'extensions',
             order_by=extension,
             cascade='all, delete, delete-orphan'
         )
@@ -326,9 +327,11 @@ class TesterModel(Base):
     command = Column(SafeUnicode)
 
     codec_id = Column(Integer, ForeignKey('codec.id'), nullable=False)
-    codec = relationship('CodecModel',
+    codec = relationship(
+        'CodecModel',
         single_parent=False,
-        backref=backref('testers',
+        backref=backref(
+            'testers',
             order_by=command,
             cascade='all, delete, delete-orphan'
         )
@@ -354,9 +357,11 @@ class DecoderModel(Base):
     priority = Column(Integer)
     command = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codec.id'), nullable=False)
-    codec = relationship('CodecModel',
+    codec = relationship(
+        'CodecModel',
         single_parent=False,
-        backref=backref('decoders',
+        backref=backref(
+            'decoders',
             order_by=priority,
             cascade='all, delete, delete-orphan'
         )
@@ -382,9 +387,11 @@ class EncoderModel(Base):
     priority = Column(Integer)
     command = Column(SafeUnicode)
     codec_id = Column(Integer, ForeignKey('codec.id'), nullable=False)
-    codec = relationship('CodecModel',
+    codec = relationship(
+        'CodecModel',
         single_parent=False,
-        backref=backref('encoders',
+        backref=backref(
+            'encoders',
             order_by=priority,
             cascade='all, delete, delete-orphan'
         )
@@ -442,9 +449,11 @@ class TreeModel(Base, BasePathNamedModel):
     description = Column(SafeUnicode)
 
     type_id = Column(Integer, ForeignKey('treetype.id'), nullable=True)
-    type = relationship('TreeTypeModel',
+    type = relationship(
+        'TreeTypeModel',
         single_parent=True,
-        backref=backref('trees',
+        backref=backref(
+            'trees',
             order_by=path,
             cascade='all, delete, delete-orphan'
         )
@@ -517,7 +526,7 @@ class AlbumModel(Base, BasePathNamedModel):
 
     __tablename__ = 'album'
     __table_args__ = (
-        Index( 'tree_album_directory', 'tree_id', 'directory', ),
+        Index('tree_album_directory', 'tree_id', 'directory'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -526,18 +535,22 @@ class AlbumModel(Base, BasePathNamedModel):
     mtime = Column(Integer)
 
     parent_id = Column(Integer, ForeignKey('albumpathcomponent.id'), nullable=True)
-    parent = relationship('AlbumPathComponentModel',
+    parent = relationship(
+        'AlbumPathComponentModel',
         single_parent=False,
-        backref=backref('albums',
+        backref=backref(
+            'albums',
             order_by=directory,
             cascade='all, delete, delete-orphan'
         )
     )
 
     tree_id = Column(Integer, ForeignKey('tree.id'), nullable=False)
-    tree = relationship('TreeModel',
+    tree = relationship(
+        'TreeModel',
         single_parent=False,
-        backref=backref('albums',
+        backref=backref(
+            'albums',
             order_by=directory,
             cascade='all, delete, delete-orphan'
         )
@@ -599,7 +612,7 @@ class AlbumPathComponentModel(Base, BasePathNamedModel):
 
     __tablename__ = 'albumpathcomponent'
     __table_args__ = (
-        Index( 'album_path_component', 'tree_id', 'level', 'name', ),
+        Index('album_path_component', 'tree_id', 'level', 'name'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -607,19 +620,23 @@ class AlbumPathComponentModel(Base, BasePathNamedModel):
     name = Column(SafeUnicode, index=True)
 
     tree_id = Column(Integer, ForeignKey('tree.id'), nullable=True)
-    tree = relationship('TreeModel',
+    tree = relationship(
+        'TreeModel',
         single_parent=False,
-        backref=backref('components',
+        backref=backref(
+            'components',
             order_by=level,
             cascade='all, delete, delete-orphan'
         )
     )
 
     parent_id = Column(Integer, ForeignKey('albumpathcomponent.id'), nullable=True)
-    parent = relationship('AlbumPathComponentModel',
+    parent = relationship(
+        'AlbumPathComponentModel',
         single_parent=True,
         remote_side=[id],
-        backref=backref('children',
+        backref=backref(
+            'children',
             order_by=name,
             cascade='all, delete, delete-orphan'
         )
@@ -645,9 +662,11 @@ class AlbumArtModel(Base):
     albumart = Column(Base64Field)
 
     album_id = Column(Integer, ForeignKey('album.id'), nullable=True)
-    album = relationship('AlbumModel',
+    album = relationship(
+        'AlbumModel',
         single_parent=False,
-        backref=backref('albumart',
+        backref=backref(
+            'albumart',
             cascade='all, delete, delete-orphan'
         )
     )
@@ -680,18 +699,22 @@ class TrackModel(Base, BasePathNamedModel):
     deleted = Column(Boolean)
 
     tree_id = Column(Integer, ForeignKey('tree.id'), nullable=True)
-    tree = relationship('TreeModel',
+    tree = relationship(
+        'TreeModel',
         single_parent=False,
-        backref=backref('tracks',
+        backref=backref(
+            'tracks',
             order_by=[directory, name],
             cascade='all, delete, delete-orphan'
         )
     )
 
     album_id = Column(Integer, ForeignKey('album.id'), nullable=True)
-    album = relationship('AlbumModel',
+    album = relationship(
+        'AlbumModel',
         single_parent=False,
-        backref=backref('tracks',
+        backref=backref(
+            'tracks',
             order_by=[directory, name],
             cascade='all, delete, delete-orphan'
         )
@@ -752,7 +775,7 @@ class TagModel(Base):
 
     __tablename__ = 'tag'
     __table_args = (
-        Index( 'track_tag', 'track_id', 'tag', ),
+        Index('track_tag', 'track_id', 'tag'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -761,9 +784,11 @@ class TagModel(Base):
     base64_encoded = Column(Boolean)
 
     track_id = Column(Integer, ForeignKey('track.id'), nullable=False)
-    track = relationship('TrackModel',
+    track = relationship(
+        'TrackModel',
         single_parent=False,
-        backref=backref('tags',
+        backref=backref(
+            'tags',
             order_by=tag,
             cascade='all, delete, delete-orphan'
         )
@@ -840,7 +865,7 @@ class PlaylistModel(Base, BaseNamedModel):
 
     __tablename__ = 'playlist'
     __table_args__ = (
-        Index('playlist_directory_name', 'directory', 'name', ),
+        Index('playlist_directory_name', 'directory', 'name'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -852,9 +877,11 @@ class PlaylistModel(Base, BaseNamedModel):
     description = Column(SafeUnicode)
 
     parent_id = Column(Integer, ForeignKey('playlist_tree.id'), nullable=True)
-    parent = relationship('PlaylistTreeModel',
+    parent = relationship(
+        'PlaylistTreeModel',
         single_parent=False,
-        backref=backref('playlists',
+        backref=backref(
+            'playlists',
             order_by=(directory, name,),
             cascade='all, delete, delete-orphan',
         )
@@ -875,10 +902,8 @@ class PlaylistModel(Base, BaseNamedModel):
 
         try:
             playlist.read()
-        except PlaylistError as e:
-            logger.debug('Error reading playlist {}: {}'.format(
-                playlist, e,
-            ))
+        except Exception as e:
+            logger.debug('Error reading playlist {}: {}'.format(playlist, e))
             return
 
         tracks = []
@@ -897,7 +922,7 @@ class PlaylistTrackModel(Base, BasePathNamedModel):
     Audio track in a playlist
     """
     __table_args__ = (
-        Index('playlist_track_playlist_position', 'playlist_id', 'position', 'path', ),
+        Index('playlist_track_playlist_position', 'playlist_id', 'position', 'path'),
     )
 
     __tablename__ = 'playlist_track'
@@ -908,9 +933,11 @@ class PlaylistTrackModel(Base, BasePathNamedModel):
     path = Column(SafeUnicode)
 
     playlist_id = Column(Integer, ForeignKey('playlist.id'), nullable=False)
-    playlist = relationship('PlaylistModel',
+    playlist = relationship(
+        'PlaylistModel',
         single_parent=False,
-        backref=backref('tracks',
+        backref=backref(
+            'tracks',
             order_by=(position, path),
             cascade='all, delete, delete-orphan',
         )
@@ -1241,7 +1268,7 @@ class SoundforestDB(object):
 
         """
         if os.path.isdir(os.path.realpath(path)):
-            existing = self.query(PlaylistTreeModel).filter(PlaylistTreeModel.path==path).first()
+            existing = self.query(PlaylistTreeModel).filter(PlaylistTreeModel.path == path).first()
             if existing is not None:
                 raise SoundforestError('Playlist source is already in database: {}'.format(path))
 
@@ -1435,4 +1462,3 @@ class SoundforestDB(object):
         return self.query(TrackModel).filter(
             TrackModel.directory.like('%{0}%'.format(path))
         ).all()
-

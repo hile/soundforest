@@ -1,12 +1,11 @@
-# coding=utf-8
-"""Tree prefixes
+
+"""
+Tree prefixes
 
 Tree prefixes configuration
-
 """
 
 import os
-import configobj
 
 from soundforest import path_string
 from soundforest.database import ConfigDB
@@ -30,7 +29,8 @@ for i in range(0, len(ITUNES_PARTS) + 1):
         break
 
 
-class PrefixError(Exception): pass
+class PrefixError(Exception):
+    pass
 
 
 class MusicTreePrefix(object):
@@ -242,4 +242,3 @@ class TreePrefixes(object):
 
     def __setattr__(self, attr, value):
         return setattr(self.__instance, attr, value)
-

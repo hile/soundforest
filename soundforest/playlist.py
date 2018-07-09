@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 import os
-import codecs
-import logging
 
 from soundforest import normalized, path_string
+
 
 class PlaylistError(Exception):
     pass
@@ -88,6 +87,7 @@ class Playlist(list):
 
         self.modified = True
 
+
 class m3uPlaylist(Playlist):
     def __init__(self, name, config=None, folder=None, unique=True):
         super(m3uPlaylist, self).__init__(name, unique)
@@ -110,16 +110,16 @@ class m3uPlaylist(Playlist):
         try:
             with open(self.path, 'r') as lines:
                 self.__delslice__(0, list.__len__(self))
-                for l in lines:
-                    l = l.strip()
-                    if l.startswith('#'):
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('#'):
                         continue
 
-                    filepath = normalized(os.path.realpath(l))
+                    filepath = normalized(os.path.realpath(line))
                     if not os.path.isfile(filepath):
                         continue
 
-                    if self.unique and self.count(filepath)>0:
+                    if self.unique and self.count(filepath) > 0:
                         continue
 
                     self.append(filepath)
@@ -196,7 +196,7 @@ class m3uPlaylistDirectory(list):
             item += '.m3u'
 
         try:
-            name_lower = pl.filename.lower()
+            name_lower = item.filename.lower()
             return [item for item in self if item.lower() == name_lower][0]
         except IndexError:
             pass
@@ -214,4 +214,3 @@ class m3uPlaylistDirectory(list):
             return self.path.relative_path(item.path)
         else:
             return self.path.relative_path(item)
-

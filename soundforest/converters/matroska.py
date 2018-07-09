@@ -139,6 +139,7 @@ class TrackListSection(EBMLSection):
     def __init__(self, parent, prefix):
         super(TrackListSection, self).__init__(parent, 'Tracklist', prefix)
 
+
 class TrackSection(EBMLSection):
     """Segment Track
 
@@ -203,7 +204,6 @@ class SimpleTagSection(EBMLSection):
         super(SimpleTagSection, self).__init__(parent, 'SimpleTag', prefix)
 
 
-
 class Track(object):
     """Common track object
 
@@ -215,7 +215,7 @@ class Track(object):
         self.matroska = matroska
         self.section = section
 
-        for key in ( 'type', 'tracknumber', ):
+        for key in ('type', 'tracknumber'):
             if key not in self.section:
                 raise ValueError('Missing key {}: {}'.format(key, self.section.items()))
 
@@ -376,6 +376,7 @@ class MkvInfo(object):
                             if parent is None:
                                 break
                     section = parse_section(parent, entry, prefix)
+
 
 class Matroska(object):
     """Matroska container

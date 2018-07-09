@@ -5,7 +5,6 @@ AAC file tag parser
 
 """
 
-import base64
 import struct
 
 from mutagen.mp4 import MP4, MP4Cover, MP4StreamInfoError, MP4MetadataValueError
@@ -36,7 +35,6 @@ AAC_STANDARD_TAGS = {
     'comment':              ['\xa9cmt'],
     'lyrics':               ['\xa9lyr'],
     'note':                 ['note'],
-    'description':          ['desc'],
     'location':             ['loca'],
     'year':                 ['\xa9day'],
     'bpm':                  ['tmpo'],
@@ -91,15 +89,15 @@ ITUNES_TAG_MAP = {
 
 AAC_UNOFFICIAL_TAGS = {
     # Musicbrainz ID reference
-    'musicbrainz_id':       ['musi'],
+    'musicbrainz_id': ['musi'],
 }
 
 # These values are (value, value) pairs in metadata
-AAC_INTEGER_TUPLE_TYPES = [ 'trkn', 'disk' ]
+AAC_INTEGER_TUPLE_TYPES = ['trkn', 'disk']
 
 # Placeholder to write lambda functions to process specific tags if needed
 AAC_TAG_FORMATTERS = {
-    'tmpo':    lambda x: int(x),
+    'tmpo': lambda x: int(x),
 }
 
 
@@ -289,7 +287,7 @@ class aac(TagParser):
                 if tag in self.entry:
                     del self.entry[tag]
 
-            entries =[]
+            entries = []
             for v in value:
                 if item in AAC_TAG_FORMATTERS:
                     formatted = AAC_TAG_FORMATTERS[item](v)

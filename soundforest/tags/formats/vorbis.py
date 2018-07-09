@@ -9,8 +9,7 @@ from mutagen.oggvorbis import OggVorbis, OggVorbisHeaderError
 
 from soundforest.tags import TagError, format_unicode_string_value
 from soundforest.tags.constants import OGG_MULTIPLE_VALUES_TAGS
-from soundforest.tags.tagparser import TagParser, TrackNumberingTag, TrackAlbumart
-from soundforest.tags.albumart import AlbumArt, AlbumArtError
+from soundforest.tags.tagparser import TagParser, TrackNumberingTag
 
 VORBIS_ALBUMART_TAG = 'METADATA_BLOCK_PICTURE'
 
@@ -74,6 +73,7 @@ VORBIS_TAG_FORMATTERS = {
 VORBIS_EXTRA_TAGS = {
 }
 
+
 class VorbisNumberingTag(TrackNumberingTag):
     """
     Vorbis tags for storing track or disk numbers.
@@ -106,6 +106,7 @@ class VorbisNumberingTag(TrackNumberingTag):
         if value is not None:
             self.track.entry[self.tag] = '{}'.format(value)
             self.track.modified = True
+
 
 class vorbis(TagParser):
     """
@@ -146,7 +147,7 @@ class vorbis(TagParser):
         fields = self.__tag2fields__(item)
         for tag in fields:
             tag = self.__field2tag__(tag)
-            if not self.has_key(tag):
+            if tag not in self:
                 continue
 
             if value is None:
@@ -245,7 +246,7 @@ class vorbis(TagParser):
 
                 del self.entry[tag]
 
-        entries =[]
+        entries = []
         for v in value:
             if item in VORBIS_TAG_FORMATTERS:
                 entries.append(VORBIS_TAG_FORMATTERS[item](v))

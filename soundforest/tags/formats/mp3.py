@@ -6,7 +6,6 @@ mp3 file tag parser
 """
 
 from mutagen.mp3 import MP3
-from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from mutagen.id3 import error as ID3Error
 
@@ -48,7 +47,8 @@ MP3_TAG_FORMATTERS = {
 
 }
 
-def encode_frame(tag,value):
+
+def encode_frame(tag, value):
     """
     Return a mp3 frame object matching tag
     """
@@ -75,7 +75,7 @@ class MP3AlbumArt(TrackAlbumart):
         super(MP3AlbumArt, self).__init__(track)
 
         try:
-            self.tag = [k for k in self.track.entry.keys() if k[:5]=='APIC:'][0]
+            self.tag = [k for k in self.track.entry.keys() if k[:5] == 'APIC:'][0]
         except IndexError:
             self.tag = None
             return
@@ -235,7 +235,7 @@ class mp3(TagParser):
                     try:
                         value = format_unicode_string_value(value)
                     except UnicodeDecodeError as e:
-                        raise TagError('Error decoding {} tag {}: {}'.format(self.path, field, e) )
+                        raise TagError('Error decoding {} tag {}: {}'.format(self.path, field, e))
 
                 values.append(value)
 

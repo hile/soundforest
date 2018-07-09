@@ -9,11 +9,8 @@ import sys
 import os
 import fnmatch
 import time
-import logging
 import argparse
-import tempfile
 import signal
-import socket
 import threading
 import subprocess
 
@@ -21,20 +18,23 @@ from setproctitle import setproctitle
 from soundforest.database import ConfigDB
 from soundforest.log import SoundforestLogger
 
+
 def xterm_title(value, max_length=74, bypass_term_check=False):
     """
     Set title in xterm titlebar to given value, clip the title text to
     max_length characters.
     """
-    TERM=os.getenv('TERM')
-    TERM_TITLE_SUPPORTED = [ 'xterm', 'xterm-debian']
+    TERM = os.getenv('TERM')
+    TERM_TITLE_SUPPORTED = ['xterm', 'xterm-debian']
     if not bypass_term_check and TERM not in TERM_TITLE_SUPPORTED:
         return
     sys.stderr.write('\033]2;'+value[:max_length]+'',)
     sys.stderr.flush()
 
+
 class ScriptError(Exception):
     pass
+
 
 class ScriptThread(threading.Thread):
     """
@@ -50,6 +50,7 @@ class ScriptThread(threading.Thread):
     def execute(self, command):
         p = subprocess.Popen(command, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)
         return p.wait()
+
 
 class ScriptThreadManager(list):
     def __init__(self, name, threads=None):
@@ -78,12 +79,7 @@ class Script(object):
         self.db = ConfigDB()
         self.name = os.path.basename(sys.argv[0])
 
-        # Use the hack to set everything as unicode on python2
-        if sys.version_info.major < 3:
-            reload(sys)
-            sys.setdefaultencoding('utf-8')
-
-        setproctitle('%s %s' % (self.name, ' '.join(sys.argv[1:])))
+        setproctitle('{} {}'.format(self.name, ' '.join(sys.argv[1:])))
         signal.signal(signal.SIGINT, self.SIGINT)
 
         if name is None:
@@ -109,7 +105,7 @@ class Script(object):
         """
         Parse SIGINT signal by quitting the program cleanly with exit code 1
         """
-        for t in [t for t in threading.enumerate() if t.name!='MainThread']:
+        for t in [t for t in threading.enumerate() if t.name != 'MainThread']:
             t.join()
         self.exit(1)
 
@@ -119,7 +115,7 @@ class Script(object):
         Poll interval is time to wait between checks for threads
         """
         while True:
-            active = [t for t in threading.enumerate() if t.name!='MainThread']
+            active = [t for t in threading.enumerate() if t.name != 'MainThread']
             if not len(active):
                 break
             time.sleep(poll_interval)
@@ -133,7 +129,7 @@ class Script(object):
             self.message(message)
 
         while True:
-            active = [t for t in threading.enumerate() if t.name!='MainThread']
+            active = [t for t in threading.enumerate() if t.name != 'MainThread']
             if not len(active):
                 break
             time.sleep(1)
@@ -152,7 +148,7 @@ class Script(object):
             self.subcommand_parser = self.parser.add_subparsers(
                 dest='command',
                 help='Please select one command mode below',
-                title='Command modes'
+                title='Commands'
             )
             self.subcommands = {}
 
@@ -188,6 +184,8 @@ class Script(object):
     def run(self):
         args = self.parse_args()
         if self.subcommand_parser is not None:
+            if not args.command:
+                self.exit(1, 'No command selected')
             self.subcommands[args.command].run(args)
 
 
@@ -196,7 +194,7 @@ class ScriptCommand(argparse.ArgumentParser):
     Parent class for cli subcommands
     """
     def __init__(self, name, description='', epilog='', mode_flags=[]):
-        self.script =  None
+        self.script = None
         self.name = name
         self.description = description
         self.epilog = epilog
@@ -224,7 +222,7 @@ class ScriptCommand(argparse.ArgumentParser):
         self.script.message(*args, **kwargs)
 
     def parse_args(self, args):
-        if hasattr(args, 'debug') and getattr(args, 'debug'):
+        if getattr(args, 'debug', None):
             self.logger.set_level('DEBUG')
 
         self.selected_mode_flags = []
@@ -232,10 +230,10 @@ class ScriptCommand(argparse.ArgumentParser):
             if not hasattr(args, flag):
                 continue
 
-            if getattr(args, flag) not in ( None, False, [], ):
+            if getattr(args, flag) not in (None, False, []):
                 self.selected_mode_flags.append(flag)
 
-        xterm_title('soundforest %s' % (self.name))
+        xterm_title('soundforest {}'.format(self.name))
 
         return args
 

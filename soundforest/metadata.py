@@ -11,10 +11,30 @@ import os
 # to database, it's a static list anyway and we can extend the list if needed!
 ALBUMART_FILENAMES = (
     'artwork.jpg',
+    'artwork.jpeg',
+    'artwork.png',
+    'artwork.gif',
     'albumart.jpg',
+    'albumart.jpeg',
+    'albumart.png',
+    'albumart.gif',
     'coverart.jpg',
+    'cover.jpg',
+    'cover.jpeg',
+    'cover.png',
+    'cover.gif',
+    'album.jpg',
+    'album.jpeg',
+    'album.png',
+    'album.gif',
     'front.jpg',
+    'front.jpeg',
+    'front.png',
+    'front.gif',
     'back.jpg',
+    'back.jpeg',
+    'back.png',
+    'back.gif',
 )
 
 # Same for cover booklet filenames: rename these consistently in your library!
@@ -111,7 +131,7 @@ class m3uPlaylist(MetadataFileType):
     Playlist files in m3u format
     """
     def __init__(self):
-        super(m3uPlaylist, self).__init__('m3u playlist', extensions=['m3u'])
+        super(m3uPlaylist, self).__init__('m3u playlist', extensions=['pls', 'm3u', 'm3u8'])
 
 
 class Metadata(list):
@@ -147,4 +167,3 @@ class Metadata(list):
                 return m
 
         return None
-

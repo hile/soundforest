@@ -13,9 +13,8 @@ from subprocess import Popen, PIPE
 
 from soundforest.defaults import SOUNDFOREST_USER_DIR
 from soundforest.cli import ScriptThread, ScriptThreadManager
-from soundforest.database import ConfigDB
 from soundforest.log import SoundforestLogger
-from soundforest.tree import Tree, Track, TreeError
+from soundforest.tree import Tree, Track
 
 RSYNC_DELETE_FLAGS = (
     '--del',
@@ -51,6 +50,7 @@ def ntfs_rename(path):
     path = os.sep.join(x.rstrip('. ') for x in path.split(os.sep))
     return path
 
+
 RENAME_CALLBACKS = {
     'ntfs': ntfs_rename,
 }
@@ -67,7 +67,7 @@ class SyncThread(ScriptThread):
             self.src_tree = src
             self.src = src.path
 
-        elif isinstance(src, basestring):
+        elif isinstance(src, str):
             self.src_tree = Tree(src)
             self.src = os.path.expandvars(src).rstrip(os.sep)
 
@@ -78,7 +78,7 @@ class SyncThread(ScriptThread):
             self.dst_tree = dst
             self.dst = dst.path
 
-        elif isinstance(dst, basestring):
+        elif isinstance(dst, str):
             self.dst_tree = Tree(dst)
             self.dst = os.path.expandvars(dst).rstrip(os.sep)
 
@@ -120,7 +120,7 @@ class FilesystemSyncThread(SyncThread):
 
         src = self.src_tree
         dst = self.dst_tree
-        i=0
+        i = 0
 
         for album in src.as_albums():
             dst_album_path = os.path.join(dst.path, src.relative_path(album.path))
@@ -137,7 +137,7 @@ class FilesystemSyncThread(SyncThread):
                     continue
 
             for track in album:
-                i+=1
+                i += 1
                 dst_track_path = os.path.join(dst.path, track.relative_path())
 
                 if self.rename:
@@ -165,7 +165,7 @@ class FilesystemSyncThread(SyncThread):
 class RsyncThread(SyncThread):
     def __init__(self, manager, index, src, dst, flags, delete=False):
         super(RsyncThread, self).__init__(manager, index, src, dst, delete)
-        if isinstance(flags, basestring):
+        if isinstance(flags, str):
             flags = flags.split()
 
         if delete and not RSYNC_DELETE_FLAGS.intersection(set(flags)):
@@ -183,9 +183,10 @@ class RsyncThread(SyncThread):
             rval = None
             while rval is None:
                 while True:
-                    l = p.stdout.readline()
-                    if l == '': break
-                    self.log.info(l.rstrip())
+                    line = p.stdout.readline()
+                    if line == '':
+                        break
+                    self.log.info(line.rstrip())
                 time.sleep(0.2)
                 rval = p.poll()
 
@@ -219,10 +220,10 @@ class SyncManager(ScriptThreadManager):
         except KeyError:
             return None
 
-        if not 'src' in target:
+        if 'src' not in target:
             raise SyncError('Target missing source')
 
-        if not 'dst' in target:
+        if 'dst' not in target:
             raise SyncError('Target missing destination')
 
         return target
@@ -233,10 +234,10 @@ class SyncManager(ScriptThreadManager):
 
     def get_entry_handler(self, index, config):
         sync_type = config.pop('type', None)
-        if sync_type=='rsync':
+        if sync_type == 'rsync':
             return RsyncThread(manager=self, index=index, **config)
 
-        elif sync_type=='directory':
+        elif sync_type == 'directory':
             if 'flags' in config:
                 del config['flags']
             return FilesystemSyncThread(manager=self, index=index, **config)
@@ -262,11 +263,11 @@ class SyncManager(ScriptThreadManager):
         self.append(config)
 
     def run(self):
-        if len(self)==0:
+        if len(self) == 0:
             return
 
         total = len(self)
-        while len(self)>0:
+        while len(self) > 0:
             active = threading.active_count()
             if active > self.threads:
                 time.sleep(0.5)

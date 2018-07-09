@@ -34,6 +34,7 @@ PATH_CACHE.update()
 
 db = ConfigDB()
 
+
 def filter_available_command_list(commands):
     available = []
     for cmd in commands:
@@ -47,6 +48,7 @@ def filter_available_command_list(commands):
         available.append(cmd.command)
 
     return available
+
 
 def match_codec(path):
     ext = os.path.splitext(path)[1][1:]
@@ -62,6 +64,7 @@ def match_codec(path):
             return codec
 
     return None
+
 
 def match_metadata(path):
     metadata = Metadata()
@@ -80,7 +83,7 @@ class AudioFileFormat(object):
     """
 
     def __init__(self, path):
-        self.log =  SoundforestLogger().default_stream
+        self.log = SoundforestLogger().default_stream
         self.path = path_string(path)
         self.codec = None
         self.description = None

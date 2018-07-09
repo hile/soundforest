@@ -71,7 +71,7 @@ DEFAULT_CODECS = {
 
   'ogg': {
     'description': 'Ogg Vorbis',
-    'extensions': [ 'ogg', 'oga', ],
+    'extensions': ['ogg', 'oga'],
     'encoders': [
       'oggenc --quiet -q 7 -o OUTFILE FILE',
     ],
@@ -82,7 +82,7 @@ DEFAULT_CODECS = {
 
   'opus': {
     'description': 'Opus in vorbis container',
-    'extensions': [ 'opus', ],
+    'extensions': ['opus'],
     'encoders': [
       'opusenc--quiet FILE OUTFILE',
     ],
@@ -119,8 +119,8 @@ DEFAULT_CODECS = {
   'wavpack': {
     'description': 'WavPack Lossless Audio Codec',
     'extensions': ['wv', 'wavpack'],
-    'encoders': [ 'wavpack -yhx FILE -o OUTFILE' ],
-    'decoders': [ 'wvunpack -yq FILE -o OUTFILE' ],
+    'encoders': ['wavpack -yhx FILE -o OUTFILE'],
+    'decoders': ['wvunpack -yq FILE -o OUTFILE'],
   },
 
   'caf': {

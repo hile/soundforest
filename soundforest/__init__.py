@@ -9,9 +9,8 @@ import os
 import sys
 import unicodedata
 
-from soundforest.defaults import SOUNDFOREST_USER_DIR
 
-__version__ ='4.3.3'
+__version__ = '4.5.0'
 
 
 class SoundforestError(Exception):
@@ -29,12 +28,8 @@ def normalized(path, normalization='NFC'):
     """
     if sys.platform != 'darwin':
         return type(path) == str and path or str(path, 'utf-8')
-    if sys.version_info.major < 3:
-        if not isinstance(path, unicode):
-            path = unicode(path, 'utf-8')
-    else:
-        if not isinstance(path, str):
-            path = str(path, 'utf-8')
+    if not isinstance(path, str):
+        path = str(path, 'utf-8')
     return unicodedata.normalize(normalization, path)
 
 
@@ -132,4 +127,3 @@ class CommandPathCache(list):
             return versions[0]
         else:
             return None
-
